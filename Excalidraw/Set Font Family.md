@@ -50,28 +50,95 @@ if(builtInfonts.includes(font)){
 	excalidraw.settings.experimantalFourthFont = font;
 	await excalidraw.saveData(excalidraw.settings);
 
-	// 重写添加字体函数
-	const originalAddFonts = excalidraw.addFonts;
-	excalidraw.addFonts = async (declarations, ownerDocument = document) => {
-		const FONTS_STYLE_ID = "excalidraw-fonts";
-	    const newStylesheet = ownerDocument.createElement("style");
-		newStylesheet.id = FONTS_STYLE_ID;
-		newStylesheet.textContent = declarations.join("");
-		const oldStylesheet = ownerDocument.getElementById(FONTS_STYLE_ID);
-		ownerDocument.head.appendChild(newStylesheet);
-		if (oldStylesheet) {
-			ownerDocument.head.removeChild(oldStylesheet);
-		}
-		// 等待字体加载完毕
-		await ownerDocument.fonts.load('20px LocalFont');
-
-		// 字体加载完毕，修改元素字体
+	// 开始初始化字体
+	initializeFonts(()=>{
+	    // 字体加载成功，修改元素字体
 		font = 4;
 		updateElements(font);
-		// 恢复字体添加函数
-		excalidraw.addFonts = originalAddFonts;
-	}
-	// 开始初始化字体
-	excalidraw.initializeFonts()
+	}, ()=>{
+	    // 字体加载失败
+	    new Notice("Failed to load fonts.");
+	});
 }
+
+/////////////// 重写 Excalidraw 功能函数 ///////////////
+
+function initializeFonts(callback, failback) {
+  app.workspace.onLayoutReady(async () => {
+    const font = await getFontDataURL(
+      app,
+      ea.plugin.settings.experimantalFourthFont,
+      "",
+      "LocalFont",
+    );
+    if (font.dataURL === "") {
+	    if(typeof callback === 'function') failback();
+	    return;
+    }
+    const fourthFontDataURL = font.dataURL;
+    //const fourthFontDataURL = font.dataURL === "" ? VIRGIL_DATAURL : font.dataURL;
+    ea.plugin.fourthFontDef = font.fontDef;
+    ea.plugin.getOpenObsidianDocuments().forEach((ownerDocument) => {
+      addFonts([
+        `@font-face{font-family:'LocalFont';src:url("${fourthFontDataURL}");font-display: swap;`,
+      ],ownerDocument, callback);
+    })
+  });
+}
+
+async function addFonts(declarations, ownerDocument = document, callback) {
+	const FONTS_STYLE_ID = "excalidraw-fonts";
+	const newStylesheet = ownerDocument.createElement("style");
+	newStylesheet.id = FONTS_STYLE_ID;
+	newStylesheet.textContent = declarations.join("");
+	const oldStylesheet = ownerDocument.getElementById(FONTS_STYLE_ID);
+	ownerDocument.head.appendChild(newStylesheet);
+	if (oldStylesheet) {
+		ownerDocument.head.removeChild(oldStylesheet);
+	}
+	// 等待字体加载完毕
+	await ownerDocument.fonts.load('20px LocalFont');
+	//完成回调
+	if(typeof callback === 'function') callback();
+}
+
+async function getDataURL(
+  file,
+  mimeType,
+) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataURL = reader.result;
+      resolve(dataURL);
+    };
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(new Blob([new Uint8Array(file)], { type: mimeType }));
+  });
+};
+
+async function getFontDataURL(
+  app,
+  fontFileName,
+  sourcePath,
+  name,
+) {
+  let fontDef = "";
+  let fontName = "";
+  let dataURL = "";
+  const f = app.metadataCache.getFirstLinkpathDest(fontFileName, sourcePath);
+  if (f) {
+    const ab = await app.vault.readBinary(f);
+    const mimeType = f.extension.startsWith("woff")
+      ? "application/font-woff"
+      : "font/truetype";
+    fontName = name ?? f.basename;
+    dataURL = await getDataURL(ab, mimeType);
+    fontDef = ` @font-face {font-family: "${fontName}";src: url("${dataURL}")}`;
+     //format("${f.extension === "ttf" ? "truetype" : f.extension}");}`;
+    const split = fontDef.split(";base64,", 2);
+    fontDef = `${split[0]};charset=utf-8;base64,${split[1]}`;
+  }
+  return { fontDef, fontName, dataURL };
+};
 
