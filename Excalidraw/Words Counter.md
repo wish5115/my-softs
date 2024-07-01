@@ -10,6 +10,7 @@ https://raw.githubusercontent.com/wish5115/my-softs/main/Excalidraw/Words%20Coun
 ```js
 */
 
+// 获取选择的元素
 let elements = ea.getViewSelectedElements().filter((el)=>el.type==="text");
 if(elements.length===0) {
 	new Notice("Select at least one element");
