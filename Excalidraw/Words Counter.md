@@ -68,12 +68,12 @@ elements.forEach((el)=>{
 const groupsNum = groupSet.size;
 
 //格式化结果
-const formatStatisticalResults = `Statistical results:
+const formatStatisticalResults = `Statistical Results:
 ${wordsCount}: total words
-${chineseCount}: Chinese words
-${englishCount}: English words
+${chineseCount}: chinese words
+${englishCount}: english words
 ${punctuationCount}: spaces and punctuations
-${charactersCount}: Characters
+${charactersCount}: characters
 ${elementsNum}: elements
 ${groupsNum}: groups
 `
