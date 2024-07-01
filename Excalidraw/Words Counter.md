@@ -3,6 +3,10 @@ Calculates the number of text in the selected element, and displays the number o
 
 ![](https://raw.githubusercontent.com/wish5115/my-softs/main/Excalidraw/Words%20Counter.png)
 
+```excalidraw-script-install
+https://raw.githubusercontent.com/wish5115/my-softs/main/Excalidraw/Words%20Counter.md
+```
+
 ```js
 */
 
