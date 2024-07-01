@@ -1,3 +1,5 @@
+Installation Method:
+
 Enter the following code into any Markdown document in Obsidian and click Install the script.
 
 Spaces in the script name are replaced with %20.
