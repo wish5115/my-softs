@@ -63,26 +63,24 @@ if(builtInfonts.includes(font)){
 
 /////////////// 重写 Excalidraw 功能函数 ///////////////
 
-function initializeFonts(callback, failback) {
-  app.workspace.onLayoutReady(async () => {
-    const font = await getFontDataURL(
-      app,
-      ea.plugin.settings.experimantalFourthFont,
-      "",
-      "LocalFont",
-    );
-    if (font.dataURL === "") {
-	    if(typeof callback === 'function') failback();
-	    return;
-    }
-    const fourthFontDataURL = font.dataURL;
-    //const fourthFontDataURL = font.dataURL === "" ? VIRGIL_DATAURL : font.dataURL;
-    ea.plugin.fourthFontDef = font.fontDef;
-    ea.plugin.getOpenObsidianDocuments().forEach((ownerDocument) => {
-      addFonts([
-        `@font-face{font-family:'LocalFont';src:url("${fourthFontDataURL}");font-display: swap;`,
-      ],ownerDocument, callback);
-    })
+async function initializeFonts(callback, failBack) {
+  const font = await getFontDataURL(
+    app,
+    ea.plugin.settings.experimantalFourthFont,
+    "",
+    "LocalFont",
+  );
+  if (font.dataURL === "") {
+    if(typeof failBack === 'function') failBack();
+    return;
+  }
+  const fourthFontDataURL = font.dataURL;
+  //const fourthFontDataURL = font.dataURL === "" ? VIRGIL_DATAURL : font.dataURL;
+  ea.plugin.fourthFontDef = font.fontDef;
+  ea.plugin.getOpenObsidianDocuments().forEach((ownerDocument) => {
+    addFonts([
+      `@font-face{font-family:'LocalFont';src:url("${fourthFontDataURL}");font-display: swap;`,
+    ],ownerDocument, callback);
   });
 }
 
