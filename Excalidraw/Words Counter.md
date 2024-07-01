@@ -1,6 +1,8 @@
 /*
 Calculates the number of text in the selected element, and displays the number of groups if the selected element is grouped.
 
+Statistical logic: An English word counts as one, a Chinese character counts as one, and a space or punctuation mark counts as one.
+
 ![](https://raw.githubusercontent.com/wish5115/my-softs/main/Excalidraw/Words%20Counter.png)
 
 ```excalidraw-script-install
