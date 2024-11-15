@@ -1,15 +1,24 @@
+// 功能：思源面包屑右侧添加全屏按钮
 // see https://ld246.com/article/1731683038390
 (() => {
+    /////////////////// 配置区 ///////////////////////
+    // 全屏按钮svg
     const fullscreenSvg = `<svg><use xlink:href="#iconFullscreen"></use></svg>`;
+    // 退出全屏按钮svg
     const exitFullscreenSvg = `<svg><use xlink:href="#iconFullscreenExit"></use></svg>`;
+    
+    /////////////////// 主逻辑区 ///////////////////////
     const main = (breadcrumb) => {
         const exitFocus = breadcrumb.querySelector('button[data-type="exit-focus"]');
         if(!exitFocus) return;
         const protyle = exitFocus.closest('.protyle');
         if(!protyle) return;
+        const breadcrumbParent = exitFocus.parentElement;
+        const existFullscreen = breadcrumbParent.querySelector('.full-screen-btn-ld1731683038390');
+        if(existFullscreen) return;
         // 创建全屏按钮元素
         const fullScreenBtn = document.createElement('button');
-        fullScreenBtn.className = 'block__icon fn__flex-center ariaLabel';
+        fullScreenBtn.className = 'block__icon fn__flex-center ariaLabel full-screen-btn-ld1731683038390';
         fullScreenBtn.setAttribute('aria-label', '全屏');
         fullScreenBtn.dataset.type = 'full-screen';
         fullScreenBtn.innerHTML = fullscreenSvg;
@@ -40,8 +49,18 @@
             }
         });
     };
-    whenElementExist('.protyle-breadcrumb').then(main);
+    // 加载时查找（兼容分屏模式）
+    whenElementsExist('.protyle-breadcrumb').then((elements) => {
+        elements.forEach((breadcrumb) => {
+            main(breadcrumb);
+        });
+    });
+    // 打开切换文档时监听
     observeElementAddition('.protyle-breadcrumb', main);
+
+    /////////////////// 功能函数区 ///////////////////////
+    
+    // 监听元素被添加
     function observeElementAddition(selector, callback) {
         // 创建一个观察者实例
         const observer = new MutationObserver((mutationsList, observer) => {
@@ -67,6 +86,7 @@
         // 返回一个停止观察的方法
         return () => observer.disconnect();
     }
+    // 监听类名被添加
     function observeClassAddition(element, className, callback) {
         if (!element) {
             console.error(`Element not found.`);
@@ -94,17 +114,18 @@
         // 返回一个停止观察的方法
         return () => observer.disconnect();
     }
-    function whenElementExist(selector) {
+    // 等待元素渲染完成
+    function whenElementsExist(selector) {
         return new Promise(resolve => {
             const checkForElement = () => {
-                let element = null;
+                let elements = null;
                 if (typeof selector === 'function') {
-                    element = selector();
+                    elements = selector();
                 } else {
-                    element = document.querySelector(selector);
+                    elements = document.querySelectorAll(selector);
                 }
-                if (element) {
-                    resolve(element);
+                if (elements) {
+                    resolve(elements);
                 } else {
                     requestAnimationFrame(checkForElement);
                 }
