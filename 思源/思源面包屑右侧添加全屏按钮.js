@@ -49,6 +49,8 @@
             }
         });
     };
+    // 不支持手机版
+    if(isMobile()) return;
     // 加载时查找（兼容分屏模式）
     whenElementsExist('.protyle-breadcrumb').then((elements) => {
         elements.forEach((breadcrumb) => {
@@ -132,5 +134,9 @@
             };
             checkForElement();
         });
+    }
+    //判断是否手机版
+    function isMobile() {
+        return !!document.getElementById("sidebar");
     }
 })();
