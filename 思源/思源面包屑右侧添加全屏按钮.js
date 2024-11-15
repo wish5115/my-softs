@@ -126,7 +126,7 @@
                 } else {
                     elements = document.querySelectorAll(selector);
                 }
-                if (elements) {
+                if (elements && elements.length > 0) {
                     resolve(elements);
                 } else {
                     requestAnimationFrame(checkForElement);
