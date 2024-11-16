@@ -57,7 +57,7 @@
             main(breadcrumb);
         });
     });
-    // 打开切换文档时监听
+    // 打开/切换文档时监听
     observeElementAddition('.protyle-breadcrumb', main);
 
     /////////////////// 功能函数区 ///////////////////////
