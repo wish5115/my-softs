@@ -15,6 +15,9 @@
     // 创建运行环境信息
     createEnvInfo();
 
+    // 清除旧文件
+    clearOldFiles();
+
     // 当收到消息时被调用
     function onReceivedMessage(event) {
         let request = parseJson(event.data);
@@ -79,6 +82,21 @@
             port: location.port,
             token: siyuan.config.api.token
         }));
+    }
+
+    // 清理旧文件
+    async function clearOldFiles() {
+        const response = await fetch('/api/file/readDir', {
+            method: 'POST',
+            body: JSON.stringify({ path: '/data/public' }),
+        });
+        const json = await response.json();
+        if(!json.data || json.code !== 0) return;
+        const files = json.data.filter(i=>i.isDir===false && !i.name.startsWith('.') && i.name.startsWith('runjs_result_') && i.name.endsWith('.json'));
+        if(files.length === 0) return;
+        files.forEach(file => {
+            fetchSyncPost('/api/file/removeFile', {path: '/data/public/' + file.name});
+        });
     }
 
     // 解析json
