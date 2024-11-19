@@ -1,5 +1,5 @@
 // 功能：外部程序通过调用思源api运行js代码
-// 主要用途：用于quicker等调用思源执行js，把该代码放到思源js代码片段中即可
+// 主要用途：用于quicker等调用思源执行js，把该代码放到思源js代码片段中即可，同时兼容websocket模式和http请求模式
 // 使用帮助和反馈：https://getquicker.net/SubProgram?id=cb322876-e4a3-462a-e322-08dd0733f195
 // by wilsons 2014.11.18
 // version 0.0.1
