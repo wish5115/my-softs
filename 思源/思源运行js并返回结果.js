@@ -31,13 +31,24 @@
                 result = e.message || '';
                 console.error(e);
             }
-            putFile(resultPath, JSON.stringify({
+
+            // 兼容websocket互发模式
+            if(request.fromChannel) {
+                postMessage(request.fromChannel, result);
+                return;
+            }
+            
+            if(request.request_id) putFile(resultPath, JSON.stringify({
                 "request_id": request.request_id,
                 "result": result
             }));
 
             // 清除旧文件
-            clearOldFiles(request.request_id);
+            if(request.request_id) clearOldFiles(request.request_id);
+
+            if(!request.request_id) {
+                console.error('request.request_id not found');
+            }
         }
         // 清除临时文件
         if(request.action === "clear"){
@@ -156,4 +167,4 @@
             return returnType === 'json' ? {code:e.code||1, msg: e.message||"", data: null} : "";
         }
     }
-})()
+})();
