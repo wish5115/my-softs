@@ -35,6 +35,9 @@
                 "request_id": request.request_id,
                 "result": result
             }));
+
+            // 清除旧文件
+            clearOldFiles(request.request_id);
         }
         // 清除临时文件
         if(request.action === "clear"){
@@ -85,7 +88,7 @@
     }
 
     // 清理旧文件
-    async function clearOldFiles() {
+    async function clearOldFiles(requestId) {
         const response = await fetch('/api/file/readDir', {
             method: 'POST',
             body: JSON.stringify({ path: '/data/public' }),
@@ -95,6 +98,7 @@
         const files = json.data.filter(i=>i.isDir===false && !i.name.startsWith('.') && i.name.startsWith('runjs_result_') && i.name.endsWith('.json'));
         if(files.length === 0) return;
         files.forEach(file => {
+            if (requestId && file.name.indexOf(requestId) !== -1) return;
             fetchSyncPost('/api/file/removeFile', {path: '/data/public/' + file.name});
         });
     }
