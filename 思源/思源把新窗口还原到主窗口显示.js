@@ -4,7 +4,7 @@
 (async () => {
 	// 新窗口关闭后延迟多少毫秒后主窗口再打开文件
 	// 如果打开有问题，这里可适当调大些，如果你的电脑性能好也可调小些
-	const delayTimeWhenNewWindowClose = 200;
+	const delayTimeAfterNewWindowClose = 200;
 	
     await sleep(100);
     if (isMobile()) return;
@@ -24,7 +24,7 @@
         closeBtn.onclick = () => {
             const wnd = document.querySelector('[data-type="wnd"].layout__wnd--active') || document.querySelector('[data-type="wnd"]');
             const currDocBlockId = wnd.querySelector('.protyle:not(.fn__none)')?.querySelector('.protyle-title')?.dataset?.nodeId;
-            // 通知主窗口即将打开的块id
+            // 通知主窗口打开块id
             localStorage.setItem('NotifyMainWindowOpenBlock', currDocBlockId || '');
         };
 		toolbar.insertBefore(closeBtn, pinWindowBtn.nextSibling);
@@ -54,11 +54,12 @@
                     // 通知新窗口关闭窗口
                     localStorage.setItem('NotifyNewWindowClose', event.newValue);
                     setTimeout(() => {
+                        // 打开文档
                         window.open('siyuan://blocks/' + event.newValue);
                         setTimeout(() => {
                             localStorage.setItem('NotifyMainWindowOpenBlock', '');
                         }, 100);
-                    }, delayTimeWhenNewWindowClose);
+                    }, delayTimeAfterNewWindowClose);
                 }
             }
         });
