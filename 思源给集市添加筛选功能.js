@@ -48,8 +48,8 @@
             // 定义选项数组
             const options = [
                 { value: 'all', text: '全部' },
-                { value: 'on', text: '开启' },
-                { value: 'off', text: '关闭' }
+                { value: 'on', text: '已开启' },
+                { value: 'off', text: '已关闭' }
             ];
             // 遍历选项数组，为每个选项创建一个 <option> 元素
             options.forEach(option => {
