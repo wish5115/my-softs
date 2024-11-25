@@ -12,11 +12,16 @@
     // 添加tag后多少毫秒添加当前块到数据库
     // 不宜设置过小，过小可能导致标签被插入一半
     const delay = 500;
+
+    // 是否开启文档标签插入同名数据库（文档标签这里指文档头部的添加标签），true开启，false不开启
+    const enableDocTagToAv = true;
     
     // 发布服务立即返回
     if(siyuan.config.readonly) return;
     // 监听tag输入
     observeTagSpans(async (tagEl, tagType) => {
+        // 如果未开启文档标签插入同名数据库，当为文档标签时返回
+        if(!enableDocTagToAv && tagType === 'doc-tag') return;
         // 去掉零宽度字符&ZeroWithSpace;
         const tag = tagEl?.textContent?.replace(/[\u200B-\u200D\uFEFF]/g, '')?.trim();
         if(!tag) return;
