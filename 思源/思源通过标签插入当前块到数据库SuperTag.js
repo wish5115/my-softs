@@ -17,7 +17,6 @@
     if(siyuan.config.readonly) return;
     // 监听tag输入
     observeTagSpans(async (tagEl, tagType) => {
-        // 块标签处理逻辑
         // 去掉零宽度字符&ZeroWithSpace;
         const tag = tagEl?.textContent?.replace(/[\u200B-\u200D\uFEFF]/g, '')?.trim();
         if(!tag) return;
