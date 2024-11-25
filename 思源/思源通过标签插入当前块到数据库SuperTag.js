@@ -1,10 +1,12 @@
 // 思源通过标签插入当前块到数据库（SuperTag）
 // 功能：给块设置标签，将块添加到标签同名的数据库。
 // 说明；
-// 1、数据库名称需要与标签同名
+// 1、数据库名称需要与标签同名，名称需含前后#，如 #笔记软件#
 // 2、如果有多个同名数据库，只会将块添加到其中一个，所以不要建立同名数据库
 // 3、需要提前建立数据库才能添加成功 
-// version：0.0.1
+// version：0.0.2
+// 更新记录
+// 0.0.2 增加数据库同名文档标签即可把文档添加到标签同名数据库中（文档标签这里指文档头部的添加标签）。
 // 根据qiancang大佬的帖子实现 https://ld246.com/article/1731945645865
 (()=>{
     // 添加tag后多少毫秒添加当前块到数据库
@@ -14,7 +16,8 @@
     // 发布服务立即返回
     if(siyuan.config.readonly) return;
     // 监听tag输入
-    observeTagSpans(async tagEl => {
+    observeTagSpans(async (tagEl, tagType) => {
+        // 块标签处理逻辑
         // 去掉零宽度字符&ZeroWithSpace;
         const tag = tagEl?.textContent?.replace(/[\u200B-\u200D\uFEFF]/g, '')?.trim();
         if(!tag) return;
@@ -26,7 +29,16 @@
         const avBlockID = av.blockID;
         if(!avBlockID) return;
         // 获取文档块信息
-        const block = tagEl.closest('div[data-node-id][data-type]');
+        let block;
+        if(tagType === 'doc-tag') {
+            // 如果头部标签，返回文档id
+            const blockParent = tagEl.closest('div.protyle-top');
+            if(!blockParent) return;
+            block = blockParent.querySelector('.protyle-title');
+        } else {
+            // 如果块标签，返回块id
+            block = tagEl.closest('div[data-node-id][data-type]');
+        }
         const blockId = block?.dataset?.nodeId;
         if(!blockId) return;
         // 添加块到数据库
@@ -96,8 +108,11 @@
                     // 检查新增的节点
                     for (const node of mutation.addedNodes) {
                         if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === 'span' && node.getAttribute('data-type') === 'tag') {
-                            // 调用回调函数，传递新添加的元素
-                            callback(node);
+                            // 块标签调用回调函数
+                            callback(node, 'block-tag');
+                        } else if(node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === 'div' && node.classList?.contains('b3-chip') && node.getAttribute('data-type') === 'open-search') {
+                            // 文档头部标签调用回调函数
+                            callback(node, 'doc-tag');
                         }
                     }
                 }
