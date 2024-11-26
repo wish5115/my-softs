@@ -4,10 +4,11 @@
 // 1、数据库名称需要与标签同名，名称需含前后#，如 #笔记软件#
 // 2、如果有多个同名数据库，只会将块添加到其中一个，所以不要建立同名数据库
 // 3、需要提前建立数据库才能添加成功 
-// version：0.0.3
+// version：0.0.4
 // 更新记录
 // 0.0.2 增加数据库同名文档标签即可把文档添加到标签同名数据库中（文档标签这里指文档头部的添加标签）。
 // 0.0.3 增加可删除数据库引用文本中的标签名选项isShowTagNameInAvCell
+// 0.0.4 改进当标签在列表中时数据库插入列表项
 // 根据qiancang大佬的帖子实现 https://ld246.com/article/1731945645865
 (()=>{
     // 添加tag后多少毫秒添加当前块到数据库
@@ -45,8 +46,15 @@
             if(!blockParent) return;
             block = blockParent.querySelector('.protyle-title');
         } else {
-            // 如果块标签，返回块id
+            // 如果块标签，返回块id（监听元素的临时块）
             block = tagEl.closest('div[data-node-id][data-type]');
+            if(!block) return;
+            // 获取文档中的block结点
+            block = document.querySelector('div[data-node-id="'+(block?.dataset?.nodeId||'')+'"]');
+            if(!block) return;
+            // 判断是否在列表元素内，数据库插入列表项
+            const listItemNode = block.closest('div[data-node-id][data-type="NodeListItem"]');
+            if(listItemNode) block = listItemNode;
         }
         const blockId = block?.dataset?.nodeId;
         if(!blockId) return;
