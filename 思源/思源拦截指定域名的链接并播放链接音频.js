@@ -9,8 +9,8 @@
     ];
 
     // 监听指定的链接被添加
-    const selectors = audioDomains.map(audioDomain => 'span[data-type="a"][data-href*="'+audioDomain+'"]:not([data-replaced])').join(',');
-    observeLinkBlock(selectors, async (link) => {
+    const selectors = audioDomains.map(audioDomain=>audioDomain?'span[data-type="a"][data-href*="'+audioDomain.trim()+'"]:not([data-replaced])':'').filter(i=>i).join(',');
+    if(selectors) observeLinkBlock(selectors, async (link) => {
         link.dataset.replaced = true;
         link.onclick = (event) => {
             playAudio(link.dataset.href);
