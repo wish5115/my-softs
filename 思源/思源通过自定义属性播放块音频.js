@@ -71,9 +71,6 @@
         audio.src = file;
         audio.currentTime = startTime;
         audio.load();
-        audio.addEventListener('canplay', () => {
-            audio.play();
-        });
         // 监听音频准备完毕
         const canplayhandler = () => {
             audio.play();
