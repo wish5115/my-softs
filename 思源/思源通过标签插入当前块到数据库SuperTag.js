@@ -53,8 +53,8 @@
             block = document.querySelector('div[data-node-id="'+(block?.dataset?.nodeId||'')+'"]');
             if(!block) return;
             // 判断是否在列表元素内，数据库插入列表项
-            const leafItemNode = block.closest('div[data-node-id][data-type="NodeListItem"]');
-            if(leafItemNode) block = leafItemNode;
+            const listItemNode = block.closest('div[data-node-id][data-type="NodeListItem"]');
+            if(listItemNode) block = listItemNode;
         }
         const blockId = block?.dataset?.nodeId;
         if(!blockId) return;
