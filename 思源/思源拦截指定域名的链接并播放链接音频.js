@@ -2,10 +2,15 @@
 // see https://ld246.com/article/1732632964559
 (()=>{
     // 以指定域名匹配链接
-    const audioDomain = 'audio.dict.cn';
+    const audioDomains = [
+        'res.iciba.com',
+        'tts.iciba.com',
+        'res-tts.iciba.com',
+    ];
 
     // 监听指定的链接被添加
-    observeLinkBlock('span[data-type="a"][data-href*="'+audioDomain+'"]:not([data-replaced])', async (link) => {
+    const selectors = audioDomains.map(audioDomain => 'span[data-type="a"][data-href*="'+audioDomain+'"]:not([data-replaced])').join(',');
+    observeLinkBlock(selectors, async (link) => {
         link.dataset.replaced = true;
         link.onclick = (event) => {
             playAudio(link.dataset.href);
@@ -24,9 +29,13 @@
         audio.currentTime = 0;
         audio.src = file;
         audio.load();
-        audio.addEventListener('canplay', () => {
+        // 监听音频准备完毕
+        const canplayhandler = () => {
             audio.play();
-        });
+            audio.removeEventListener('canplay', canplayhandler);
+        };
+        audio.removeEventListener('canplay', canplayhandler);
+        audio.addEventListener('canplay', canplayhandler);
     }
         
     // 监听Link被添加
