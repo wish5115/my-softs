@@ -74,6 +74,13 @@
         audio.addEventListener('canplay', () => {
             audio.play();
         });
+        // 监听音频准备完毕
+        const canplayhandler = () => {
+            audio.play();
+            audio.removeEventListener('canplay', canplayhandler);
+        };
+        audio.removeEventListener('canplay', canplayhandler);
+        audio.addEventListener('canplay', canplayhandler);
         // 监听时间更新事件，检查是否到达结束时间
         audio.addEventListener('timeupdate', timeUpdateHandler);
     }
