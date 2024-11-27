@@ -70,7 +70,10 @@
         audio.removeEventListener('timeupdate', timeUpdateHandler);
         audio.src = file;
         audio.currentTime = startTime;
-        audio.play();
+        audio.load();
+        audio.addEventListener('canplay', () => {
+            audio.play();
+        });
         // 监听时间更新事件，检查是否到达结束时间
         audio.addEventListener('timeupdate', timeUpdateHandler);
     }
