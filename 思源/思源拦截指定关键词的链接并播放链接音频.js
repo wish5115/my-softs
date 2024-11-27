@@ -2,10 +2,13 @@
 // see https://ld246.com/article/1732632964559
 (()=>{
     // 以指定关键词匹配链接
-    const audioLinkKeyword = '';
+    const audioLinkKeywords = [
+        //'',
+    ];
 
     // 监听指定的链接被添加
-    if(audioLinkKeyword) observeLinkBlock('span[data-type="a"][data-href*="'+audioLinkKeyword+'"]:not([data-replaced])', async (link) => {
+    const selectors = audioLinkKeywords.map(audioLinkKeyword=>audioLinkKeyword?'span[data-type="a"][data-href*="'+audioLinkKeyword.trim()+'"]:not([data-replaced])':'').filter(i=>i).join(',');
+    if(selectors) observeLinkBlock(selectors, async (link) => {
         link.dataset.replaced = true;
         link.onclick = (event) => {
             const linkHref = link.dataset?.href?.replace('&amp;', '&');
