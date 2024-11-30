@@ -2,19 +2,23 @@
 // version 0.0.2
 // 更新记录
 // 0.0.2 增加了按钮鼠标悬停效果，增加了对自定义emoji的支持
+// 0.0.3 标题可增加Emoji实现一键播放该标题下的所有音频（注意，该功能通过所有音频的最小开始和最大结束时间实现的，不是通用方案，如果你的音频不是连续的，勿用此功能！）
 (async ()=>{
     // 这里定义自定义属性名，这里不需要带custom-，但Markdown代码里必须加custom-前缀，注意属性使用小写，否则思源也会转换为小写
     const attrName = 'attrname';
     const audioFileAttrName = 'audiofilename';
     const startTimeAttrName = 'start';
     const endTimeAttrName = 'end';
-    // 不使用该参数，填空即可
+    // 块播放按钮Emoji，不使用该参数，填空即可
     const playEmoji = '▶️';
-    // 自定义Emoji，格式，path/xxx，无需加图片扩展名，不使用该参数，填空即可
+    // 块播放按钮自定义Emoji，格式，path/xxx，无需加图片扩展名，不使用该参数，填空即可
     // 假设自定义表情路径是，data/emojis/demo/demo.png，则只需要填写：demo/demo 即可。
     const playEmojiCustom = '';
+    // 标题播放按钮Emoji，不使用该参数，填空即可
+    //（该功能是通过获取标题下的所有音频的最小开始时间和最大结束时间实现的，因此不通用，如果你的音频不是连续播放的，勿用此功能）
+    const playEmojiHead = ''; //⏩
 
-    observeAudioBlock('custom-' + attrName.replace(/^custom\-/i,''), block => {
+    observeAudioElements('custom-' + attrName.replace(/^custom\-/i,''), block => {
         const content = block.firstElementChild;
         if(!content) return;
         if(content.querySelector('.audio-play-btn')) return;
@@ -38,7 +42,7 @@
             endTime = parseFloat(endTime) || 0;
             if(startTime > endTime) {
                 showErrorMessage('播放失败，开始时间不能大于结束时间');
-            } 
+            }
             playAudio(file, startTime, endTime);
             event.stopPropagation();
             event.preventDefault();
@@ -47,9 +51,53 @@
 
     // 添加样式
     addStyle(`
-        .audio-play-btn {cursor: pointer;}
-        .audio-play-btn:hover {opacity: 0.8;}
+        .audio-play-btn, .audio-head-play-btn {cursor: pointer;}
+        .audio-play-btn:hover, .audio-head-play-btn:hover {opacity: 0.8;}
     `);
+
+    // 当标题播放Emoji添加时被回调
+    function onHeadPlayEmojiAddition(head) {
+        if(!playEmojiHead) return;
+        if(head.querySelector('.audio-head-play-btn')) return;
+        head.innerHTML = head.innerHTML.replace(playEmojiHead, '<span class="audio-head-play-btn">'+playEmojiHead+'</span>');
+        head.querySelector('.audio-head-play-btn').onclick = async (event) => {
+            const headBlockId = head?.dataset?.nodeId;
+            if(!headBlockId) return;
+            const result = await fetchSyncPost('/api/block/getChildBlocks', {id: headBlockId});
+            if(!result || result.code !== 0 || !result.data || result.data.length === 0) return;
+            let file = '';
+            const starts = [];
+            const ends = [];
+            result.data.forEach(item => {
+                const el = document.querySelector('[data-node-id="'+item.id+'"]');
+                if(!el) return;
+                if(el.matches && el.matches('[custom-'+audioFileAttrName.replace(/^custom\-/i,'')+']')) {
+                    if(!file) file = el.getAttribute('custom-'+audioFileAttrName.replace(/^custom\-/i,''));
+                    const start = el.getAttribute('custom-'+startTimeAttrName.replace(/^custom\-/i,''));
+                    const end = el.getAttribute('custom-'+endTimeAttrName.replace(/^custom\-/i,''));
+                    starts.push(parseFloat(start || 0));
+                    ends.push(parseFloat(end || 0));
+                } else {
+                    const els = el.querySelectorAll('[custom-'+audioFileAttrName.replace(/^custom\-/i,'')+']');
+                    if(els.length > 0) {
+                        els.forEach(el => {
+                            if(!file) file = el.getAttribute('custom-'+audioFileAttrName.replace(/^custom\-/i,''));
+                            const start = el.getAttribute('custom-'+startTimeAttrName.replace(/^custom\-/i,''));
+                            const end = el.getAttribute('custom-'+endTimeAttrName.replace(/^custom\-/i,''));
+                            starts.push(parseFloat(start || 0));
+                            ends.push(parseFloat(end || 0));
+                        });
+                    }
+                }
+            });
+            const minStart = Math.min(...starts);
+            const maxEnd = Math.max(...ends);
+            if(minStart > maxEnd) return;
+            playAudio(file, minStart, maxEnd);
+            event.stopPropagation();
+            event.preventDefault();
+        };
+    }
 
     var audio, timeUpdateHandler, currentEndTime = 0;
     function playAudio(file, startTime, endTime) {
@@ -97,14 +145,47 @@
         // 将style元素添加到<head>中
         document.head.appendChild(style);
     }
-    // 监听tag被添加
-    function observeAudioBlock(attrName, callback) {
+    // 请求api
+    // returnType json返回json格式，text返回文本格式
+    async function fetchSyncPost(url, data, returnType = 'json') {
+        const init = {
+            method: "POST",
+        };
+        if (data) {
+            if (data instanceof FormData) {
+                init.body = data;
+            } else {
+                init.body = JSON.stringify(data);
+            }
+        }
+        try {
+            const res = await fetch(url, init);
+            const res2 = returnType === 'json' ? await res.json() : await res.text();
+            return res2;
+        } catch(e) {
+            console.log(e);
+            return returnType === 'json' ? {code:e.code||1, msg: e.message||"", data: null} : "";
+        }
+    }
+    // 监听音频元素被添加
+    function observeAudioElements(attrName, callback) {
         // 创建一个观察者实例并传入回调函数
         const observer = new MutationObserver((mutationsList, observer) => {
             for (const mutation of mutationsList) {
                 if (mutation.type === 'childList') {
                     // 检查新增的节点
                     for (const node of mutation.addedNodes) {
+                        // 文档加载时查找head播放Emoji
+                        if(playEmojiHead && node.nodeType === Node.ELEMENT_NODE && node.matches && node.matches('div[data-type="NodeHeading"]') && node.textContent.indexOf(playEmojiHead) !== -1) {
+                            onHeadPlayEmojiAddition(node);
+                        }
+                        // head Emoji被添加时触发
+                        if (playEmojiHead && node.nodeType === Node.TEXT_NODE && node.textContent === playEmojiHead) {
+                            const head = mutation.target.closest('div[data-type="NodeHeading"]');
+                            if(!head) return;
+                            onHeadPlayEmojiAddition(head);
+                        }
+                        // 块播放Emoji被添加时触发
                         if (node.nodeType === Node.ELEMENT_NODE && node.getAttribute(attrName) !== null) {
                             // 块标签调用回调函数
                             callback(node);
