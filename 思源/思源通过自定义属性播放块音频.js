@@ -18,7 +18,7 @@
     // 标题播放按钮Emoji，不使用该参数，填空即可
     //（该功能是通过获取标题下的所有音频的最小开始时间和最大结束时间实现的，因此不通用，如果你的音频不是连续播放的，勿用此功能）
     const playEmojiHead = ''; //⏩
-    // 标题播放按钮Emoji，使用方式同playEmojiCustom参数(二者可共存)，不使用该参数，填空即可
+    // 标题播放按钮自定义Emoji，使用方式同playEmojiCustom参数(二者可共存)，不使用该参数，填空即可
     const playEmojiCustomHead = '';
 
     observeAudioElements('custom-' + attrName.replace(/^custom\-/i,''), block => {
