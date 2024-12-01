@@ -1,8 +1,9 @@
 // 通过自定义属性播放块音频
-// version 0.0.2
+// version 0.0.4
 // 更新记录
 // 0.0.2 增加了按钮鼠标悬停效果，增加了对自定义emoji的支持
 // 0.0.3 标题可增加Emoji实现一键播放该标题下的所有音频（注意，该功能通过所有音频的最小开始和最大结束时间实现的，不是通用方案，如果你的音频不是连续的，勿用此功能！）
+// 0.0.4 兼容时间格式，标题Emoji兼容自定义Emoji
 (async ()=>{
     // 这里定义自定义属性名，这里不需要带custom-，但Markdown代码里必须加custom-前缀，注意属性使用小写，否则思源也会转换为小写
     const attrName = 'attrname';
@@ -17,6 +18,8 @@
     // 标题播放按钮Emoji，不使用该参数，填空即可
     //（该功能是通过获取标题下的所有音频的最小开始时间和最大结束时间实现的，因此不通用，如果你的音频不是连续播放的，勿用此功能）
     const playEmojiHead = ''; //⏩
+    // 标题播放按钮Emoji，使用方式同playEmojiCustom参数(二者可共存)，不使用该参数，填空即可
+    const playEmojiCustomHead = '';
 
     observeAudioElements('custom-' + attrName.replace(/^custom\-/i,''), block => {
         const content = block.firstElementChild;
@@ -34,18 +37,18 @@
             audioPlayBtn = content.querySelector('.audio-play-btn');
         }
         audioPlayBtn?.addEventListener('click', (event) => {
+            event.stopPropagation();
+            event.preventDefault();
             const file = block.getAttribute('custom-' + audioFileAttrName.replace(/^custom\-/i,''));
             let startTime = block.getAttribute('custom-' + startTimeAttrName.replace(/^custom\-/i,''));
             let endTime = block.getAttribute('custom-' + endTimeAttrName.replace(/^custom\-/i,''));
             if(!file || !startTime || !endTime) return;
-            startTime = parseFloat(startTime) || 0;
-            endTime = parseFloat(endTime) || 0;
+            startTime = convertSrtTimeToSeconds(startTime);
+            endTime = convertSrtTimeToSeconds(endTime);
             if(startTime > endTime) {
                 showErrorMessage('播放失败，开始时间不能大于结束时间');
             }
             playAudio(file, startTime, endTime);
-            event.stopPropagation();
-            event.preventDefault();
         });
     });
 
@@ -56,11 +59,17 @@
     `);
 
     // 当标题播放Emoji添加时被回调
-    function onHeadPlayEmojiAddition(head) {
-        if(!playEmojiHead) return;
+    function onHeadPlayEmojiAddition(head, emojiType) {
+        if(!playEmojiHead && !playEmojiCustomHead) return;
         if(head.querySelector('.audio-head-play-btn')) return;
-        head.innerHTML = head.innerHTML.replace(playEmojiHead, '<span class="audio-head-play-btn">'+playEmojiHead+'</span>');
-        head.querySelector('.audio-head-play-btn').onclick = async (event) => {
+        if(emojiType && emojiType === 'custom-emoji') {
+            head.querySelector('img.emoji[alt="'+playEmojiCustomHead+'"]').classList.add('audio-head-play-btn');
+        } else {
+            head.innerHTML = head.innerHTML.replace(playEmojiHead, '<span class="audio-head-play-btn">'+playEmojiHead+'</span>');
+        }
+        head.querySelector('.audio-head-play-btn')?.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            event.preventDefault();
             const headBlockId = head?.dataset?.nodeId;
             if(!headBlockId) return;
             const result = await fetchSyncPost('/api/block/getChildBlocks', {id: headBlockId});
@@ -75,8 +84,8 @@
                     if(!file) file = el.getAttribute('custom-'+audioFileAttrName.replace(/^custom\-/i,''));
                     const start = el.getAttribute('custom-'+startTimeAttrName.replace(/^custom\-/i,''));
                     const end = el.getAttribute('custom-'+endTimeAttrName.replace(/^custom\-/i,''));
-                    starts.push(parseFloat(start || 0));
-                    ends.push(parseFloat(end || 0));
+                    starts.push(convertSrtTimeToSeconds(start));
+                    ends.push(convertSrtTimeToSeconds(end));
                 } else {
                     const els = el.querySelectorAll('[custom-'+audioFileAttrName.replace(/^custom\-/i,'')+']');
                     if(els.length > 0) {
@@ -84,8 +93,8 @@
                             if(!file) file = el.getAttribute('custom-'+audioFileAttrName.replace(/^custom\-/i,''));
                             const start = el.getAttribute('custom-'+startTimeAttrName.replace(/^custom\-/i,''));
                             const end = el.getAttribute('custom-'+endTimeAttrName.replace(/^custom\-/i,''));
-                            starts.push(parseFloat(start || 0));
-                            ends.push(parseFloat(end || 0));
+                            starts.push(convertSrtTimeToSeconds(start));
+                            ends.push(convertSrtTimeToSeconds(end));
                         });
                     }
                 }
@@ -94,15 +103,13 @@
             const maxEnd = Math.max(...ends);
             if(minStart > maxEnd) return;
             playAudio(file, minStart, maxEnd);
-            event.stopPropagation();
-            event.preventDefault();
-        };
+        });
     }
 
     var audio, timeUpdateHandler, currentEndTime = 0;
     function playAudio(file, startTime, endTime) {
-        startTime = parseFloat(startTime) || 0;
-        endTime = parseFloat(endTime) || 0;
+        startTime = parseFloat(startTime || 0);
+        endTime = parseFloat(endTime || 0);
         currentEndTime = endTime;
         if(!audio){
             audio = document.createElement('audio');
@@ -128,6 +135,13 @@
         audio.addEventListener('canplay', canplayhandler);
         // 监听时间更新事件，检查是否到达结束时间
         audio.addEventListener('timeupdate', timeUpdateHandler);
+    }
+    // 将SRT时间格式（例如 "00:00:10,500"）转换为秒数
+    function convertSrtTimeToSeconds(timeStr) {
+        if(/^[\d.]+$/.test(timeStr)) return parseFloat(timeStr || 0);
+        const [time, millis] = timeStr.split(',');
+        const [hours, minutes, seconds] = time.split(':').map(Number);
+        return hours * 3600 + minutes * 60 + seconds + millis / 1000;
     }
     // 发送错误通知
     function showErrorMessage(message) {
@@ -179,11 +193,21 @@
                         if(playEmojiHead && node.nodeType === Node.ELEMENT_NODE && node.matches && node.matches('div[data-type="NodeHeading"]') && node.textContent.indexOf(playEmojiHead) !== -1) {
                             onHeadPlayEmojiAddition(node);
                         }
+                        // 文档加载时查找head自定义播放Emoji
+                        if(playEmojiCustomHead && node.nodeType === Node.ELEMENT_NODE && node.matches && node.matches('div[data-type="NodeHeading"]') && node.querySelector('img.emoji[alt="'+playEmojiCustomHead+'"]')) {
+                            onHeadPlayEmojiAddition(node, 'custom-emoji');
+                        }
                         // head Emoji被添加时触发
                         if (playEmojiHead && node.nodeType === Node.TEXT_NODE && node.textContent === playEmojiHead) {
                             const head = mutation.target.closest('div[data-type="NodeHeading"]');
                             if(!head) return;
                             onHeadPlayEmojiAddition(head);
+                        }
+                        // 标题添加自定义表情
+                        if(playEmojiCustomHead && node.nodeType === Node.ELEMENT_NODE && node.matches && node.matches('img.emoji[alt="'+playEmojiCustomHead+'"]')){
+                            const head = node.closest('div[data-type="NodeHeading"]');
+                            if(!head) return;
+                            onHeadPlayEmojiAddition(head, 'custom-emoji');
                         }
                         // 块播放Emoji被添加时触发
                         if (node.nodeType === Node.ELEMENT_NODE && node.getAttribute(attrName) !== null) {
