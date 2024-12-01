@@ -185,14 +185,12 @@
                         }
                         // 标题，添加自定义Emoji时触发
                         if(playEmojiCustomHead && node.nodeType === Node.ELEMENT_NODE && node.matches && node.matches('img.emoji[alt="'+playEmojiCustomHead+'"]')){
-                            console.log('head');
                             const head = node.closest('div[data-type="NodeHeading"]');
                             if(!head) return;
                             onHeadPlayEmojiAddition(head, 'add');
                         }
                         // 块，添加自定义Emoji时触发
                         if(node.nodeType === Node.ELEMENT_NODE && node.matches && node.matches('img.emoji[alt="'+playEmojiCustom+'"]')){
-                            console.log('block');
                             const block = node.closest('div[custom-'+audioFileAttrName.replace(/^custom\-/i,'')+']');
                             if(!block) return;
                             callback(block, 'add');
