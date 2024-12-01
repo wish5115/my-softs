@@ -12,11 +12,11 @@
     const endTimeAttrName = 'end';
     // 块播放按钮自定义Emoji，格式，path/xxx，无需加图片扩展名，不使用该参数，填空即可
     // 假设自定义表情路径是，data/emojis/demo/demo.png，则只需要填写：demo/demo 即可。
-    // 如果块中多个，仅第一个自定义表情生效
+    // 如果同一个块中多个相同播放按钮，仅第一个生效
     const playEmojiCustom = 'your_path/block-play';
     // 标题播放按钮自定义Emoji，不使用该参数，填空即可
     //（该功能是通过获取标题下的所有音频的最小开始时间和最大结束时间实现的，因此不通用，如果你的音频不是连续播放的，勿用此功能）
-    // 如果标题中多个，仅第一个自定义表情生效
+    // 如果同一个标题中多个相同播放按钮，仅第一个生效
     const playEmojiCustomHead = 'your_path/head-play';
 
     // 监听块播放按钮被加载或添加
