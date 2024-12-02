@@ -1,9 +1,16 @@
 // 思源把用户自定义属性显示到块的右上侧
 // see https://ld246.com/article/1732940163490
-// version: 0.0.2
+// 注意，打开属性面板通过模拟按键实现，如果修改了打开属性快捷键请修改openCustomAttrsPage函数的按键映射，否则可能无法模拟按键
+// version: 0.0.3
 // 更新记录
 // 0.0.2 可自定义是否显示提示，可自定义属性白名单和黑名单
-// 注意，打开属性面板通过模拟按键实现，如果修改了打开属性快捷键请修改openCustomAttrsPage函数的按键映射，否则可能无法模拟按键
+// 0.0.3 
+//   1. 修复自定义属性删除后，自定义属性图标残留问题；
+//   2. 修复嵌套块的外层自定义属性与第一个子块自定义属性合并问题
+//   3. 修复多层嵌套后代块自定义属性无法显示的问题
+// 已知问题：
+//   1. 嵌套块的外层命名，别名，自定义属性等与第一个子块的命名，别名，自定义属性重叠问题是思源已知问题，暂无法解决。详见：https://github.com/siyuan-note/siyuan/issues/13333
+//   2. 长文动态加载可能有问题，暂不支持！！！
 (()=>{
     // 鼠标移上去是否显示提示
     const isShowTips = false;
@@ -35,11 +42,13 @@
         // 过滤白名单和黑名单，有任意一个生效即生效
         if(onlyTheseAttrs.length > 0 && !onlyTheseAttrs.includes(attrName.replace(/^custom\-/i, ''))) return;
         if(notTheseAttrs.length > 0 && notTheseAttrs.includes(attrName.replace(/^custom\-/i, ''))) return;
+        // 判断属性值是否为空
+        if(!attrValue) return;
         // 把自定义属性显示到右侧
-        const protyleAttr = element.querySelector('.protyle-attr');
-        if(!protyleAttr) return;
+        const protyleAttr = element.lastElementChild;
+        if(!protyleAttr || !protyleAttr.classList.contains('protyle-attr')) return;
         // 创建wrap
-        let customAttrsWrap = element.querySelector('.protyle-attr--custom');
+        let customAttrsWrap = protyleAttr.querySelector('.protyle-attr--custom');
         if(!customAttrsWrap){
             customAttrsWrap = document.createElement('div');
             customAttrsWrap.className = 'protyle-attr--custom';
@@ -139,7 +148,7 @@
         // 创建一个观察器实例并传入回调函数
         const observer = new MutationObserver((mutationsList) => {
             for (let mutation of mutationsList) {
-                // 监听元素加载
+                // 监听自定义属性加载
                 if (mutation.type === 'childList') {
                     // 检查新增的节点
                     for (const node of mutation.addedNodes) {
@@ -151,10 +160,22 @@
                                     callback(node, attr.name, attr.value, 'load');
                                 });
                             }
+                            // 获取所有后代元素以'custom-'开头的属性
+                            const subs = node.querySelectorAll('[data-type][data-node-id]');
+                            if (subs.length > 0) {
+                                subs.forEach(el => {
+                                    const customAttrs = Array.from(el.attributes).filter(attr => attr.name.startsWith(prefix));
+                                    if (customAttrs.length > 0) {
+                                        customAttrs.forEach(attr => {
+                                            callback(el, attr.name, attr.value, 'load');
+                                        });
+                                    }
+                                });
+                            }
                         }
                     }
                 }
-                // 监听属性变化
+                // 监听自定义属性修改
                 if (mutation.type === 'attributes') {
                     const attributeName = mutation.attributeName;
                     // 检查属性名是否以指定前缀开头
