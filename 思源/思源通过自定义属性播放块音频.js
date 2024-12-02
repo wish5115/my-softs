@@ -1,11 +1,12 @@
 // 通过自定义属性播放块音频
 // see https://ld246.com/article/1732606877452
-// version 0.0.5
+// version 0.0.6
 // 更新记录
 // 0.0.2 增加了按钮鼠标悬停效果，增加了对自定义emoji的支持
 // 0.0.3 标题可增加Emoji实现一键播放该标题下的所有音频（注意，该功能通过所有音频的最小开始和最大结束时间实现的，不是通用方案，如果你的音频不是连续的，勿用此功能！）
 // 0.0.4 兼容时间格式，标题Emoji兼容自定义Emoji
 // 0.0.5 由于思源块内无法添加自定义元素和属性，放弃emoji方案，仅支持自定义emoji方案 see https://github.com/siyuan-note/siyuan/issues/13325
+// 0.0.6 兼容块嵌套情况，比如超级块
 (async ()=>{
     // 这里定义自定义属性名，这里不需要带custom-，但Markdown代码里必须加custom-前缀，注意属性使用小写，否则思源也会转换为小写
     const audioFileAttrName = 'audiofilename';
@@ -204,6 +205,15 @@
                         if (node.nodeType === Node.ELEMENT_NODE && node.getAttribute(attrName) !== null) {
                             // 块标签调用回调函数
                             callback(node, 'load');
+                        }
+                        // 块，后代元素加载时触发
+                        else if(node.nodeType === Node.ELEMENT_NODE && node.querySelector(`[${attrName}]`)) {
+                            const audioNodes = node.querySelectorAll(`[${attrName}]`);
+                            if(audioNodes.length > 0) {
+                                audioNodes.forEach(audioNode => {
+                                    callback(audioNode, 'load');
+                                });
+                            }
                         }
                     }
                 }
