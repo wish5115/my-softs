@@ -26,7 +26,7 @@
         }
     });
 
-    // 添加样式 tips
+    // 添加样式
     const cssSelectors = audioLinkKeywords.map(audioLinkKeyword=>audioLinkKeyword?'[data-href*="'+audioLinkKeyword.trim()+'"]':'').filter(i=>i).join(',');
     addStyle(`
         span[data-type="a"]:is(${cssSelectors}):hover {opacity: 0.8;}
