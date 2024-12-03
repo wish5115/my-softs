@@ -1,4 +1,4 @@
-// 让状态栏可拖动
+// 让状态栏可拖动，双击可还原状态栏状态
 // 把代码放到js片段中即可
 //[注意] 如果状态栏position是static样式，请先设置为fixed或使用本脚本默认样式position:fixed,right:42px,bottom:-8px;
 // 调用示例
