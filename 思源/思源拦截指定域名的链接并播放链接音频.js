@@ -1,5 +1,6 @@
 // 拦截指定域名的链接并播放链接音频
 // see https://ld246.com/article/1732632964559
+// 该代码不在维护，建议使用 https://gitee.com/wish163/mysoft/blob/main/%E6%80%9D%E6%BA%90/%E6%80%9D%E6%BA%90%E6%8B%A6%E6%88%AA%E6%8C%87%E5%AE%9A%E5%85%B3%E9%94%AE%E8%AF%8D%E7%9A%84%E9%93%BE%E6%8E%A5%E5%B9%B6%E6%92%AD%E6%94%BE%E9%93%BE%E6%8E%A5%E9%9F%B3%E9%A2%91.js
 (()=>{
     // 以指定域名匹配链接
     const audioDomains = [
@@ -16,7 +17,19 @@
             playAudio(link.dataset.href);
             event.stopPropagation();
         };
+        // 去掉提示框
+        link.onmouseover = (event) => {
+            whenElementExist('.tooltip--href').then((tooltip) => {
+                tooltip.remove();
+            });
+        }
     });
+
+    // 添加样式
+    const cssSelectors = audioDomains.map(domain=>domain?'[data-href*="'+domain.trim()+'"]':'').filter(i=>i).join(',');
+    addStyle(`
+        span[data-type="a"]:is(${cssSelectors}):hover {opacity: 0.8;}
+    `);
 
     // 播放音频
     var audio;
@@ -36,6 +49,27 @@
         };
         audio.removeEventListener('canplay', canplayhandler);
         audio.addEventListener('canplay', canplayhandler);
+    }
+
+    // 添加style标签
+    function addStyle(css) {
+        // 创建一个新的style元素
+        const style = document.createElement('style');
+        // 设置CSS规则
+        style.innerHTML = css;
+        // 将style元素添加到<head>中
+        document.head.appendChild(style);
+    }
+
+    // 等待元素出现
+    function whenElementExist(selector) {
+        return new Promise(resolve => {
+            const check = () => {
+                let el = document.querySelector(selector);
+                if (el) resolve(el); else requestAnimationFrame(check);
+            };
+            check();
+        });
     }
         
     // 监听Link被添加
