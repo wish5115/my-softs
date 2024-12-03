@@ -3,7 +3,9 @@
 (()=>{
     // 以指定关键词匹配链接
     const audioLinkKeywords = [
-        //'',
+        // 'res.iciba.com',
+        // 'tts.iciba.com',
+        // 'res-tts.iciba.com',
     ];
 
     // 监听指定的链接被添加
@@ -16,7 +18,19 @@
             playAudio(linkHref, parseFloat(params.start) || 0, parseFloat(params.end) || 0);
             event.stopPropagation();
         };
+        // 去掉提示框
+        link.onmouseover = (event) => {
+            whenElementExist('.tooltip--href').then((tooltip) => {
+                tooltip.remove();
+            });
+        }
     });
+
+    // 添加样式 tips
+    const cssSelectors = audioLinkKeywords.map(audioLinkKeyword=>audioLinkKeyword?'[data-href*="'+audioLinkKeyword.trim()+'"]':'').filter(i=>i).join(',');
+    addStyle(`
+        span[data-type="a"]:is(${cssSelectors}):hover {opacity: 0.8;}
+    `);
 
     // 播放音频
     var audio, endTime;
@@ -61,6 +75,27 @@
             params[key] = value;
         }
         return params;
+    }
+
+    // 添加style标签
+    function addStyle(css) {
+        // 创建一个新的style元素
+        const style = document.createElement('style');
+        // 设置CSS规则
+        style.innerHTML = css;
+        // 将style元素添加到<head>中
+        document.head.appendChild(style);
+    }
+
+    // 等待元素出现
+    function whenElementExist(selector) {
+        return new Promise(resolve => {
+            const check = () => {
+                let el = document.querySelector(selector);
+                if (el) resolve(el); else requestAnimationFrame(check);
+            };
+            check();
+        });
     }
     
     // 监听Link被添加
