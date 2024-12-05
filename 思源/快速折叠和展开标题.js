@@ -9,7 +9,7 @@
 
     // 监听鼠标单击事件
     document.addEventListener('mousedown', function(event) {
-        if(!event.altKey) return;
+        if(!event.altKey || event.button !== 0) return;
         const hArrow = event.target.closest('.protyle-gutters:has(button[data-type="NodeHeading"]) button[data-type="fold"]');
         if(!hArrow) return;
         const hButton = hArrow.parentElement.querySelector('button[data-type="NodeHeading"]');
