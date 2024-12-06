@@ -35,10 +35,11 @@ function moveableStatus(status) {
             originStyle.position = style.position;
             originStyle.right = style.right;
             originStyle.bottom = style.bottom;
+
+            // 计算状态栏位置
+            left = window.innerWidth - (parseFloat(style.right) + width) + 'px';
+            top = window.innerHeight - (parseFloat(style.bottom) + height) + 'px';
         }
-        // 计算状态栏位置
-        left = window.innerWidth - (parseFloat(style.right) + width) + 'px';
-        top = window.innerHeight - (parseFloat(style.bottom) + height) + 'px';
     };
     
     // 改变窗口大小事件
@@ -50,12 +51,8 @@ function moveableStatus(status) {
             if(parseFloat(status.style.top) > window.innerHeight) {
                 status.style.top = (window.innerHeight - height) + 'px';
             }
-        } else {
-            calcStatusStyle();
         }
     });
-    // 加载时计算
-    setTimeout(calcStatusStyle, 200);
 
     // 双击恢复状态栏
     status.addEventListener("dblclick", (event)=>{
@@ -65,13 +62,13 @@ function moveableStatus(status) {
         status.style.bottom = originStyle.bottom;
         status.style.left = 'auto';
         status.style.top = 'auto';
-        calcStatusStyle();
     });
 
     // 拖动事件
     const dragHandler = (e) => {
         if (e.type === 'mousedown') {
             // 开始拖动
+            calcStatusStyle();
             if(!isDragged) {
                 isDragged = true;
                 status.style.position = 'absolute';
