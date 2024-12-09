@@ -8,7 +8,7 @@
 
     // 监听鼠标单击事件
     document.addEventListener('mousedown', function(event) {
-        if(!event.altKey || event.button !== 0 || event.target.tagName !== 'IMG' || !event.target.closest('.protyle')) return;
+        if(!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0 || event.target.tagName !== 'IMG' || !event.target.closest('.protyle')) return;
         openPaint(event.target.dataset?.src, () => {
             Refresh();
         });
