@@ -2,6 +2,7 @@
 // 特色：打开编辑器后会等待编辑器的关闭，关闭后自动刷新思源文档
 // 仅支持electron，Windows和Mac
 // windows调用画图，Mac调用预览
+// see https://ld246.com/article/1733636224439
 (()=>{
     // 监听鼠标单击事件
     document.addEventListener('mousedown', function(event) {
