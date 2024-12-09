@@ -1,9 +1,11 @@
 // 思源alt+单击图片打开本地图片编辑器
 // 特色：打开编辑器后会等待编辑器的关闭，关闭后自动刷新思源文档
-// 仅支持electron，Windows和Mac
+// 仅支持electron端，及Windows和Mac系统
 // windows调用画图，Mac调用预览
 // see https://ld246.com/article/1733636224439
 (()=>{
+    if(!isElectron() || !isMac() || !isWindows()) return;
+
     // 监听鼠标单击事件
     document.addEventListener('mousedown', function(event) {
         if(!event.altKey || event.button !== 0 || event.target.tagName !== 'IMG' || !event.target.closest('.protyle')) return;
@@ -29,6 +31,18 @@
         document.getElementsByTagName("body")[0].dispatchEvent(keyUpEvent);
     }
     
+    function isElectron() {
+        return navigator.userAgent.includes('Electron');
+    }
+
+    function isMac() {
+        return navigator.platform.indexOf("Mac") > -1;
+    }
+
+    function isWindows() {
+        return document.body.classList.contains("body--win32");
+    }
+
     // 使用画图和预览打开思源图片
     function openPaint(file, onClose) {
         if(!file) return;
