@@ -1,9 +1,21 @@
 // 思源alt+单击图片打开本地图片编辑器
 // 特色：打开编辑器后会等待编辑器的关闭，关闭后自动刷新思源文档
 // 仅支持electron端，及Windows和Mac系统
-// windows调用画图，Mac调用预览
+// 默认windows调用画图，Mac调用预览
 // see https://ld246.com/article/1733636224439
 (()=>{
+    // 关闭图片编辑器后的延迟时间，单位毫秒，防止未保存完成
+    const delayTimeAfterCloseEditor = 100;
+    
+    // windows 下调用的编辑器APP，默认 mspaint
+    // 注意：Windows下的路径分隔符\要用\\表示，比如 C:\\\path\some.exe
+    const windowsApp = 'mspaint';
+    
+    // Mac下调用的编辑器APP，默认 Preview
+    // 这里是应用程序名，可在应用右键简介或应用包的Info.list里查看
+    const macosApp = 'Preview';
+    
+    // 判断是否支持的平台
     if(isElectron() && (isMac() || isWindows())); else return;
 
     // 监听鼠标单击事件
@@ -20,10 +32,11 @@
             return;
         }
         openPaint(filePath.path, () => {
-            reloadImages(filePath, isMac()?100:500);
+            reloadImages(filePath, delayTimeAfterCloseEditor);
         });
     });
 
+    // 重新加载图片
     function reloadImages(filePath, delay) {
       const imgs = document.querySelectorAll('.protyle-wysiwyg [data-type="img"] img[src*="'+filePath.path.replace(/^\//, '')+'"]');
       if(imgs.length > 0) {
@@ -45,6 +58,7 @@
       }
     }
 
+    // 更新图片所在块
     function updateBlock(node) {
       fetchSyncPost('/api/block/updateBlock', {
           "dataType": "dom",
@@ -53,6 +67,7 @@
       })
     }
 
+    // 解析URL
     function parseUrl(url) {
         // 创建一个URL对象
         const parsedUrl = new URL(url);
@@ -74,31 +89,35 @@
         };
       }
 
+    // 显示通知信息
     function showMessage(message, delay) {
       fetchSyncPost("/api/notification/pushMsg", {
         "msg": message,
         "timeout": delay || 7000
       });
     }
-    
+
+    // 是否electron平台
     function isElectron() {
         return navigator.userAgent.includes('Electron');
     }
 
+    // 是否macOS
     function isMac() {
         return navigator.platform.indexOf("Mac") > -1;
     }
 
+    // 是否Windows系统
     function isWindows() {
         return document.body.classList.contains("body--win32");
     }
 
     // 使用画图和预览打开思源图片
+    const { exec, spawn } = require('child_process');
+    const path = require('path');
+    const os = require('os');
     function openPaint(file, onClose) {
         if(!file) return;
-        const { exec, spawn } = require('child_process');
-        const path = require('path');
-        const os = require('os');
     
         // 使用绝对路径确保文件能被正确找到
         if(file.startsWith('file://')) file = file.replace('file://', '');
@@ -106,9 +125,8 @@
         const imagePath = path.resolve(siyuan.config.system.dataDir, file);
     
         if (os.platform() === 'win32') {
-            // 对于 Windows, 使用 mspaint
-            appName = 'mspaint';
-            viewer = spawn(appName, [imagePath]);
+            // 对于 Windows, 默认使用 mspaint
+            viewer = spawn(windowsApp, [imagePath]);
             // 可选：监听标准输出和错误输出
             viewer.stdout.on('data', (data) => {
                 console.log(`stdout: ${data}`);
@@ -123,9 +141,9 @@
                 if(onClose) onClose();
             });
         } else if (os.platform() === 'darwin') {
-            // 创建 AppleScript 代码
+            // 创建 AppleScript 代码，默认使用 Preview
             const appleScriptCode = `
-            tell application "Preview"
+            tell application "${macosApp}"
                 activate
                 open POSIX file "${imagePath.replace(/"/g, '\\"')}"
                 set windowIsOpen to true
@@ -153,6 +171,7 @@
         }
     }
 
+    // 请求api
     async function fetchSyncPost(url, data, returnType = 'json') {
       const init = {
           method: "POST",
