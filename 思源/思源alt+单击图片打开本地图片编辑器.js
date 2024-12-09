@@ -9,26 +9,76 @@
     // 监听鼠标单击事件
     document.addEventListener('mousedown', function(event) {
         if(!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0 || event.target.tagName !== 'IMG' || !event.target.closest('.protyle')) return;
-        openPaint(event.target.dataset?.src, () => {
-            Refresh();
+        const src = event.target.src;
+        const filePath = parseUrl(src);
+        if(['http:', 'https:'].includes(filePath.protocol) && filePath.host !== location.host) {
+            showMessage('仅支持本地文件');
+            return;
+        }
+        if(filePath.protocol === 'file:' && !isElectron()) {
+            showMessage('仅在Electron环境支持file协议的图片');
+            return;
+        }
+        openPaint(filePath.path, () => {
+            reloadImages(filePath, isMac()?100:500);
         });
     });
-    
-    // 刷新文档
-    function Refresh() {
-        let keyInit = {
-            ctrlKey: false,
-            altKey: false,
-            metaKey: false,
-            shiftKey: false,
-            key: 'F5',
-            keyCode: 116
-        }
-        keyInit["bubbles"] = true;
-        let keydownEvent = new KeyboardEvent('keydown', keyInit);
-        document.getElementsByTagName("body")[0].dispatchEvent(keydownEvent);
-        let keyUpEvent = new KeyboardEvent('keyup', keyInit);
-        document.getElementsByTagName("body")[0].dispatchEvent(keyUpEvent);
+
+    function reloadImages(filePath, delay) {
+      const imgs = document.querySelectorAll('.protyle-wysiwyg [data-type="img"] img[src*="'+filePath.path.replace(/^\//, '')+'"]');
+      if(imgs.length > 0) {
+          setTimeout(()=>{
+              imgs.forEach(async img => {
+                  let src = '';
+                  if(filePath.protocol === 'file:'){
+                      src = img.src;
+                  } else {
+                      src = filePath.path.replace(/^\//, '') + filePath.search;
+                  }
+                  src = src.replace(/t=\d+/ig, '').replace('&+', '&').replace(/[&?]+$/, '');
+                  src = src + (src.indexOf('?')===-1?'?':'&') + 't=' + new Date().getTime();
+                  img.src = src;
+                  img.dataset.src = src;
+                  updateBlock(img.closest('[data-type][data-node-id]'));
+              });
+          }, delay||0);
+      }
+    }
+
+    function updateBlock(node) {
+      fetchSyncPost('/api/block/updateBlock', {
+          "dataType": "dom",
+          "data": node.outerHTML,
+          "id": node.dataset.nodeId
+      })
+    }
+
+    function parseUrl(url) {
+        // 创建一个URL对象
+        const parsedUrl = new URL(url);
+      
+        // 获取路径部分
+        const pathname = parsedUrl.pathname;
+      
+        // 获取文件名和扩展名
+        const filenameWithExtension = pathname.split('/').pop();
+        const [filename, extension] = filenameWithExtension.split('.');
+      
+        return {
+          path: decodeURIComponent(pathname),
+          filename: decodeURIComponent(filenameWithExtension),
+          extension: extension,
+          search: parsedUrl.search,
+          protocol: parsedUrl.protocol,
+          host: parsedUrl.host,
+        };
+      }
+
+    function showMessage(message, delay) {
+      fetchSyncPost("/api/notification/pushMsg", {
+        "msg": message,
+        "timeout": delay || 7000
+      });
     }
     
     function isElectron() {
@@ -52,6 +102,7 @@
     
         // 使用绝对路径确保文件能被正确找到
         if(file.startsWith('file://')) file = file.replace('file://', '');
+        if(file.startsWith('/assets')) file = file.replace(/^\//, '');
         const imagePath = path.resolve(siyuan.config.system.dataDir, file);
     
         if (os.platform() === 'win32') {
@@ -101,4 +152,25 @@
             });
         }
     }
+
+    async function fetchSyncPost(url, data, returnType = 'json') {
+      const init = {
+          method: "POST",
+      };
+      if (data) {
+          if (data instanceof FormData) {
+              init.body = data;
+          } else {
+              init.body = JSON.stringify(data);
+          }
+      }
+      try {
+          const res = await fetch(url, init);
+          const res2 = returnType === 'json' ? await res.json() : await res.text();
+          return res2;
+      } catch(e) {
+          console.log(e);
+          return returnType === 'json' ? {code:e.code||1, msg: e.message||"", data: null} : "";
+      }
+  }
 })();
