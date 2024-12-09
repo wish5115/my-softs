@@ -4,7 +4,7 @@
 // windows调用画图，Mac调用预览
 // see https://ld246.com/article/1733636224439
 (()=>{
-    if(!isElectron() || !isMac() || !isWindows()) return;
+    if(isElectron() && (isMac() || isWindows())); else return;
 
     // 监听鼠标单击事件
     document.addEventListener('mousedown', function(event) {
