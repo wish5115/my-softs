@@ -1,8 +1,14 @@
-// 高亮选中文本
-// 功能：1. 高亮选中文本 2. ctrl/meta + alt + p 高亮下一个关键词
+// 高亮选中文本和快捷键高亮下一个关键词
+// 功能：
+//   1. 高亮选中文本
+//   2. ctrl/meta + alt + p 高亮下一个关键词
+//   3. shift + ctrl/meta + alt + p 高亮上一个关键词
 // 鸣谢：本代码改自JeffreyChen大佬的关键词高亮插件 https://github.com/TCOTC/siyuan-plugin-hsr-mdzz2048-fork
 // 反馈：https://ld246.com/article/1733916154649
 // see https://ld246.com/article/1733799680272
+// version 0.0.2
+// 更新记录
+// 0.0.2 新增 shift + ctrl/meta + alt + p 高亮上一个关键词
 (() => {
     // 样式可以在这里修改
     addStyle(`
@@ -38,6 +44,8 @@
         const ctrlKey2 = isMac() ? event.ctrlKey : event.metaKey;
         if (ctrlKey && event.altKey && event.code === 'KeyP' && !event.shiftKey && !ctrlKey2) {
             searchNext();
+        } else if(event.shiftKey && ctrlKey && event.altKey && event.code === 'KeyP' && !ctrlKey2) {
+            searchLast();
         } else {
             unhighlight();
         }
@@ -177,6 +185,22 @@
         }
         else if (resultIndex >= resultCount && resultCount != 0) {
             resultIndex = 1
+        }
+        else if (resultCount == 0) {
+            resultIndex = 0
+        }
+        scroollIntoRanges(resultIndex -1)
+    }
+
+    // shift+ctrl+alt+p上一个
+    function searchLast() {
+        selectedText = window.getSelection().toString().trim();
+        highlightHitResult(selectedText, false)
+        if ((resultIndex > 1 && resultIndex <= resultCount) && resultCount != 0) {
+            resultIndex = resultIndex - 1
+        }
+        else if ((resultIndex <= 1 || resultIndex > resultCount) && resultCount != 0) {
+            resultIndex = resultCount
         }
         else if (resultCount == 0) {
             resultIndex = 0
