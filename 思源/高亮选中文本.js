@@ -17,8 +17,8 @@
             background-color: rgb(235 235 5);
             color: rgb(0, 0, 0);
         }
-        /* ctrl+alt+p高亮样式 */
-        ::highlight(next-focus) {
+        /* ctrl+alt+p/shift+ctrl+alt+p 高亮样式 */
+        ::highlight(focus-result) {
             background-color: rgb(255, 150, 50);
             color: rgb(0, 0, 0);
         }
@@ -173,7 +173,7 @@
         let range_rect = range.getBoundingClientRect();
         docContentElement.scrollBy(0,range_rect.y-mid_y)
       
-        CSS.highlights.set("next-focus", new Highlight(range))
+        CSS.highlights.set("focus-result", new Highlight(range))
     }
 
     // ctrl+alt+p下一个
