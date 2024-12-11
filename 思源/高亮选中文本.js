@@ -6,9 +6,10 @@
 // 鸣谢：本代码改自JeffreyChen大佬的关键词高亮插件 https://github.com/TCOTC/siyuan-plugin-hsr-mdzz2048-fork
 // 反馈：https://ld246.com/article/1733916154649
 // see https://ld246.com/article/1733799680272
-// version 0.0.2
+// version 0.0.3
 // 更新记录
 // 0.0.2 新增 shift + ctrl/meta + alt + p 高亮上一个关键词
+// 0.0.3 修复向下向上搜索关键词时，没有从选中文本处开始搜索的问题 
 (() => {
     // 样式可以在这里修改
     addStyle(`
@@ -43,8 +44,11 @@
         const ctrlKey = isMac() ? event.metaKey : event.ctrlKey;
         const ctrlKey2 = isMac() ? event.ctrlKey : event.metaKey;
         if (ctrlKey && event.altKey && event.code === 'KeyP' && !event.shiftKey && !ctrlKey2) {
+            event.preventDefault();
             searchNext();
+            
         } else if(event.shiftKey && ctrlKey && event.altKey && event.code === 'KeyP' && !ctrlKey2) {
+            event.preventDefault();
             searchLast();
         } else {
             unhighlight();
@@ -80,11 +84,14 @@
     let resultCount = 0; // 存储结果数量
     let resultIndex = 0; // 当前选中结果索引
     let resultRange = []; // 存储结果范围
+    let isFirstHighlight = true; // 标志是否是首次高亮
+    let initialSelectionIndex = -1; // 保存首次选中的索引
     function highlightHitResult(value, change) {
         // 如果文本框内容改变，搜索结果和索引计数都立刻清零
         if (change == true) {
             resultIndex = 0
             resultCount = 0
+            isFirstHighlight = true; // 每次改变搜索词时重置首次高亮标志
         }
     
         // 首先，选取所有符合条件的元素
@@ -124,6 +131,7 @@
         let ranges = [];
         let startIndex = 0;
         let endIndex=0;
+        let foundInitialSelection = false;
         while ((startIndex = docText.indexOf(str, startIndex)) !== -1) {
             const range = document.createRange();
             endIndex=startIndex + str.length
@@ -144,6 +152,19 @@
                 let endOffset=endIndex-incr_lens[cur_nodeIdx]+txtNode.textContent.length;
                 range.setEnd(txtNode,endOffset);
                 ranges.push(range);
+
+                // 如果是首次高亮并且还没有找到初始选择，则尝试匹配当前选择与新创建的range
+                if (isFirstHighlight && !foundInitialSelection) {
+                    const selection = window.getSelection();
+                    if (selection.rangeCount > 0) {
+                        const selectedRange = selection.getRangeAt(0);
+                        if (selectedRange.compareBoundaryPoints(Range.START_TO_START, range) === 0 &&
+                            selectedRange.compareBoundaryPoints(Range.END_TO_END, range) === 0) {
+                            initialSelectionIndex = ranges.length; // 因为数组索引从0开始，所以这里直接用长度表示索引+1
+                            foundInitialSelection = true;
+                        }
+                    }
+                }
             } catch (error) {
                 console.error("Error setting range in node:", error);
             }
@@ -157,8 +178,15 @@
     
         // 注册高亮
         CSS.highlights.set("selected-results", searchResultsHighlight)
-        // 滚动页面
-        // scroollIntoRanges(resultIndex.value)
+
+        // 如果找到了初始选择，设置resultIndex为初始选择的位置
+        if (foundInitialSelection) {
+            resultIndex = initialSelectionIndex;
+            isFirstHighlight = false; // 设置为非首次高亮
+        }
+
+        // 滚动页面到当前选中的结果，注意这里的索引需要减去1，因为resultIndex是从1开始计数的
+        // scroollIntoRanges(resultIndex - 1)
     }
     
     function scroollIntoRanges(index) {
