@@ -1,6 +1,7 @@
 // 高亮选中文本
-// 功能：1. 高亮选中文本 2. ctrl/meta + alt + P 高亮下一个关键词
+// 功能：1. 高亮选中文本 2. ctrl/meta + alt + p 高亮下一个关键词
 // 鸣谢：本代码改自JeffreyChen大佬的关键词高亮插件 https://github.com/TCOTC/siyuan-plugin-hsr-mdzz2048-fork
+// 反馈：https://ld246.com/article/1733916154649
 // see https://ld246.com/article/1733799680272
 (() => {
     // 样式可以在这里修改
