@@ -2,7 +2,7 @@
 // 思源查询最近30天更新的文档
 return (async () => {
     // sql查询语句
-    // 查询过去去30天的文档
+    // 查询过去30天的文档，实际天数，比如假设今天是12月31号，取值范围是12月1日到12月31日
     const sql = `
         SELECT * FROM blocks
         WHERE type = 'd'
@@ -11,7 +11,7 @@ return (async () => {
         AND updated >= strftime('%Y%m%d%H%M%S', 'now', 'localtime', '-30 days')
         order by updated desc
     `;
-    // 查询最近一个月内创建的文档
+    // 查询最近一个月内创建的文档，自然月，比如假设今天是12月31号，取值范围是11月30日到12月31日
     /*
     const sql = `
         SELECT * FROM blocks
