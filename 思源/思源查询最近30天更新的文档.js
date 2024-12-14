@@ -8,7 +8,7 @@ return (async () => {
         WHERE type = 'd'
         -- 👇排除目录或子目录，可在思源目录右键，复制->复制可读路径 获取
         AND hpath not like '%/your/path%'
-        AND created >= strftime('%Y%m%d%H%M%S', 'now', 'localtime', '-30 days')
+        AND updated >= strftime('%Y%m%d%H%M%S', 'now', 'localtime', '-30 days')
         order by updated desc
     `;
     // 查询最近一个月内创建的文档
@@ -18,7 +18,7 @@ return (async () => {
         WHERE type = 'd'
         -- 👇排除目录或子目录，可在思源目录右键，复制->复制可读路径 获取
         AND hpath not like '%/your/path%'
-        AND created >= strftime('%Y%m%d%H%M%S', 'now', 'localtime', '-1 month')
+        AND updated >= strftime('%Y%m%d%H%M%S', 'now', 'localtime', '-1 month')
         order by updated desc
     `;
     */
