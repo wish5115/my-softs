@@ -67,7 +67,7 @@ return (async () => {
                     fieldsHtml += `<span style="margin-left:20px;${fieldStyle||''};${item[field+'_style']||''}">${item[field]}</span>`;
                 }
             });
-            html += `<div class="protyle-wysiwyg__embed" data-id="${item.root_id}"><div data-node-index="1" data-type="NodeParagraph" class="p"><div contenteditable="true" spellcheck="false" style="${rowStyle||''};${item['style']||''}">${fieldsHtml}</div><div class="protyle-attr" contenteditable="false"></div></div></div>`;
+            html += `<div class="protyle-wysiwyg__embed" data-id="${item.root_id}"><div data-node-index="1" data-type="NodeParagraph" class="p"><div contenteditable="false" spellcheck="false" style="${rowStyle||''};${item['style']||''}">${fieldsHtml}</div><div class="protyle-attr" contenteditable="false"></div></div></div>`;
         });
         return render(html || '<div style="color:var(--b3-theme-secondary);margin-top:3px;">没有找到符合条件的内容</div>');
     }
