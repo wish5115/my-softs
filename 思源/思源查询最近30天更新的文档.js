@@ -25,9 +25,8 @@ return (async () => {
 
     // 查询数据库
     const result = await query(sql);
-    // 渲染结果，更多字段看下面的renderFields函数的注释说明
+    // 渲染结果，，去掉回调里的updated即可👇去掉右侧日期，更多字段看下面的renderFields函数的注释说明
     return renderFields('content, updated', (row) => {
-        /////// 回调这里👇的代码全注释，即可去掉右侧日期 /////////
         // 👇更新日期格式化，仅显示日期
         row['updated'] = row['updated'].replace(/(\d{4})(\d\d)(\d\d)\d+/, '$1-$2-$3');
         // 更新日期格式化，显示日期和时间
