@@ -1,5 +1,6 @@
 //!js
 // 思源查询最近30天更新的文档
+// see https://ld246.com/article/1734109655384
 return (async () => {
     // sql查询语句
     // 查询过去30天的文档，实际天数，比如假设今天是12月31号，取值范围是12月1日到12月31日
@@ -32,7 +33,7 @@ return (async () => {
         // 👇更新日期格式化，显示日期和时间
         //row['updated'] = row['updated'].replace(/^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)$/, '$1-$2-$3 $4:$5:$6');
         // 更新日期样式
-        row['updated_style'] = 'float:right;margin-left:0;flex-shrink: 0;color:var(--b3-theme-on-surface-light);';
+        row['updated_style'] = 'margin-left:0;flex-shrink: 0;color:var(--b3-theme-on-surface-light);';
         // 标题样式
         row['content_style'] = 'flex-grow: 1;';
         // 行样式
