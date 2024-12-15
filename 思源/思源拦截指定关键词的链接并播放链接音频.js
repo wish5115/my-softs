@@ -38,7 +38,7 @@
     const defaultImageWidth = '20px';
     const defaultImageHeight = '20px';
     const defaultImageZoom = '150% 150%';
-    const defaultImageTop = '3px';
+    const defaultImageTop = '3.3px';
 
     // 监听指定的链接被添加
     audioLinkKeywords.unshift('auto:');
