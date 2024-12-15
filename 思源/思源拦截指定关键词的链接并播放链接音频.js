@@ -1,5 +1,8 @@
 // 拦截指定关键词的链接并播放链接音频
 // see https://ld246.com/article/1732632964559
+// version 0.0.2
+// 更新记录
+// 0.0.2 增加缓存，已获取过的音频链接直接使用缓存链接
 // 使用说明
 // 一、手动插入链接
 // 编辑器输入 /链接 或 /lianjie 在链接中输入你的链接即可，比如https://res.iciba.com/xxxx.mp3，当你的链接中含有audioLinkKeywords参数指定的关键词时，则自动拦截链接的点击并播放音频
@@ -105,7 +108,9 @@
     `);
 
     // 通过iciba.com查询音频URL
+    let soundCaches = {};
     async function getAudioSrcByNet(word, soundType) {
+        if(soundCaches[word+'-'+soundType]) return soundCaches[word+'-'+soundType];
         try {
             let html = await fetch("https://www.iciba.com/word?w=" + word, {
                 headers: {
@@ -126,6 +131,7 @@
             if(!audioSrc){
                 audioSrc = json?.props?.pageProps?.initialReduxState?.word?.wordInfo?.baesInfo?.symbols[0][backupAudio];
             }
+            soundCaches[word+'-'+soundType] = audioSrc;
             return audioSrc;
         } catch(e) {
             console.log(e);
