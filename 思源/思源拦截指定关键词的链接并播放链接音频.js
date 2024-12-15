@@ -2,7 +2,7 @@
 // see https://ld246.com/article/1732632964559
 // 使用说明
 // 一、手动插入链接
-// 编辑器输入 /链接 或 /lianjie 在链接中输入你的链接即可，比如https://res.iciba.com/xxxx.mp3
+// 编辑器输入 /链接 或 /lianjie 在链接中输入你的链接即可，比如https://res.iciba.com/xxxx.mp3，当你的链接中含有audioLinkKeywords参数指定的关键词时，则自动拦截链接的点击并播放音频
 // 当锚文本链接输入*号时，则会使用图片作为播放音频的按钮，图片可以在defaultImage相关参数中配置或使用默认配置即可
 // 当链接地址中输入auto:开头的链接时，将自动获取音频，默认从iciba.com网站获取音频，可在getAudioSrcByNet函数中修改获取逻辑
 // 自动获取连接规则，比如，auto:hello:en，这里auto:是关键词，hello是要查询的关键词，en是代表英音，am代表美音，默认是am，比如auto:hello
