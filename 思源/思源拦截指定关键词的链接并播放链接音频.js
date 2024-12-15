@@ -19,11 +19,12 @@
 // 链接中加start和end参数可以控制音频播放的开始和结束时间点，支持纯数字秒数和srt时间格式
 // 比如，(https://res.iciba.com/xxxx.mp3?start=10&end=20) 和 (auto:hello?start=0&end=20)
 (()=>{
-    // 以指定关键词匹配链接
+    // 指定哪些链接关键词自动拦截并播放音频
     const audioLinkKeywords = [
         'res.iciba.com',
         'tts.iciba.com',
         'res-tts.iciba.com',
+        'staticedu-wps.cache.iciba.com',
     ];
 
     // 默认播放按钮Emoji
