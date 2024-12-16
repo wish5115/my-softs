@@ -38,6 +38,7 @@ return (async () => {
             toLink,
             formatDateTime,
             formatDate,
+            renderMarkdown,
         }
     }
 
@@ -78,6 +79,10 @@ return (async () => {
     // formatStr默认'$1-$2-$3' 分别代表年月日
     function formatDate(content, formatStr = '$1-$2-$3') {
         return formatDateTime(content, formatStr);
+    }
+
+    function renderMarkdown(markdown) {
+        return Lute.New().Md2BlockDOM(markdown);
     }
 
     /////// 核心代码 /////////////////////
