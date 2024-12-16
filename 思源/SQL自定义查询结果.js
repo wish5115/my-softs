@@ -121,6 +121,7 @@ return (async () => {
         }
         const rowNum = data.length;
         const colNum = Object.keys(data[0]).length;
+        if(colNum === 0 || rowNum === 0) return getInfo('未匹配到任何内容');
         let header = ``;
         if(options.showHeader) {
             for(const key in data[0]){
@@ -141,6 +142,7 @@ return (async () => {
     }
 
     function getStyle(rowNum, colNum, options = {}) {
+        if(colNum === 0 || rowNum === 0) return "";
         if(options.showHeader) rowNum++;  // +1 加上表格头的一行
         const id = item.dataset.nodeId;
         let lastColStyle = [];
