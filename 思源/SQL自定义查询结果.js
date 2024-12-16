@@ -10,7 +10,7 @@ return (async () => {
     `;
     const result = await query(sql);
     // 渲染结果
-    return render(result, ['封面图','文档标题', '创建时间'], (row, {toRef, formatDate})=>{
+    return render(result, ['文档标题', '封面图', '创建时间'], (row, {toRef, formatDate, index, options})=>{
         row['文档标题'] = toRef(row['content'], row['id']);
         row['创建时间'] = formatDate(row['created']);
         row['封面图'] = showTitleImage(row['ial'], '100px');
@@ -96,7 +96,7 @@ return (async () => {
             return getInfo('未匹配到任何内容');
         }
         // 格式化数据
-        const options = {evenOddColor: false, tableBorder: true};
+        const options = {showHeader: true, evenOddColor: false, tableBorder: true};
         let styles = [];
         for (const [index, row] of data.entries()) {
             if(typeof onRender === 'function') {
@@ -116,8 +116,10 @@ return (async () => {
         const rowNum = data.length;
         const colNum = Object.keys(data[0]).length;
         let header = ``;
-        for(const key in data[0]){
-            header += `<div class="header">${key}</div>`;
+        if(options.showHeader) {
+            for(const key in data[0]){
+                header += `<div class="header">${key}</div>`;
+            }
         }
         let body = ``;
         for(const [index, row] of data.entries()){
@@ -133,7 +135,7 @@ return (async () => {
     }
 
     function getStyle(rowNum, colNum, options = {}) {
-        rowNum++;  // +1 加上表格头的一行
+        if(options.showHeader) rowNum++;  // +1 加上表格头的一行
         const id = item.dataset.nodeId;
         let lastColStyle = [];
         for(let i=colNum;i<=rowNum*colNum;i=i+colNum){
