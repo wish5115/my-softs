@@ -10,7 +10,7 @@ return (async () => {
     `;
     const result = await query(sql);
     // 渲染结果
-    return render(result, ['文档标题', '封面图', '创建时间'], (row, {toRef, formatDate, index, options})=>{
+    return render(result, ['文档标题', '封面图', '创建时间'], ({row, index, options, toRef, formatDate})=>{
         row['文档标题'] = toRef(row['content'], row['id']);
         row['创建时间'] = formatDate(row['created']);
         row['封面图'] = showTitleImage(row['ial'], '100px');
@@ -100,7 +100,7 @@ return (async () => {
         let styles = [];
         for (const [index, row] of data.entries()) {
             if(typeof onRender === 'function') {
-                onRender(row, {...getCallbackFuncs(), ...{index, data, options}});
+                onRender({...{row, index, data, options}, ...getCallbackFuncs()});
             }
             for(const field in row){
                 if(row[field+'_style']) {
