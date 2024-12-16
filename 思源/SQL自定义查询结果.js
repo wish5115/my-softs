@@ -2,20 +2,25 @@
 // SQL自定义查询结果
 // see https://ld246.com/article/1734338710962
 return (async () => {
+    // 带查询的标签名👇
     const tag = 'demo1';
+    // sql查询语句
     const sql = `
         SELECT * FROM blocks where type = 'd' and tag like '%#${tag}#%' or id in (
             SELECT parent_id FROM blocks where type <> 'd' and tag = '%#${tag}#%'
         ) ORDER BY created desc;
     `;
+    // 查询数据
     const result = await query(sql);
-    // 渲染结果
-    return render(result, ['文档标题', '封面图', '创建时间'], ({row, index, options, toRef, formatDate})=>{
+    // 渲染结果，这里第二个参数是指定显示的字段，按你指定的顺序显示
+    render(result, ['文档标题', '封面图', '创建时间'], ({row, index, options, toRef, formatDate})=>{
+        // 渲染前回调，这里可以进行一些数据格式化
         row['文档标题'] = toRef(row['content'], row['id']);
         row['创建时间'] = formatDate(row['created']);
         row['封面图'] = showTitleImage(row['ial'], '100px');
     }, () => {
-        // 图片绑定事件
+        // 渲染后回调，这里可以进行渲染后的一些事件绑定等
+        // 封面绑定点击事件
         const imgs = item.querySelectorAll('.protyle-wysiwyg__embed__grid-table .grid-row-title-img');
         imgs.forEach(img => {
             img.onclick = () => {
@@ -36,6 +41,7 @@ return (async () => {
         }
     }
 
+    // 显示文档封面
     function showTitleImage(ial, maxWidth = '100px', maxHeight = '') {
         const match = ial.match(/title-img="([^"]*)"/i);
         if (match && match[1]) {
@@ -278,4 +284,7 @@ return (async () => {
             checkForElement();
         });
     }
+
+    // 返回空数组
+    return [];
 })();
