@@ -13,7 +13,7 @@ return (async () => {
     // 查询数据
     const result = await query(sql);
     // 渲染结果，这里第二个参数是指定显示的字段，按你指定的顺序显示
-    render(result, ['文档标题', '封面图', '创建时间'], ({row, index, options, toRef, formatDate})=>{
+    render(result, ['文档标题', '封面图', '创建时间'], ({row, index, options, toRef, formatDate, showTitleImage})=>{
         // 渲染前回调，这里可以进行一些数据格式化
         row['文档标题'] = toRef(row['content'], row['id']);
         row['创建时间'] = formatDate(row['created']);
@@ -39,6 +39,7 @@ return (async () => {
             formatDateTime,
             formatDate,
             renderMarkdown,
+            showTitleImage,
         }
     }
 
