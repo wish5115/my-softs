@@ -288,8 +288,8 @@ if (fs.existsSync(lastLockFilePath)) {
 // 使用前先安装otplib库 npm install otplib
 function generateSecretKey(twoFactorAuthKey) {
   // see https://www.npmjs.com/package/otplib
-  const OPTLib = require('otplib');
-  const token = OPTLib.authenticator.generate(twoFactorAuthKey);
+  const OTPLib = require('otplib');
+  const token = OTPLib.authenticator.generate(twoFactorAuthKey);
   return token;
 
   // 备用方案
