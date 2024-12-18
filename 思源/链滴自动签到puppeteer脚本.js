@@ -5,6 +5,7 @@
 const username = "";
 const password = "";
 // 二次验证秘钥，选填，未开启保持为空即可（可在链滴官网用户设置->安全设置->两步验证中获取，如果已绑定的需先解绑才能看到）
+// 使用前先安装otplib库 npm install otplib
 const twoFactorAuthKey = "";
 
 // 设置浏览器安装路径，必须，如果填空，则使用puppeteer模式而不是puppeteer-core
@@ -284,25 +285,21 @@ if (fs.existsSync(lastLockFilePath)) {
 })();
 
 // 生成二次验证token
+// 使用前先安装otplib库 npm install otplib
 function generateSecretKey(twoFactorAuthKey) {
-  const OTP = require('otplib');
-  // 配置选项（可选）
-  OTP.authenticator.options = {
-    crypto: 'sha1', // 算法，默认是 SHA1
-    window: 1,      // 允许的时间窗口偏移量
-  };
-  // 创建 TOTP 设置
-  const totpOptions = {
-    issuer: 'ld246.com',
-    label: 'ld246.com',
-    algorithm: 'SHA1',
-    digits: 6,
-    period: 30,
-    secret: twoFactorAuthKey // 替换为你的 base32 编码的秘密密钥
-  };
-  // 生成 TOTP 令牌
-  const token = OTP.authenticator.generate(totpOptions.secret);
+  // see https://www.npmjs.com/package/otplib
+  const OPTLib = require('otplib');
+  const token = OPTLib.authenticator.generate(twoFactorAuthKey);
   return token;
+
+  // 备用方案
+  // see https://www.npmjs.com/package/otpauth/v/8.0.1
+  // const OTPAuth = require('otpauth');
+  // const totp = new OTPAuth.TOTP({
+  //   secret: twoFactorAuthKey // or "OTPAuth.Secret.fromBase32('')"
+  // });
+  // const token = totp.generate();
+  // return token;
 }
 
 // 获取已保存的cookies
