@@ -6,10 +6,11 @@
 // 鸣谢：本代码改自JeffreyChen大佬的关键词高亮插件 https://github.com/TCOTC/siyuan-plugin-hsr-mdzz2048-fork
 // 反馈：https://ld246.com/article/1733916154649
 // see https://ld246.com/article/1733799680272
-// version 0.0.3
+// version 0.0.4
 // 更新记录
 // 0.0.2 新增 shift + ctrl/meta + alt + p 高亮上一个关键词
 // 0.0.3 修复向下向上搜索关键词时，没有从选中文本处开始搜索的问题
+// 0.0.4 兼容暗色主题下，选中文本浅灰色字体看不清的问题
 (() => {
     // 样式可以在这里修改
     addStyle(`
@@ -22,6 +23,10 @@
         ::highlight(focus-result) {
             background-color: rgb(255, 150, 50);
             color: rgb(0, 0, 0);
+        }
+        /* 选中文本的颜色 */
+        ::selection{
+            color: rgb(0,0,0);
         }
     `);
     
