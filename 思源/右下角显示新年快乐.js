@@ -1,8 +1,12 @@
 // 右下角显示新年快乐
 // 不仅适用于思源、obsidian等，还适用于网页
 // version: 0.0.2
-// 可拖动，双击可还原右下角位置，右键关闭（关闭后再次刷新还会出现，如需永久关闭，关闭代码片段即可）
-// 0.0.2 增加播放问候
+// 功能介绍
+// 1. 可拖动
+// 2. 双击可还原到右下角位置
+// 3. 右键关闭（关闭后再次刷新还会出现，如需永久关闭，关闭代码片段即可）
+// 4. 鼠标悬停问候（需要先点击或拖动下）
+// 0.0.2 增加鼠标悬停问候
 (() => {
     // 是否播放问候音频
     const playGreeting = true;
@@ -26,7 +30,7 @@
 
     // div内容
     const html = `
-        <img src="https://disk.ningsuan.com.cn/index.php?explorer/share/file&hash=0c29RiQxhbSpm_wO0wuzuBrj8sjXPeuE2rgaj8GHgYB5T7Z3sFCwLoSNM4tUoufynLvF7ykWXQ&name=/sn.gif" /><img src="https://disk.ningsuan.com.cn/index.php?explorer/share/file&hash=9f63LxWIw8GhmIoZ_IDdm2QdgeQ2eYEZA8hlMk8bgoVHNE-3Get_s3d7x9Wkvm6cTZyn3OzTkQ&name=/happynewyear.gif" />
+        <img src="https://b3logfile.com/file/2024/12/sn-Dezgf9B.gif" /><img src="https://b3logfile.com/file/2024/12/happynewyear-yFPd7ZP.gif" />
     `;
 
     // 创建一个 <style> 元素
@@ -86,11 +90,11 @@
     }
 
     function playGreeting1() {
-        playAudio(1, 'http://ys-n.ysepan.com/wap/wilson/F952jd3Mga58D6jH7C/Hjg6b2Axf6a8EmBgu5EQJkjf6n18l/zr-xnh.ogg');
+        playAudio(1, 'https://b3logfile.com/file/2024/12/zr-xnh-52P4xfQ.mp3');
     }
 
     function playGreeting2() {
-        playAudio(2, 'http://ys-n.ysepan.com/wap/wilson/F952jd3Mga58D6jH7C/Ijg6b2Axf6a7dBnHhzePKLhe84,9jh/zr-xnkl.ogg');
+        playAudio(2, 'https://b3logfile.com/file/2024/12/zr-xnkl-yEVrFO3.mp3');
     }
 
     // 播放音频
@@ -115,12 +119,10 @@
     function doPlay(audio) {
         if(!audio) return;
         pauseOtherAudio();
-        try {
-            audio.currentTime = 0;
-            audio.play();
-        } catch (error) {
-            console.error('音频播放失败:', error);
-        }
+        audio.currentTime = 0;
+        audio.play().catch((error) => {
+            //console.error('音频播放失败:', error);
+        });
     }
     function pauseOtherAudio() {
         audios.forEach((audio) => {
