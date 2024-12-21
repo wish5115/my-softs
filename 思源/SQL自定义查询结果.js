@@ -7,7 +7,7 @@ return (async () => {
     // sql查询语句
     const sql = `
         SELECT * FROM blocks where type = 'd' and tag like '%#${tag}#%' or id in (
-            SELECT parent_id FROM blocks where type <> 'd' and tag like '%#${tag}#%'
+            SELECT root_id FROM blocks where type <> 'd' and tag like '%#${tag}#%'
         ) ORDER BY created desc;
     `;
     // 查询数据
