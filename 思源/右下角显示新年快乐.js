@@ -101,20 +101,22 @@
         firstImg.addEventListener('mousedown', (event) => {
             if(!isActives[1]){
                 isActives[1] = true;
-                playGreeting1();
+                //playGreeting1();
             }
         });
         secondImg.addEventListener('mousedown', (event) => {
             if(!isActives[2]) {
                 isActives[2] = true;
-                playGreeting2();
+                //playGreeting2();
             }
         });
     }
 
+    let isFirstGreet1 = true;
     function playGreeting1() {
         const index = Math.random() < 0.5 ? 1 : 3;
-        if(index === 1) {
+        if(index === 1 || isFirstGreet1) {
+            isFirstGreet1 = false;
             playAudio(1, 'https://b3logfile.com/file/2024/12/zr-xnh-52P4xfQ.mp3');
         } else {
             playAudio(3, 'https://b3logfile.com/file/2024/12/zhuren-nihaohuaiya-laomorenjia2-6Okbh4s.mp3');
@@ -163,7 +165,6 @@
         });
     }
     function pauseOtherAudio() {
-        audioSrc = '';
         audios.forEach((audio) => {
             if(!audio) return;
             audio.pause();
