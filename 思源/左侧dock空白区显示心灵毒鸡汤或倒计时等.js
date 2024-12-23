@@ -1,6 +1,5 @@
-// 左侧dock空白区显示心灵毒鸡汤/倒计时等
-// see https://ld246.com/article/1734652659115
-// version 0.0.3
+// 左侧dock空白区显示心灵毒鸡汤/倒计时/顶部显示天气等
+// version 0.0.4
 // 功能介绍：
 // 1. 左侧dock空白区域显示心灵毒鸡汤
 // 2. 双击显示下一个
@@ -8,6 +7,7 @@
 // 4. 可显示为跑马灯效果
 // 5. 可显示倒计时
 // 6. 可在右侧dock空白区域显示哲理名言
+// 7. 增加顶部显示今日天气
 (()=>{
     // 设置多久显示一次，单位秒，默认5分钟
     const delay = 300;
@@ -29,6 +29,10 @@
 
     // 右侧dock空白区域显示信息，不显示保持为空间即可
     const dockRightWords = '人生最大的敌人是自己';
+
+    // 是否显示今日天气
+    // 天气参数可在showTodayWeather()函数中修改，参数详情可参考 https://github.com/chubin/wttr.in
+    const showWeather = true;
   
     // 左侧dock空白区文本样式
     addStyle(`
@@ -83,6 +87,38 @@
 
     // 右侧dock空白区域显示文字
     showDockRightWords(dockRightWords);
+
+    // 显示今日天气
+    showTodayWeather();
+
+    // 显示今日天气
+    function showTodayWeather() {
+        if(!showWeather) return;
+        whenElementExist('#toolbar .fn__ellipsis').then(async (ellipsis) => {
+            // 获取天气api
+            const weatherApi = await fetch('https://wttr.in/?format=1');
+            const text = await weatherApi.text();
+            if(!text) return;
+            // 插入顶部导航
+            const weather = document.createElement('div');
+            weather.className = 'today-weather';
+            weather.style.position = 'relative';
+            const style = `position:absolute;left:20px;width:max-content;color:var(--b3-toolbar-color);`;
+            weather.innerHTML=`<div style="${style}">${text.trim().replace(/\s+/g, ' ')}</div>`;
+            ellipsis.before(weather);
+            //获取json数据
+            const w = await fetch('https://wttr.in/?format=j1');
+            const json = await w.json();
+            const title = `${json.current_condition[0]?.lang_zh[0]?.value||''} ${json.current_condition[0]?.temp_C}°C`;
+            weather.firstElementChild.setAttribute('aria-label', title);
+            // 插入文字描述
+            let weatherText = weather.firstElementChild.textContent;
+            const weatherTextArr = weatherText.split(' ');
+            weatherTextArr[0] = weatherTextArr[0] + json.current_condition[0]?.lang_zh[0]?.value||'';
+            weatherText = weatherTextArr.join(' ');
+            weather.firstElementChild.textContent = weatherText;
+        }); 
+    }
 
     //每日一言
     async function yiyan(callback) {
@@ -229,6 +265,16 @@
         return fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
             "method": "POST",
             "body": JSON.stringify({"msg": message, "timeout": delay})
+        });
+    }
+
+    function whenElementExist(selector) {
+        return new Promise(resolve => {
+            const check = () => {
+                const el = typeof selector==='function'?selector():document.querySelector(selector);
+                if (el) resolve(el); else requestAnimationFrame(check);
+            };
+            check();
         });
     }
 })();
