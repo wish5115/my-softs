@@ -1,12 +1,15 @@
 // 右下角显示新年快乐
 // 不仅适用于思源、obsidian等，还适用于网页
-// version: 0.0.2
+// version: 0.0.3
 // 功能介绍
 // 1. 可拖动
 // 2. 双击可还原到右下角位置
 // 3. 右键关闭（关闭后再次刷新还会出现，如需永久关闭，关闭代码片段即可）
 // 4. 鼠标悬停问候（需要先点击或拖动下）
+// 5. 上移下移语音交互
+// 6. ctrl/meta + 单击暂停问候和语音交互
 // 0.0.2 增加鼠标悬停问候
+// 0.0.3 上移下移双击语音交互和ctrl/meta + 单击暂停问候和语音交互
 (() => {
     // 是否播放问候音频
     const playGreeting = true;
@@ -55,6 +58,15 @@
             happyNewYear.style.bottom = '7px';
             happyNewYear.style.left = 'auto';
             happyNewYear.style.top = 'auto';
+
+            // 播放语音
+            if(!playGreeting || !allowPlayAudio) return;
+            pauseOtherAudio();
+            if(Math.random() < 0.5) {
+                oncePlay('https://b3logfile.com/file/2024/12/zhuren-zaipeiwowanyihuibei-ljBcxEK.mp3');
+            } else {
+                oncePlay('https://b3logfile.com/file/2024/12/zhuren-zaipeiwowanyihuibei2-ybgk4bd.mp3');
+            }
         }, 50);
     });
 
@@ -64,15 +76,26 @@
         happyNewYear.style.display = 'none';
     });
 
+    // ctrl + 单击
+    let allowPlayAudio = true;
+    happyNewYear.addEventListener('click', (event) => {
+        // 判断是否是左键单击
+        const ctrlKey = isMac() ? event.metaKey : event.ctrlKey;
+        const ctrlKey2 = isMac() ? event.ctrlKey : event.metaKey;
+        if (event.button !== 0 || !ctrlKey) return;
+        if(event.shiftKey || event.altKey || ctrlKey2) return;
+        allowPlayAudio = !allowPlayAudio;
+    });
+
     // 绑定mouseover事件
     const firstImg = document.querySelector('.happy-new-year img:nth-child(1)');
     const secondImg = document.querySelector('.happy-new-year img:nth-child(2)');
     let isActives = [];
     if(playGreeting) {
-        firstImg.addEventListener('mouseover', (event) => {
+        firstImg.addEventListener('mouseover', async (event) => {
             if(isActives[1]) playGreeting1();
         });
-        secondImg.addEventListener('mouseover', (event) => {
+        secondImg.addEventListener('mouseover', async (event) => {
             if(isActives[2]) playGreeting2();
         });
         firstImg.addEventListener('mousedown', (event) => {
@@ -90,16 +113,27 @@
     }
 
     function playGreeting1() {
-        playAudio(1, 'https://b3logfile.com/file/2024/12/zr-xnh-52P4xfQ.mp3');
+        const index = Math.random() < 0.5 ? 1 : 3;
+        if(index === 1) {
+            playAudio(1, 'https://b3logfile.com/file/2024/12/zr-xnh-52P4xfQ.mp3');
+        } else {
+            playAudio(3, 'https://b3logfile.com/file/2024/12/zhuren-nihaohuaiya-laomorenjia2-6Okbh4s.mp3');
+        }
     }
 
     function playGreeting2() {
-        playAudio(2, 'https://b3logfile.com/file/2024/12/zr-xnkl-yEVrFO3.mp3');
+        const index = Math.random() < 0.5 ? 2 : 4;
+        if(index === 2) {
+            playAudio(2, 'https://b3logfile.com/file/2024/12/zr-xnkl-yEVrFO3.mp3');
+        } else {
+            playAudio(4, 'https://b3logfile.com/file/2024/12/zhuren-xinnianyoushenmeyuanwangma-vlB2BV2.mp3');
+        }
     }
 
     // 播放音频
-    let audios = [];
+    let audios = [], audioSrc = '';
     function playAudio(index, src) {
+        if(!playGreeting || !allowPlayAudio) return;
         let audio = audios[index];
         if(!audio) {
             audio = new Audio();
@@ -116,19 +150,84 @@
             doPlay(audio);
         }
     }
-    function doPlay(audio) {
+    async function doPlay(audio) {
         if(!audio) return;
         pauseOtherAudio();
         audio.currentTime = 0;
+        audioSrc = audio.src;
+        // 防止同时触发导致的串音
+        await sleep(300);
+        if(audioSrc !== audio.src) return;
         audio.play().catch((error) => {
             //console.error('音频播放失败:', error);
         });
     }
     function pauseOtherAudio() {
+        audioSrc = '';
         audios.forEach((audio) => {
             if(!audio) return;
             audio.pause();
         });
+        if(onceAudio) onceAudio.pause();
+    }
+
+    function isMac() {
+        return navigator.platform.indexOf("Mac") > -1;
+    }
+
+    // 延迟执行
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    let onceAudio;
+    function oncePlay(src) {
+        if(!src) return;
+        const audio = new Audio(src);
+        onceAudio = audio;
+        audio.addEventListener('canplaythrough', async () => {
+            // 资源加载完成，可以播放
+            audioSrc = audio.src;
+            // 防止同时触发导致的串音
+            await sleep(300);
+            if(audioSrc !== audio.src) return;
+            audio.play();
+        });
+        // audio.addEventListener('error', (event) => {
+        //     console.error('音频加载失败', event);
+        // });
+    }
+
+    let flied = false, lastTop = 0;
+    function onStopDrag(dialog, event) {
+        if(!playGreeting || !allowPlayAudio) return;
+        const top = parseFloat(dialog.style.top);
+        let sounds = [];
+        if(top < lastTop){
+            flied = true;
+            // 当向上拖动
+            sounds = [
+                'https://b3logfile.com/file/2024/12/wawo-wofeiqilaile2-D5ZB9Me.mp3',
+                'https://b3logfile.com/file/2024/12/wawo-wofeiqilaile-wbDGqM9.mp3',
+            ];
+        } else if(top > lastTop && !flied) {
+            // 当向下拖动且没有向上拖动过
+            sounds = ['https://b3logfile.com/file/2024/12/zhuren-woyaofeigaogao-xKnbREs.mp3'];
+        } else if(top > lastTop) {
+            // 当向下拖动
+            sounds = [
+                'https://b3logfile.com/file/2024/12/zhuren-woyaofeigaogao-xKnbREs.mp3',
+                'https://b3logfile.com/file/2024/12/no-zhuren-woyaofei-ziMmpbE.mp3',
+                'https://b3logfile.com/file/2024/12/zhurenwohaiyaofei-r8UUfW1.mp3',
+            ];
+        }
+        // 随机选择一个值
+        const randomSound = sounds[Math.floor(Math.random() * sounds.length)];
+        if(randomSound) {
+            pauseOtherAudio();
+            oncePlay(randomSound);
+        }
+        lastTop = top;
     }
 
     // 可拖动
@@ -146,6 +245,7 @@
                 document.addEventListener('mouseup', dragHandler);
                 offsetX = e.clientX - dialog.offsetLeft;
                 offsetY = e.clientY - dialog.offsetTop;
+                pauseOtherAudio();
                 setTimeout(() => {
                     if(!isNaN(parseFloat(dialog.style.left)) && !isNaN(parseFloat(dialog.style.top))){
                         dialog.style.right = 'auto';
@@ -166,6 +266,7 @@
                 isDragging = false;
                 document.removeEventListener('mousemove', dragHandler);
                 document.removeEventListener('mouseup', dragHandler);
+                onStopDrag(dialog, e);
             }
             e.preventDefault();
         };
