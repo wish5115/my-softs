@@ -3,7 +3,7 @@
 (()=>{
     // 模糊样式
     const filter = 'blur(6px)';
-    // 模糊期间是否可编辑，默认禁止编辑，如果设为true，块编辑后会导致模糊效果被保存，如果你刚好要这种效果，可以把这个值设为true
+    // 模糊期间块是否可编辑，默认禁止编辑，如果设为true，块编辑后会导致模糊效果被保存，如果你刚好需要这种效果，可以把这个值设为true
     const editableOnBlur = false;
     document.addEventListener('keydown', (event) => {
         // 检查是否按下了 Ctrl/Meta + Alt + B
