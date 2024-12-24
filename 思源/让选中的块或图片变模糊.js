@@ -12,7 +12,6 @@
             const targetElements = document.querySelectorAll('.protyle-wysiwyg--select, .img--select img');
             const isBlurred = !!document.querySelector(`.protyle-wysiwyg--select[style*="${filter}"], .img--select img[style*="${filter}"]`);
             targetElements.forEach((element) => {
-                
                 if (isBlurred) {
                     // 如果已经应用了 blur 样式，则移除
                     element.style.filter = '';
