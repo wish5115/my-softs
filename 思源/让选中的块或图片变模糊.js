@@ -17,10 +17,14 @@
                     element.style.filter = '';
                     // 恢复编辑状态
                     if(!editableOnBlur) {
-                        const contenteditableEl = element.querySelector('[contenteditable][data-blurred="true"]')||element.closest('[contenteditable][data-blurred="true"]');
-                        if(contenteditableEl) {
-                            contenteditableEl.setAttribute('contenteditable', true);
-                            delete contenteditableEl.dataset.blurred;
+                        let contenteditableEls = Array.from(element.querySelectorAll('[contenteditable][data-blurred="true"]'));
+                        if(contenteditableEls.length === 0) contenteditableEls = [element.closest('[contenteditable][data-blurred="true"]')];
+                        contenteditableEls = contenteditableEls.filter(item=>item);
+                        if(contenteditableEls.length > 0) {
+                            contenteditableEls.forEach(contenteditableEl => {
+                                contenteditableEl.setAttribute('contenteditable', true);
+                                delete contenteditableEl.dataset.blurred;
+                            });
                         }
                     }
                 } else {
@@ -28,10 +32,14 @@
                     element.style.filter = filter;
                     // 禁止编辑
                     if(!editableOnBlur) {
-                        const contenteditableEl = element.querySelector('[contenteditable="true"]')||element.closest('[contenteditable="true"]');
-                        if(contenteditableEl) {
-                            contenteditableEl.setAttribute('contenteditable', false);
-                            contenteditableEl.dataset.blurred = true;
+                        let contenteditableEls = Array.from(element.querySelectorAll('[contenteditable="true"]'));
+                        if(contenteditableEls.length === 0) contenteditableEls = [element.closest('[contenteditable="true"]')];
+                        contenteditableEls = contenteditableEls.filter(item=>item);
+                        if(contenteditableEls.length > 0) {
+                            contenteditableEls.forEach(contenteditableEl => {
+                                contenteditableEl.setAttribute('contenteditable', false);
+                                contenteditableEl.dataset.blurred = true;
+                            });
                         }
                     }
                 }
