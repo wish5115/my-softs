@@ -28,7 +28,13 @@
     const countdownTemplate = '距离 2025-01-01 还剩 {day} 天';
 
     // 右侧dock空白区域显示信息，不显示保持为空间即可
-    const dockRightWords = '人生最大的敌人是自己';
+    const dockRightWords = [
+        '人生最大的敌人是自己',
+        '人生是一场修行，修的是心',
+        '人生没有如果，只有结果和后果',
+        '人生没有彩排，每一天都是现场直播',
+        '种一棵树最好的时间是十年前，其次是现在',
+    ];
 
     // 是否显示今日天气
     // 天气参数可在showTodayWeather()函数中修改，参数详情可参考 https://github.com/chubin/wttr.in
@@ -145,15 +151,16 @@
 
     // 右侧dock空白区域显示文字
     function showDockRightWords(dockRightWords) {
-        if(!dockRightWords) return;
+        if(!dockRightWords || dockRightWords.length === 0) return;
         const selector = '#dockRight .fn__flex-1.dock__item--space';
         let dockRightSpace = document.querySelector(selector);
+        const randomIndex = Math.floor(Math.random() * dockRightWords.length);
         if(dockRightSpace){
-            dockRightSpace.innerHTML = dockRightWords;
+            dockRightSpace.innerHTML = dockRightWords[randomIndex];
         } else {
             setTimeout(() => {
                 dockRightSpace = document.querySelector(selector);
-                if(dockRightSpace) dockRightSpace.innerHTML = dockRightWords;
+                if(dockRightSpace) dockRightSpace.innerHTML = dockRightWords[randomIndex];
             }, 1500);
         }
     }
@@ -268,6 +275,7 @@
         });
     }
 
+    // 等待元素出现
     function whenElementExist(selector) {
         return new Promise(resolve => {
             const check = () => {
