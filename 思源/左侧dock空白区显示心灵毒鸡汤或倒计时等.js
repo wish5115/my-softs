@@ -141,7 +141,8 @@
             const response = countdownTemplate.replace(/\{day\}/ig, daysRemaining);
             callback(response);
         } else {
-            var response = await fetch("https://v.api.aa1.cn/api/yiyan/index.php");
+            //var response = await fetch("https://v.api.aa1.cn/api/yiyan/index.php");
+            var response = await fetch("https://api.zxki.cn/api/djt");
             response = await response.text();
             response = extractTextFromHtml(response);
             response = cleanText(response);
