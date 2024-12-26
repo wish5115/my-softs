@@ -1,11 +1,11 @@
 // 左侧dock空白区显示心灵毒鸡汤/倒计时/顶部显示天气等
-// version 0.0.4
+// version 0.0.5
 // 功能介绍：
-// 1. 左侧dock空白区域显示心灵毒鸡汤
+// 1. 左侧dock空白区域显示心灵毒鸡汤，可自定义自己的毒鸡汤及设定出现概率
 // 2. 双击显示下一个
 // 3. 右键复制到剪切板
 // 4. 可显示为跑马灯效果
-// 5. 可显示倒计时
+// 5. 可显示倒计时，可选择显示在左侧或右侧，倒计时的优先级高于心灵毒鸡汤和哲理名言
 // 6. 可在右侧dock空白区域显示哲理名言
 // 7. 增加顶部显示今日天气
 (()=>{
@@ -25,7 +25,10 @@
     const countdownExpireDate = '2025-01-01';
 
     // 倒计时模板
-    const countdownTemplate = '距离 2025-01-01 还剩 {day} 天';
+    const countdownTemplate = '距离2025新年还剩 {day} 天';
+
+    // 倒计时显示位置，left显示在左侧，right显示在右侧
+    const countdownPosition = 'right';
 
     // 右侧dock空白区域显示信息，不显示保持为空间即可
     const dockRightWords = [
@@ -35,6 +38,28 @@
         '人生没有彩排，每一天都是现场直播',
         '种一棵树最好的时间是十年前，其次是现在',
     ];
+
+    // 自定义心灵毒鸡汤
+    const customWords = [
+        "喜欢就去表白，不然你不会知道自己长得多丑。",
+        "所有抱怨社会不公和制度的人翻译过来只有一句话：请给我金钱，女人和社会地位。",
+        "虽然我学得慢，但是我放弃的快啊！",
+        "死并不可怕，怕的是再也不能活了。",
+        "谁说我不会乐器？我退堂鼓打的可好了。",
+        "世界这么大，我想去看看，什么地方要饭比较方便！",
+        "世界上本没有鸡汤，鸡死了，便做成了鸡汤。",
+        "诗和远方越远越脏 以梦为马越骑越傻！",
+        "生活不止眼前的苟且，还有读不懂的诗和到不了的远方。",
+        "上帝为你关上一道防盗门，还会顺手给你上了一把钛合金锁。",
+        "如果所有人都理解你，那你得普通成什么样！",
+        "如果十年之后你未娶，我未嫁，那真是太惨了！",
+        "人生不如意，十之有十！",
+        "人人都想拯救世界，却没人帮妈妈洗碗。",
+        "其实只要不要脸，很多人生难题都能迎刃而解。",
+    ];
+
+    // 自定义心灵毒鸡汤出现概率, 0.01是%1, 0.001是1‰，……，依次类推
+    const customWordsRate = 0.01;
 
     // 是否显示今日天气
     // 天气参数可在showTodayWeather()函数中修改，参数详情可参考 https://github.com/chubin/wttr.in
@@ -126,42 +151,62 @@
         }); 
     }
 
-    //每日一言
+    // 获取倒计时文字
+    function getCountdownWords() {
+        // 定义目标日期，比如（2025年1月1日）
+        const targetDate = new Date(countdownExpireDate + 'T00:00:00');
+        // 获取当前日期
+        const currentDate = new Date();
+        // 计算时间差（以毫秒为单位）
+        const timeDifference = targetDate - currentDate;
+        // 将毫秒转换为天数
+        const daysRemaining = Math.ceil(timeDifference / (1000 * 60 * 60 * 24));
+        // 输出结果
+        const countdownWords = countdownTemplate.replace(/\{day\}/ig, daysRemaining);
+        return countdownWords;
+    }
+
+    //心灵毒鸡汤
     async function yiyan(callback) {
-        if(showCountdown) {
-            // 定义目标日期，比如（2025年1月1日）
-            const targetDate = new Date(countdownExpireDate + 'T00:00:00');
-            // 获取当前日期
-            const currentDate = new Date();
-            // 计算时间差（以毫秒为单位）
-            const timeDifference = targetDate - currentDate;
-            // 将毫秒转换为天数
-            const daysRemaining = Math.ceil(timeDifference / (1000 * 60 * 60 * 24));
-            // 输出结果
-            const response = countdownTemplate.replace(/\{day\}/ig, daysRemaining);
+        let response = '';
+        if(showCountdown && countdownPosition === 'left') {
+            response = getCountdownWords();
             callback(response);
         } else {
-            //var response = await fetch("https://v.api.aa1.cn/api/yiyan/index.php");
-            var response = await fetch("https://api.zxki.cn/api/djt");
-            response = await response.text();
-            response = extractTextFromHtml(response);
-            response = cleanText(response);
+            const randomValue = Math.random();
+            // 判断是否满足 customWordsRate 的概率
+            if (customWords && customWords.length > 0 && customWordsRate > 0 && randomValue <= customWordsRate) {
+                // 从自定义中获取
+                const randomIndex = Math.floor(Math.random() * customWords.length);
+                response = customWords[randomIndex];
+            } else {
+                // 从网络获取
+                response = await fetch("https://api.zxki.cn/api/djt");
+                response = await response.text();
+                response = extractTextFromHtml(response);
+                response = cleanText(response);
+            }
             callback(response);
         }
     }
 
     // 右侧dock空白区域显示文字
     function showDockRightWords(dockRightWords) {
-        if(!dockRightWords || dockRightWords.length === 0) return;
         const selector = '#dockRight .fn__flex-1.dock__item--space';
-        let dockRightSpace = document.querySelector(selector);
-        const randomIndex = Math.floor(Math.random() * dockRightWords.length);
+        let dockRightSpace = document.querySelector(selector), dockRightSpaceWords = '';
+        if(showCountdown && countdownPosition === 'right') {
+            dockRightSpaceWords = getCountdownWords();
+        } else {
+            if(!dockRightWords || dockRightWords.length === 0) return;
+            const randomIndex = Math.floor(Math.random() * dockRightWords.length);
+            dockRightSpaceWords = dockRightWords[randomIndex];
+        }
         if(dockRightSpace){
-            dockRightSpace.innerHTML = dockRightWords[randomIndex];
+            dockRightSpace.innerHTML = dockRightSpaceWords;
         } else {
             setTimeout(() => {
                 dockRightSpace = document.querySelector(selector);
-                if(dockRightSpace) dockRightSpace.innerHTML = dockRightWords[randomIndex];
+                if(dockRightSpace) dockRightSpace.innerHTML = dockRightSpaceWords;
             }, 1500);
         }
     }
