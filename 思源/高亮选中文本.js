@@ -6,11 +6,12 @@
 // 鸣谢：本代码改自JeffreyChen大佬的关键词高亮插件 https://github.com/TCOTC/siyuan-plugin-hsr-mdzz2048-fork
 // 反馈：https://ld246.com/article/1733916154649
 // see https://ld246.com/article/1733799680272
-// version 0.0.4
+// version 0.0.5
 // 更新记录
 // 0.0.2 新增 shift + ctrl/meta + alt + p 高亮上一个关键词
 // 0.0.3 修复向下向上搜索关键词时，没有从选中文本处开始搜索的问题
 // 0.0.4 兼容暗色主题下，选中文本浅灰色字体看不清的问题
+// 0.0.5 修复与高亮插件冲突问题，感谢EmberSky大佬的反馈！
 (() => {
     // 样式可以在这里修改
     addStyle(`
@@ -69,7 +70,13 @@
     function unhighlight() {
         selectedText = '';
         // 清除高亮
-        CSS.highlights.clear();
+        //CSS.highlights.clear();
+        clearHighlights();
+    }
+
+    function clearHighlights() {
+        CSS.highlights.delete("selected-results");
+        CSS.highlights.delete("focus-result");
     }
 
     function addStyle(css) {
@@ -123,7 +130,8 @@
         }
     
         // 清除上个高亮
-        CSS.highlights.clear();
+        //CSS.highlights.clear();
+        clearHighlights();
     
         // 为空判断
         const str = value.trim().toLowerCase()
