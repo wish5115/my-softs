@@ -3,6 +3,9 @@
 (()=>{
     // 添加字号列表，16为官方默认字体大小，方便复原
     const fontSizes = [16, 24, 48];
+
+    // 鼠标悬停是否显示提示信息，true显示，false不显示
+    const showTips = true;
     
     // 手机版返回
     if(isMobile()) return;
@@ -17,7 +20,7 @@
 
     // 设置字体大小
     function addFontSizeButton(fontSize, pin) {
-        const buttonString = `<span class="dock__item ariaLabel" aria-label="设置${fontSize}号字体">${fontSize}</span>`;
+        const buttonString = `<span class="dock__item ariaLabel" aria-label="${showTips ? '设置'+fontSize+'号字体' : ''}">${fontSize}</span>`;
         // 创建一个 DocumentFragment
         const fragment = document.createRange().createContextualFragment(buttonString);
         // 提取 span 元素
