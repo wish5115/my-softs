@@ -6,7 +6,8 @@
 
     // 监听图片右键菜单
     whenElementExist('#commonMenu .b3-menu__items').then((menuItems) => {
-        observeImagesMenu(menuItems, ()=>{
+        observeImagesMenu(menuItems, async ()=>{
+            await sleep(40);
             const subMenuTexts = menuItems.querySelectorAll('.b3-menu__submenu .b3-menu__label');
             if(!subMenuTexts || subMenuTexts.length === 0) return;
             const percent25 = Array.from(subMenuTexts).find(label => label.textContent === '25%');
@@ -83,6 +84,11 @@
     
         // 返回 observer 实例，便于后续断开监听
         return observer;
+    }
+
+    // 延迟执行
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     // 等待元素出现
