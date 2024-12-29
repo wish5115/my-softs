@@ -1,12 +1,18 @@
 // 右侧dock添加设置字体大小按钮
 // see https://ld246.com/article/1735489255593
 (()=>{
+    // 添加字号列表，16为官方默认字体大小，方便复原
+    const fontSizes = [16, 24, 48];
+    
+    // 手机版返回
+    if(isMobile()) return;
+    
     // 监听dock加载完毕
     whenElementExist('#dockRight .dock__items .dock__item--pin').then((pin)=>{
         // 这里可以添加多个字号
-        addFontSizeButton(16, pin); //官方默认字体大小，方便复原
-        addFontSizeButton(24, pin);
-        addFontSizeButton(48, pin);
+        for(const fontSize of fontSizes) {
+            addFontSizeButton(fontSize, pin);
+        }
     });
 
     // 设置字体大小
@@ -215,6 +221,10 @@
                 }
             }
         }
+    }
+
+    function isMobile() {
+        return !!document.getElementById("sidebar");
     }
 
     function isIPhone() {
