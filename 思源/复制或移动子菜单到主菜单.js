@@ -2,7 +2,12 @@
 // see https://ld246.com/article/1735472731026
 (()=>{
     // true 拷贝子菜单到主菜单，false 移动子菜单到主菜单
-    const byCloneMenu = false;
+    const byCloneMenu = true;
+
+    // 是否仅移动端支持，true仅移动端，false 其他端也支持
+    const onlyMobile = false;
+
+    if(onlyMobile && !isMobile()) return;
 
     // 监听图片右键菜单
     whenElementExist('#commonMenu .b3-menu__items').then((menuItems) => {
@@ -24,9 +29,9 @@
                 clonePercent25Button.onclick = () => {
                     percent25Button.click();
                 };
-                const percent25ParentButton = percent25Button.parentElement?.closest('button');
-                if(!percent25ParentButton) return;
-                percent25ParentButton.before(clonePercent25Button);
+                const copyButton = menuItems.children[2];
+                if(!copyButton) return;
+                copyButton.before(clonePercent25Button);
             } else {
                 // 移动菜单
                 percent25.textContent = '宽度 25%';
@@ -34,9 +39,9 @@
                 percent25.insertAdjacentHTML('beforebegin', svgString);
                 const percent25Button = percent25.closest('button');
                 if(!percent25Button) return;
-                const percent25ParentButton = percent25Button.parentElement?.closest('button');
-                if(!percent25ParentButton) return;
-                percent25ParentButton.before(percent25Button);
+                const copyButton = menuItems.children[2];
+                if(!copyButton) return;
+                copyButton.before(percent25Button);
             }
         });
     });
@@ -89,6 +94,10 @@
     // 延迟执行
     function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function isMobile() {
+        return !!document.getElementById("sidebar");
     }
 
     // 等待元素出现
