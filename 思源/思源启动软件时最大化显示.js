@@ -4,6 +4,8 @@
     // true,仅在启动软件时最大化，刷新时不最大化; false,刷新页面时也最大化
     const onlyStart = true;
 
+    if(isNewWindow()) return;
+
     if(onlyStart) {
         const hasMaxmized = sessionStorage.getItem("hasMaxmized") || '';
         if(hasMaxmized === 'yes') return;
@@ -22,5 +24,9 @@
         }
     } catch (e) {
         console.log(e);
+    }
+
+    function isNewWindow() {
+        return !document.querySelector("#toolbar");
     }
 })();
