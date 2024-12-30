@@ -1,6 +1,6 @@
 // 思源启动软件时最大化显示
 // see https://ld246.com/article/1732239161536
-(()=>{
+(async ()=>{
     // true,仅在启动软件时最大化，刷新时不最大化; false,刷新页面时也最大化
     const onlyStart = true;
 
