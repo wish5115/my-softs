@@ -6,13 +6,13 @@
 
     if(isNewWindow()) {
         // 新窗口
-        if(!isElectron()) {
+        if(!isElectron() || (await isWin11())) {
             resizeWindow();
         }
         return;
     } else {
         // 主窗口
-        if(isElectron()) {
+        if(isElectron() && !(await isWin11())) {
             OnWindowOpenResizeWindow();
         }
     }
@@ -63,6 +63,19 @@
         return navigator.userAgent.includes('Electron');
     }
 
+    async function isWin11() {
+        if (!navigator.userAgentData || !navigator.userAgentData.getHighEntropyValues) {
+            return false;
+        }
+        const ua = await navigator.userAgentData.getHighEntropyValues(["platformVersion"]);
+        if (navigator.userAgentData.platform === "Windows") {
+            if (parseInt(ua.platformVersion.split(".")[0]) >= 13) {
+            return true;
+            }
+        }
+        return false;
+    }
+
     function getNewWindowSize() {
         // 获取屏幕的宽度和高度
         const screenWidth = screen.width;
@@ -75,6 +88,7 @@
         return {width: windowWidth, height: windowHeight};
     }
 
+    // see https://github.com/siyuan-note/siyuan/blob/914c7659388e645395e70224f0d831950275eb05/app/src/window/openNewWindow.ts#L21
     function OnWindowOpenResizeWindow() {
         const ipcRenderer = require('electron').ipcRenderer;
         const originalSend = ipcRenderer.send;
