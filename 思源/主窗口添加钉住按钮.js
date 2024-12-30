@@ -1,10 +1,10 @@
 // 主窗口添加钉住按钮
 // see https://ld246.com/article/1735520004727
 (()=>{
-    // 添加pin时间, fullscreen 全屏时，loading 加载时，默认fullscreen
+    // 添加pin时机, fullscreen 全屏时，loading 加载时，默认fullscreen
     const addPinEvent = 'fullscreen';
 
-    // 删除pin事件，exitFullscreen 退出全屏时，never 不删除，默认exitFullscreen
+    // 删除pin时机，exitFullscreen 退出全屏时，never 不删除，默认exitFullscreen
     const delPinEvent = 'exitFullscreen';
     
     // 不支持手机版
