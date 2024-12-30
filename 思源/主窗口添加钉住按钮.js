@@ -7,8 +7,8 @@
     // 删除pin时机，exitFullscreen 退出全屏时，never 不删除，默认exitFullscreen
     const delPinEvent = 'exitFullscreen';
     
-    // 不支持手机版
-    if(isMobile()) return;
+    // 不支持新窗口和手机版
+    if(isNewWindow() || isMobile()) return;
     // 主函数
     const main = (breadcrumb) => {
         addPinButton(breadcrumb);
