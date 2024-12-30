@@ -1,4 +1,4 @@
-// 新窗口缩小至屏幕一半.js
+// 新窗口缩小至屏幕一半
 // see https://ld246.com/article/1732239161536/comment/1735555418141?r=wilsons#comments
 (()=>{
     if(!isNewWindow()) return;
