@@ -55,6 +55,7 @@
     }
 
     // 添加pin
+    // see https://github.com/siyuan-note/siyuan/blob/914c7659388e645395e70224f0d831950275eb05/app/src/boot/onGetConfig.ts#L359
     function addPinButton(breadcrumb) {
         if(breadcrumb.querySelector('button[data-type="pin"]')) return;
         const fnNone = addPinEvent === 'fullscreen' ? 'fn__none' : '';
@@ -72,6 +73,7 @@
             }
         });
     }
+
     async function getCurrBreadcrumb() {
         let protyle = document.querySelector('[data-type="wnd"].layout__wnd--active .protyle:not(.fn__none)')||document.querySelector('[data-type="wnd"] .protyle:not(.fn__none)');
         if(!protyle) {
