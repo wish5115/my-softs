@@ -1,12 +1,14 @@
 // 新窗口缩小至屏幕一半
 // see https://ld246.com/article/1732239161536/comment/1735555418141?r=wilsons#comments
-(()=>{
+(async ()=>{
     if(isNewWindow()) {
-        if(!isElectron()) {
+        // 新窗口
+        if(!isElectron() || (await isWin11())) {
             resizeWindow();
         }
     } else {
-        if(isElectron()) {
+        // 主窗口
+        if(isElectron() && !(await isWin11())) {
             OnWindowOpenResizeWindow();
         }
     }
@@ -35,6 +37,19 @@
 
     function isElectron() {
         return navigator.userAgent.includes('Electron');
+    }
+
+    async function isWin11() {
+        if (!navigator.userAgentData || !navigator.userAgentData.getHighEntropyValues) {
+            return false;
+        }
+        const ua = await navigator.userAgentData.getHighEntropyValues(["platformVersion"]);
+        if (navigator.userAgentData.platform === "Windows") {
+            if (parseInt(ua.platformVersion.split(".")[0]) >= 13) {
+            return true;
+            }
+        }
+        return false;
     }
 
     function getNewWindowSize() {
