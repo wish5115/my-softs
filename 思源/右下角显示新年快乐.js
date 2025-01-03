@@ -36,6 +36,9 @@
         <img src="https://b3logfile.com/file/2024/12/sn-Dezgf9B.gif" /><img src="https://b3logfile.com/file/2024/12/happynewyear-yFPd7ZP.gif" />
     `;
 
+    // 不支持手机版
+    if(isMobile()) return;
+
     // 创建一个 <style> 元素
     const styleElement = document.createElement('style');
     // 设置样式内容
@@ -174,6 +177,10 @@
 
     function isMac() {
         return navigator.platform.indexOf("Mac") > -1;
+    }
+
+    function isMobile() {
+        return !!document.getElementById("sidebar");
     }
 
     // 延迟执行
