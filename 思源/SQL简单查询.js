@@ -62,6 +62,8 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         toRef,
         toLink,
         toTag,
+        toMdLink,
+        toMdRef,
         formatDateTime,
         formatDate,
         formatTime,
@@ -74,8 +76,6 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         toMdRef,
         toMdList,
         toMdTask,
-        toMdListItem,
-        toMdTaskItem,
         getTitleImage,
         getTypeText,
         getSubTypeText,
@@ -120,9 +120,14 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         generateListView,
         generateTaskView,
         generateTableView,
+        generateAVView,
         generateDatabaseView,
         insertDatabaseView,
+        generateChartView,
+        generateMermaidView,
         onLoopEnd,
+        addGenerateQueue,
+        generateQueueViews,
         sortRowCustomFieldsFirst,
         sortRowSortFieldsFirst,
         filterData,
@@ -290,12 +295,13 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         return `<span data-type="a" data-href="${url}" style="">${content}</span>`;
     }
 
-    function toMdLink(content, url) {
-        return `[${content}](${url})`;
+    function toMdLink(content, url, title) {
+        return `[${content}](${url}${title !== undefined ? ` ${title}`:''})`;
     }
 
     function toMdRef(content, id) {
-        return `((${id} '${content}'))`;
+        return toMdLink(content, `siyuan://blocks/${id}`, '');
+        //return `((${id} '${content}'))`;
     }
 
     function toMdList(list = []) {
@@ -304,14 +310,6 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
 
     function toMdTask(list = []) {
         return list.map(item => `- [ ] ${content}}`).join("\n");
-    }
-
-    function toMdListItem(content) {
-        return `* ${content}}`;
-    }
-
-    function toMdTaskItem(content) {
-        return `- [ ] ${content}}`;
     }
 
     // formatStr默认'$1-$2-$3 $4:$5:$6' 分别代表年月日时分秒
@@ -391,9 +389,21 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         return Lute.New().BlockDOM2Md(block);
     }
 
-    async function generateViewByMarkdown(markdown, pos='after', domType = '', domSubType='', autoUpdate = false, relation = true) {
+    function generateChartView(code, item, pos='after', autoUpdate = false, relation = true) {
+        code = typeof code === 'string' ? code : JSON.stringify(code);
+        const markdown = `\`\`\`echarts\n${code}\n\`\`\``;
+        return generateViewByMarkdown(markdown, item, pos, 'NodeCodeBlock', 'echarts', autoUpdate, relation);
+    }
+
+    function generateMermaidView(code, item, pos='after', autoUpdate = false, relation = true) {
+        const markdown = `\`\`\`mermaid\n${code}\n\`\`\``;
+        return generateViewByMarkdown(markdown, item, pos, 'NodeCodeBlock', 'mermaid', autoUpdate, relation);
+    }
+
+    async function generateViewByMarkdown(markdown, item, pos='after', domType = '', domSubType='', autoUpdate = false, relation = true) {
         if(!item) return getError('缺少item参数');
         if(!autoUpdate && isLoading(item)) return getInfo();
+        markdown = typeof markdown === 'string' ? markdown : JSON.stringify(markdown) || Object.toString(markdown);
         const result = await insertUpdateBlock(markdown, item, pos, domType, domSubType, relation);
         if(!result || result.code !== 0) {
             console.error(result);
@@ -405,7 +415,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
     async function generateViewByDom(dom, item, pos='after', domType = '', domSubType='', autoUpdate = false, relation = true) {
         if(!item) return getError('缺少item参数');
         if(!autoUpdate && isLoading(item)) return getInfo();
-        const result = await insertUpdateBlock(markdown, item, pos, domType, domSubType, relation, 'dom');
+        const result = await insertUpdateBlock(dom, item, pos, domType, domSubType, relation, 'dom');
         if(!result || result.code !== 0) {
             console.error(result);
             return getError(result?.msg || '生成失败');
@@ -446,7 +456,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         return `${headerString}${separatorString}${bodyString}`;
     }
 
-    function generateTableMarkdownByData(data, header = []) {
+    function generateTableMarkdownByArray(data, header = []) {
         if(!header || header.length === 0) header = data.shift();
         const headerString = `|${header.join('|')}|\n`;
         const separatorString = `|${header.map(() => '---').join('|')}|\n`;
@@ -471,9 +481,16 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
     function onLoopEnd(functionName, ...args) {
         if(functionName.trim() === 'onFinished') throw new Error('onFinished is not allowed');
         if (typeof callbackFuncs[functionName] === 'function') {
-            return (data, rawData) => callbackFuncs[functionName](...args);
+            return (data) => {
+                functionName === 'generateQueueViews' ? args[1] = data : args[0] = data;
+                return callbackFuncs[functionName](...args);
+            }
         }
         throw new Error(`${functionName} is not a function`);
+    }
+
+    async function generateAVView(data, item, pos = 'after', idField='', pkField='', autoUpdate = false, relation = true) {
+        return generateDatabaseView(data, item, pos, idField, pkField, autoUpdate, relation);
     }
 
     async function generateDatabaseView(data, item, pos = 'after', idField='', pkField='', autoUpdate = false, relation = true) {
@@ -499,6 +516,52 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         const markdown = `<div data-type="NodeAttributeView" data-av-id="${avId}" data-av-type="table"></div>`;
         const result = await insertUpdateBlock(markdown, item, pos, domType, '', relation);
         return result;
+    }
+
+    async function addGenerateQueue(item, functionName, ...args) {
+        if(!item) return getError('缺少item参数');
+        if(functionName.trim() === 'addGenerateQueue' || functionName.trim() === 'onLoopEnd') return;
+        if (typeof callbackFuncs[functionName] === 'function') {
+            if(!getQueriesData(item, 'generateQueue')) setQueriesData(item, 'generateQueue', []);
+            const queue = getQueriesData(item, 'generateQueue');
+            queue.push({
+                functionName,
+                args,
+                pos: args[2] || 'after'
+            });
+            setQueriesData(item, 'generateQueue', queue);
+        }
+    }
+
+    async function generateQueueViews(item, data) {
+        if(!item) return getError('缺少item参数');
+        const queue = getQueriesData(item, 'generateQueue');
+        const beforeTask = queue.filter(item => item.pos === 'before');
+        const afterTask = queue.filter(item => item.pos === 'after');
+        try {
+             // 执行函数
+            const  callFunction = async (item) => {
+                const {functionName, args, pos } = item;
+                if(['onLoopEnd', 'generateQueueViews'].includes(functionName.trim())) return;
+                if(typeof callbackFuncs[functionName] !== 'function') return;
+                if(data) args[0] = data;
+                callbackFuncs[functionName](...args);
+            }
+            // 正序执行
+            beforeTask.forEach(item => {
+                callFunction(item);
+            });
+            // 倒序后执行
+            afterTask.reverse();
+            afterTask.forEach(item => {
+                callFunction(item);
+            });
+            deleteQueriesData(item, 'generateQueue');
+            return getSuccess('生成成功');
+        } catch (e) {
+            deleteQueriesData(item, 'generateQueue');
+            return getError(e.message || '生成失败');
+        }
     }
 
     function getBlockFieldAndId(row, idField, pkField) {
@@ -683,7 +746,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
     }
 
     // dataType：待插入数据类型，值可选择 markdown 或者 dom
-    async function insertUpdateBlock(data, item, pos = 'after', domType = '', domSubType='', relation = true, dataType = 'markdown') {
+    async function insertUpdateBlock(data, item, pos = 'after', domType = '', domSubType='', relation = true, dataType = 'markdown', target = '') {
         const wysiwyg = item.closest('.protyle-wysiwyg');
         const domTypeSelector = domType ? `[data-type="${domType}"]` : '';
         let domSubTypeSelector = '';
@@ -717,8 +780,8 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
             const result = await fetchSyncPost('/api/block/insertBlock', {
                 "dataType": dataType,
                 "data": data,
-                "nextID": pos === 'before' ? item.dataset.nodeId :  "",
-                "previousID": pos === 'after' ? item.dataset.nodeId :  "",
+                "nextID": pos === 'before' ? (target||item).dataset.nodeId :  "",
+                "previousID": pos === 'after' ? (target||item).dataset.nodeId :  "",
                 "parentID": ""
             });
             return result;
@@ -816,8 +879,11 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
     // SQL简单查询
     async function query(sql, item, fields, beforeRender, afterRender, options = {}) {
         let data = [];
+        // 初始化数据
         init(item);
+        // 返回回到函数结果
         if(typeof sql === 'function') data = await sql();
+        // sql语句查询
         else if(typeof sql === 'string') {
             // 解析命令函数
             const cmd = parseCommand(sql);
@@ -830,9 +896,11 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
                 if(typeof data === 'string') return renderError(data, item);
                 return data.map(item => item.id);
             }
+            // 返回查询结果
             data = await querySql(sql);
             if(!data) return renderError('未查询到数据', item);
         }
+        // 如果是对象等直接返回数据进行渲染
         else data = sql;
         if(!item) {
             console.warn('您未传入item参数直接返回了', data);
@@ -1078,7 +1146,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
                     if(!styles[index]) styles[index] = {};
                     if(!styles[index][field+'_style']) styles[index][field+'_style'] = '';
                     const width = /^\d+$/.test(row[field+'_width']) ? row[field+'_width']+'px;' : row[field+'_width'];
-                    styles[index][field+'_style'] += 'min-width: auto;width:' + width;
+                    styles[index][field+'_style'] += 'min-width: auto;width:' + width+';';
                     delete row[field+'_width'];
                     if(!colsSpace[field]) colsSpace[field] = width.replace(/;+$/, '');
                 }
@@ -1086,7 +1154,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
                     if(!styles[index]) styles[index] = {};
                     if(!styles[index][field+'_style']) styles[index][field+'_style'] = '';
                     const height = /^\d+$/.test(row[field+'_height']) ? row[field+'_height']+'px;' : row[field+'_height'];
-                    styles[index][field+'_style'] += 'max-height:fit-content;height:' + height;
+                    styles[index][field+'_style'] += 'max-height:fit-content;height:' + height+';';
                     delete row[field+'_height'];
                 }
                 if(row[field+'_rheight']) {
@@ -1104,13 +1172,13 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
                 if(row[field+'_color']) {
                     if(!styles[index]) styles[index] = {};
                     if(!styles[index][field+'_style']) styles[index][field+'_style'] = '';
-                    styles[index][field+'_style'] += 'color:' + row[field+'_color'];
+                    styles[index][field+'_style'] += 'color:' + row[field+'_color']+';';
                     delete row[field+'_color'];
                 }
                 if(row[field+'_bgColor']) {
                     if(!styles[index]) styles[index] = {};
                     if(!styles[index][field+'_style']) styles[index][field+'_style'] = '';
-                    styles[index][field+'_style'] += 'background-color:' + row[field+'_bgColor'];
+                    styles[index][field+'_style'] += 'background-color:' + row[field+'_bgColor']+';';
                     delete row[field+'_bgColor'];
                 }
                 if(row[field+'_align']) {
@@ -1170,7 +1238,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
                 data[key] = sortRowCustomFieldsFirst(data[key]);
             }
         }
-        if(typeof result === 'function') return result(data, rawData);
+        if(typeof result === 'function') return result(data);
         const rowNum = data.length;
         const colNum = Object.keys(data[0]||{}).length;
         if(colNum === 0 || rowNum === 0) return getInfo('未匹配到任何内容');
@@ -1286,7 +1354,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
                 const color = styles.find(item => item.toLowerCase().startsWith('color:') || item.toLowerCase().startsWith('c:'));
                 if(color){
                     const val = color.toLowerCase().replace('color:', '').replace('c:', '');
-                    if(val) setColor(row[realField], val);
+                    if(val) setColor(row, realField, val);
                 }
                 const bg = styles.find(item => item.toLowerCase().startsWith('bg:'));
                 if(bg){
@@ -2024,6 +2092,12 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         return queriesData[item.dataset.nodeId][key];
     }
 
+    function deleteQueriesData(item, key) {
+        if(!queriesData[item.dataset.nodeId]) return;
+        if(!queriesData[item.dataset.nodeId].hasOwnProperty(key)) return;
+        delete queriesData[item.dataset.nodeId][key];
+    }
+
     ///////////// 工具 //////////////////////////
     // 给查询窗口增加添加查询模板功能
     observerProtyleUtil(async protyleUtil => {
@@ -2040,7 +2114,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
             const buttonElement = document.createElement('button');
             buttonElement.dataset.type = 'code-line-tpl';
             buttonElement.className = 'block__icon block__icon--show b3-tooltips b3-tooltips__nw';
-            buttonElement.setAttribute('aria-label', '添加极简代码');
+            buttonElement.setAttribute('aria-label', '添加简单代码');
             const svg = `<svg><use xlink:href="#iconInlineCode"></use></svg>`;
             buttonElement.innerHTML = svg;
             buttonElement.onclick = (event) => {
@@ -2048,6 +2122,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
                 const jsPrefix = textarea.value.indexOf('//!js') === 0 ? '': '//!js';
                 textarea.value += `${jsPrefix}
 // 使用帮助：
+// 注意，如果查询数量过多，可能会造成查询卡顿，建议用limit加以限制
 return query(\`
     select id as id__hide,
     '-' as 序号__no_w80_0,
@@ -2094,7 +2169,7 @@ item, '', '', '',
 });
 
 // 常用字段后缀说明：
-// hide 该字段不会显示，简写h
+// hide 该字段不会显示，简写hd
 // datetime 格式日期和时间，简写dt
 // date 格式化日期，简写d
 // time 格式化时间，简写t
@@ -2112,7 +2187,8 @@ item, '', '', '',
 // s 添加删除线
 // color:颜色值 设置文字颜色，简写c，比如，c:red c:#ccc等，注意，使用这个后缀字段需要加单引号，比如，content as '内容__ref_c:red_1'
 // bg:颜色值 设置背景颜色，比如，bg:red bg:#ccc等，注意，使用这个后缀字段需要加单引号，比如，content as '内容__ref_bg:red_1'
-// width40 设置宽度，简写w40，40代表40px
+// width40 设置字段宽度，简写w40，40代表40px
+// height100 设置行高度，简写h100，100代表100px
 // rheight200 设置行高，简写rh200，200代表200px
 // hheight200 设置标题行高，简写hh200，200代表200px
 // id 标记为id字段
@@ -2127,7 +2203,7 @@ item, '', '', '',
 // valign 垂直对齐，比如 valign:top、valign:center、valign:bottom，注意，使用这个后缀字段需要加单引号
 // halign 表头水平对齐，比如 halign:left、halign:center、halign:right，注意，使用这个后缀字段需要加单引号
 // hvalign 表头垂直对齐，比如 hvalign:top、hvalign:center、hvalign:bottom，注意，使用这个后缀字段需要加单引号
-// pin:left100:zindex1 列固定，这里pin是标记固定关键词，left代表左侧固定，100代表距离左侧的距离,默认是0，zindex或z代表层级，默认是1，除了pin，其他都是可选，注意，使用这个后缀字段需要加单引号
+// pin:left100:bg#fff:zindex1 列固定，这里pin是标记固定关键词，left代表左侧固定，100代表距离左侧的距离,默认是0，bg代表背景色，#fff是背景颜色，zindex或z代表层级，默认是1，除了pin，其他都是可选，注意，使用这个后缀字段需要加单引号
 `;
                 buttonElement.innerHTML = '已添加';
                 setTimeout(() => {
@@ -2146,7 +2222,7 @@ item, '', '', '',
         const buttonElement = document.createElement('button');
         buttonElement.dataset.type = 'code-tpl';
         buttonElement.className = 'block__icon block__icon--show b3-tooltips b3-tooltips__nw';
-        buttonElement.setAttribute('aria-label', '添加查询代码');
+        buttonElement.setAttribute('aria-label', '添加复杂代码');
         const svg = `<svg><use xlink:href="#iconCode"></use></svg>`;
         buttonElement.innerHTML = svg;
         buttonElement.onclick = (event) => {
@@ -2155,7 +2231,7 @@ item, '', '', '',
             textarea.value += `${jsPrefix}
 // 使用帮助：
 return query(
-    // sql查询语句，注意，思源默认最大只支持查询64条记录，需要在 设置->搜索->搜索结果显示数 里设置下数量
+    // sql查询语句，注意，如果查询数量过多，可能会造成查询卡顿，建议用limit加以限制
     \`select * from blocks where type='d' order by created desc limit 5;\`,
     // item， 固定不变，❗️勿动，代表本嵌入块对象
     item,
@@ -2262,7 +2338,7 @@ return query(
     }
 
     // 代码片段自动检查更新
-    (async function checkUpdate() {
+    /*(async function checkUpdate() {
         if(window.snippetsUpdateChecker !== undefined && (window.snippetsUpdateChecker.version||window.snippetsUpdateChecker.isLoading)) return;
         if(!window.snippetsUpdateChecker) window.snippetsUpdateChecker = {};
         window.snippetsUpdateChecker.isLoading = true;
@@ -2318,5 +2394,5 @@ return query(
             reset();
             console.error(e);
         }
-    })();
+    })();*/
 })();
