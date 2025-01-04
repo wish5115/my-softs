@@ -1,7 +1,7 @@
 // SQL简单查询
 // 支持多字段查询，支持自定义查询结果，支持多种视图table,list,chart,mermaid等
 // version 0.0.1
-// update: 
+// update: https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/SQL%E7%AE%80%E5%8D%95%E6%9F%A5%E8%AF%A2.js
 // 使用帮助：
 /*
 // 调用示例
