@@ -9,6 +9,7 @@
     const file = '/data/snippets/snippets_update_checker.js';
     const reset = () => { window.snippetsUpdateChecker.isLoading = false; };
     const hasLoaded = () => !window.snippetsUpdateChecker.isLoading || window.snippetsUpdateChecker.version;
+    const parseJson = (text) => { try{ return JSON.parse(text) }catch(e){ return null } };
     const loadJs = () => {
         const script = document.createElement('script');
         script.src = localUrl;
@@ -21,7 +22,8 @@
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({path: file}),
         });
-        const json = await res.json();
+        const jsonText = await res.text();
+        const json = parseJson(jsonText);
         if(json && json.code === 404) {
             if(hasLoaded()) return;
             const response = await fetch(downUrl); // 不存在下载远程js
@@ -51,5 +53,6 @@
         }
     } catch(e) {
         reset();
+        console.error(e);
     }
 })();
