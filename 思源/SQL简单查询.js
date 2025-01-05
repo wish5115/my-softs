@@ -2109,7 +2109,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
             const buttonElement = document.createElement('button');
             buttonElement.dataset.type = 'code-line-tpl';
             buttonElement.className = 'block__icon block__icon--show b3-tooltips b3-tooltips__nw';
-            buttonElement.setAttribute('aria-label', '添加简单代码');
+            buttonElement.setAttribute('aria-label', '添加简单查询代码');
             const svg = `<svg><use xlink:href="#iconInlineCode"></use></svg>`;
             buttonElement.innerHTML = svg;
             buttonElement.onclick = (event) => {
@@ -2217,7 +2217,7 @@ item, '', '', '',
         const buttonElement = document.createElement('button');
         buttonElement.dataset.type = 'code-tpl';
         buttonElement.className = 'block__icon block__icon--show b3-tooltips b3-tooltips__nw';
-        buttonElement.setAttribute('aria-label', '添加复杂代码');
+        buttonElement.setAttribute('aria-label', '添加复杂查询代码');
         const svg = `<svg><use xlink:href="#iconCode"></use></svg>`;
         buttonElement.innerHTML = svg;
         buttonElement.onclick = (event) => {
