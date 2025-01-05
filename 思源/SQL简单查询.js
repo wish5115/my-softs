@@ -2,7 +2,7 @@
 // 支持多字段查询，支持自定义查询结果，支持多种视图table,list,chart,mermaid等
 // version 0.0.1
 // update: https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/SQL%E7%AE%80%E5%8D%95%E6%9F%A5%E8%AF%A2.js
-// 使用帮助：
+// 使用帮助：https://ld246.com/article/1736035967300
 /*
 // 调用示例
 // 支持字段后缀进行简单格式化，比如，content as content__link_u_b_i_1, created as created__datetime_2
@@ -2121,7 +2121,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
                 const textarea = protyleUtil.querySelector('textarea');
                 const jsPrefix = textarea.value.indexOf('//!js') === 0 ? '': '//!js';
                 textarea.value += `${jsPrefix}
-// 使用帮助：
+// 使用帮助：https://ld246.com/article/1736035967300
 // 注意，如果查询数量过多，可能会造成查询卡顿，建议用limit加以限制
 return query(\`
     select id as id__hide,
@@ -2229,7 +2229,7 @@ item, '', '', '',
             const textarea = protyleUtil.querySelector('textarea');
             const jsPrefix = textarea.value.indexOf('//!js') === 0 ? '': '//!js';
             textarea.value += `${jsPrefix}
-// 使用帮助：
+// 使用帮助：https://ld246.com/article/1736035967300
 return query(
     // sql查询语句，注意，如果查询数量过多，可能会造成查询卡顿，建议用limit加以限制
     \`select * from blocks where type='d' order by created desc limit 5;\`,
