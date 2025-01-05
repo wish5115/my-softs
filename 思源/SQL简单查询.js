@@ -123,6 +123,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         generateAVView,
         generateDatabaseView,
         insertDatabaseView,
+        insertAVView,
         generateChartView,
         generateMermaidView,
         onLoopEnd,
@@ -710,8 +711,13 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         }
     }
 
+    async function insertAVView(data, avBlockId, item, autoUpdate = false) {
+        return insertDatabaseView(data, avBlockId, item, autoUpdate);
+    }
+
     async function insertDatabaseView(data, avBlockId, item, autoUpdate = false) {
         if(!item) return getError('缺少item参数');
+        if(!avBlockId) return getError('缺少avBlockId参数');
         if(!autoUpdate && isLoading(item)) return getInfo();
         const result = await insertDatabaseByData(data, avBlockId);
         if(!result || result.code !== 0) {
@@ -1274,7 +1280,9 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         const keys = Object.keys(row||{});
         const hasCustomField = keys.find(key => key.includes('__'));
         if(!hasCustomField) {
-            rawRow = row;
+            for(const field in row) {
+                rawRow[field] = row[field];
+            }
             return row;
         }
         // 获取id
@@ -2234,6 +2242,7 @@ return query(
     '序号,内容,文档类型,路径,创建时间,更新时间',
     // 嵌入块渲染前数据处理，row代表一行数据，data代表全部数据, index是行索引，从0开始，options是全局选项，这里可以临时更改，如果用return返回，则停止循环并立即返回
     ({ row, index, data, options, toLink, toRef, formatDate, formatDateTime, renderMarkdown, getTypeText, renderListView, renderChartView, renderViewByMarkdown, ...args }) => {
+        // 查看函数使用手册 https://ld246.com/article/1736035967300#%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0%E4%B8%AD%E5%B8%B8%E7%94%A8%E5%87%BD%E6%95%B0%E8%AF%B4%E6%98%8E
         // 可以打印这些参数查看参数的值，args列出所有剩余的可用对象或函数
         // console.log(row, index, data, args);
         // 这里编写您的主要处理逻辑
