@@ -914,7 +914,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         let result = '';
         if(data && typeof data !== 'string') {
             try {
-                result = await generateTableOrDom(data, item, fields, beforeRender, options); 
+                result = await generateTableOrDom(data, item, fields, beforeRender, options);
                 if(result &&  Array.isArray(result)) return result;
             } catch (e) {
                 console.error(e);
@@ -1526,11 +1526,6 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
             .protyle-wysiwyg [data-node-id].render-node[data-type=NodeBlockQueryEmbed][data-node-id="${id}"] > .protyle-icons {
                 z-index: 2;
             }
-            .protyle-wysiwyg [data-node-id].render-node[data-type=NodeBlockQueryEmbed][data-node-id="${id}"] {
-                .query-logo, .query-title {
-                    margin-right: 8px;
-                }
-            }
         ${widthStyleTag?'</style>':''}
         `;
     }
@@ -1641,15 +1636,15 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
     }
 
     function getError(message) {
-        return `<span class="query-error" style="${getInfoStyle()};"><span  class="query-logo">${defaultLogo}</span><span  class="query-title">${defaultTitle}</span><span class="query-msg" style="color:red;">${message||'未知错误'}</span></span>`;
+        return `<span class="query-error" style="${getInfoStyle()};"><span  class="query-logo" style="margin-right: 8px;">${defaultLogo}</span><span  class="query-title" style="margin-right: 8px;">${defaultTitle}</span><span class="query-msg" style="color:red;">${message||'未知错误'}</span></span>`;
     }
 
     function getInfo(message) {
-        return `<span  class="query-info" style="${getInfoStyle()}"><span  class="query-logo">${defaultLogo}</span><span  class="query-title">${defaultTitle}</span><span class="query-msg">${message || defaultDesc}</span></span>`;
+        return `<span  class="query-info" style="${getInfoStyle()}"><span  class="query-logo" style="margin-right: 8px;">${defaultLogo}</span><span  class="query-title" style="margin-right: 8px;">${defaultTitle}</span><span class="query-msg">${message || defaultDesc}</span></span>`;
     }
 
     function getSuccess(message) {
-        return `<span  class="query-success" style="${getInfoStyle()};"><span  class="query-logo">${defaultLogo}</span><span  class="query-title">${defaultTitle}</span><span class="query-msg" style="color:green;">${message||'执行成功'}</span></span>`;
+        return `<span  class="query-success" style="${getInfoStyle()};"><span  class="query-logo" style="margin-right: 8px;">${defaultLogo}</span><span  class="query-title" style="margin-right: 8px;">${defaultTitle}</span><span class="query-msg" style="color:green;">${message||'执行成功'}</span></span>`;
     }
 
     function doNothing(message, code=202) {
