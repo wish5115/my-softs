@@ -134,6 +134,9 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         filterData,
         fetchSyncPost,
         showMessage,
+        querySql,
+        putFile,
+        getDataAvIdFromHtml,
     };
 
     /////////////// 用户自定义函数区 //////////////////////////////////
