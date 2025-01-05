@@ -2128,6 +2128,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
                 const jsPrefix = textarea.value.indexOf('//!js') === 0 ? '': '//!js';
                 textarea.value += `${jsPrefix}
 // 使用帮助：https://ld246.com/article/1736035967300
+// 注意，思源默认最大只支持查询64条记录，需要在 设置->搜索->搜索结果显示数 里设置下数量或者SQL中加limit
 // 注意，如果查询数量过多，可能会造成查询卡顿，建议用limit加以限制
 return query(\`
     select id as id__hide,
@@ -2236,8 +2237,10 @@ item, '', '', '',
             const jsPrefix = textarea.value.indexOf('//!js') === 0 ? '': '//!js';
             textarea.value += `${jsPrefix}
 // 使用帮助：https://ld246.com/article/1736035967300
+// 注意，思源默认最大只支持查询64条记录，需要在 设置->搜索->搜索结果显示数 里设置下数量或者SQL中加limit
+// 注意，如果查询数量过多，可能会造成查询卡顿，建议用limit加以限制
 return query(
-    // sql查询语句，注意，如果查询数量过多，可能会造成查询卡顿，建议用limit加以限制
+    // sql查询语句
     \`select * from blocks where type='d' order by created desc limit 5;\`,
     // item， 固定不变，❗️勿动，代表本嵌入块对象
     item,
