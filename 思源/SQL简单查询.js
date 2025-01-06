@@ -137,6 +137,10 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         querySql,
         putFile,
         getDataAvIdFromHtml,
+        render,
+        renderInfo,
+        renderError,
+        renderSuccess,
     };
 
     /////////////// 用户自定义函数区 //////////////////////////////////
@@ -924,6 +928,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         if(data && typeof data !== 'string') {
             try {
                 result = await generateTableOrDom(data, item, fields, beforeRender, options);
+                // 兼容原生样式
                 if(result &&  Array.isArray(result)) return result;
             } catch (e) {
                 console.error(e);
@@ -938,10 +943,16 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         whenElementExist(()=>item.querySelector('.b3-form__space--small')).then(async (spaceSmall) => {
             let html = getInfo('未匹配到任何内容');
             if(typeof data === 'string') {
-                html = getError(data);
+                html = data;
+                // 兼容直接返回render
+                if(data.indexOf('query-error') === -1 && data.indexOf('query-success') === -1 && data.indexOf('query-info') === -1) {
+                    html = getInfo(data);
+                }
             } else if(result && isObject(result)) {
+                // chart mermaid 渲染
                 html = `<div class="protyle-wysiwyg__embed" data-id="">${getQueryEmbedStyle(item, options, true)}<div class="${result.type}-container"></div></div>`;
             } else {
+                // 正常数据渲染
                 html = `<div class="protyle-wysiwyg__embed" data-id="">${result}</div>`;
             }
             spaceSmall.outerHTML = html;
@@ -1049,7 +1060,15 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
     }
 
     function renderError(message, item) {
-        return render(message, item);
+        return render(getError(message), item);
+    }
+
+    function renderInfo(message, item) {
+        return render(getInfo(message), item);
+    }
+
+    function renderSuccess(message, item) {
+        return render(getSuccess(message), item);
     }
 
     function parseCommand(cmd) {
@@ -1729,12 +1748,12 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
             const result = await fetchSyncPost('/api/query/sql', { "stmt": sql });
             if (result.code !== 0) {
                 console.error("查询数据库出错", result.msg);
-                return result.msg;
+                return getError(result.msg);
             }
             return result.data;
         } catch(e) {
             console.error("查询数据库出错", e.message);
-            return e.message;
+            return getError(e.message);
         }
     }
 
