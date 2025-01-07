@@ -1,8 +1,11 @@
 // 清理未引用数据库
 // 默认会移动到/data/trash/av目录中
+// version: 0.0.2
 // 使用方法：
 // 1. 思源主菜单底部 -> 清理未引用数据库（如果打开了控制台，可以在控制台查看详情）
 // 2. 在控制台执行 clearUnRefAvs() 即可
+// 更新记录
+// 0.0.2 增加删除前确认是否删除，防止误删除
 (()=>{
     // 定义未引用的数据库移动到哪
     let trashPath = '/data/trash/av/';
@@ -44,6 +47,8 @@
             if(showMsg) showMessage('没找到未引用的数据库', true);
             return;
         }
+        // 确认是否删除
+        if(!confirm(`您确定要删除${delFiles.length}个未引用的数据库吗？`)) return;
     
         // 创建文件夹
         trashPath = trashPath.replace(/\/$/, '') + '/';
