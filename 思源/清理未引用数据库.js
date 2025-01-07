@@ -13,6 +13,9 @@
     // 把函数导出，以便控制台调用，如果有冲突可以在这里修改或关闭
     window.clearUnRefAvs = clearUnRefAvs;
 
+    // 发布模式不显示
+    if(window.siyuan.config.readonly) return;
+
     // 监听主菜单
     whenElementExist('#commonMenu .b3-menu__items').then((mainMenu) => {
         observeMainMenu(mainMenu, async ()=>{
