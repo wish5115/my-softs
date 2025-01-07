@@ -33,7 +33,11 @@
     
         // 获取待删除数据库文件
         const fileRes = await requestApi('/api/file/readDir', {path: '/data/storage/av/'});
-        if(!fileRes || fileRes.code !== 0) return;
+        if(!fileRes || fileRes.code !== 0) {
+            console.log('未找到数据库文件');
+            if(showMsg) showMessage('未找到数据库文件', true);
+            return;
+        }
         const delFiles = fileRes.data.filter(file => !file.isDir && file.name.endsWith('.json') && !avIds.includes(file.name.replace('.json', '')));
         if(delFiles.length === 0) {
             console.log('没有找到未引用的数据库');
