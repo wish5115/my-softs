@@ -40,8 +40,8 @@
         }
         const delFiles = fileRes.data.filter(file => !file.isDir && file.name.endsWith('.json') && !avIds.includes(file.name.replace('.json', '')));
         if(delFiles.length === 0) {
-            console.log('没有找到未引用的数据库');
-            if(showMsg) showMessage('没有找到未引用的数据库', true);
+            console.log('没找到未引用的数据库');
+            if(showMsg) showMessage('没找到未引用的数据库', true);
             return;
         }
     
