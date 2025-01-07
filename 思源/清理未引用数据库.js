@@ -19,7 +19,7 @@
             sp2.insertAdjacentHTML('beforebegin', btnString);
             const clearBtn = mainMenu.querySelector('button[data-id="clearUnRefAvs"]');
             clearBtn.onclick = (event) => {
-                document.body.click(); // 关闭监听主菜单
+                document.body.click(); // 关闭主菜单
                 clearUnRefAvs(true); // 开始清理
             };
         });
