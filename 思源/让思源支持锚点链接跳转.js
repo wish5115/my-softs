@@ -5,6 +5,8 @@
         let headMaps = {};
         editor.addEventListener('click', async (event) => {
             if(event.target.matches('span[data-type="a"][data-href^="#"]')) {
+                event.stopPropagation();
+                event.preventDefault();
                 if(Object.keys(headMaps).length === 0) {
                     const nodeId = editor.parentElement?.querySelector('.protyle-title')?.dataset?.nodeId;
                     if(!nodeId) return;
@@ -31,7 +33,7 @@
                     }
                 });
             }
-        });
+        }, { capture: true });
     });
     // 监听编辑器被添加
     function observeEditorLoaded(callback) {
