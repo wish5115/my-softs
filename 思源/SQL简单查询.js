@@ -1,8 +1,10 @@
 // SQL简单查询
-// 支持多字段查询，支持自定义查询结果，支持多种视图table,list,chart,mermaid等
-// version 0.0.1
+// 支持多字段查询，支持自定义查询结果，支持多种视图table,list,chart,mermaid等，支持数据库查询，可以通过SQL查数据库，连表查数据库及sqlite等。
+// version 0.0.2
 // update: https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/SQL%E7%AE%80%E5%8D%95%E6%9F%A5%E8%AF%A2.js
 // 使用帮助：https://ld246.com/article/1736035967300
+// 版本更新记录
+// 0.0.2 优化细节；增加alSql查询，支持SQL查询数据库等
 /*
 // 调用示例
 // 支持字段后缀进行简单格式化，比如，content as content__link_u_b_i_1, created as created__datetime_2
@@ -44,9 +46,34 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
 // 5. 如何对列操作？可以通过全局变量与field字段结合操作，也可以拿到data参数后遍历，然后判断是目标列进行操作即可
 // 6. 注意，思源默认最大只支持查询64条记录，需要在 设置->搜索->搜索结果显示数 里设置下数量或者SQL中加limit
 */
+
+// alsql使用方法：
+// 在思源代码片段中添加 简单查询alasql扩展 即可，到这里复制 https://gitee.com/wish163/mysoft/blob/main/%E6%80%9D%E6%BA%90/SQL%E7%AE%80%E5%8D%95%E6%9F%A5%E8%AF%A2.alasql.js
+// alaSql 注意事项：1. 嵌套查询用 -> 代替 .  2. 字段中含有中文名需要在中文名字段两边加``包裹
+// alaSql查询示例：
+// return query(alasql("SELECT * FROM ? WHERE `主键` = 'demo1'", [fromAv('20250108042734-mvrbk2f')]), item);
+// return query(alasql("SELECT `主键`->id as id FROM ? WHERE `主键`->id = '20250108042734-mvrbk2f'", [fromAv('20250108042734-mvrbk2f', 'row')]), item);
+/* alaSql连表查询示例：
+return query(alasql(`
+    SELECT main.*, related1.关联字段1, related2.关联字段2
+    FROM ? AS main
+    LEFT JOIN ? AS related1
+    ON main.`主键` = related1.`主键`
+    LEFT JOIN ? AS related2
+    ON main.`主键` = related2.`主键`
+    WHERE main.`主键` = 'demo1'
+`, [fromAv('mainAvBlockId'), fromAv('relatedAvBlockId1'), fromAv('relatedAvBlockId2')]), item);
+// alaSql查询同样支持SQL标记符，比如 __w80, __color#f00等
+*/
 (async () => {
     // 输出全局变量，如果与现有全局变量名冲突，在此处修改即可
     window.query = query;
+
+    // 输出其他全局变量，方便alaSql中使用
+    window.fromAv = fromAv;
+    window.fromAvName = fromAvName;
+    window.fromAvBlockId = fromAvBlockId;
+    window.fromSql = fromSql;
 
     // 默认logo信息，用于显示在嵌入块的标题前面
     const defaultLogo = `<svg style="vertical-align:middle;position: relative;top: -2px;opacity: 0.8;" width="20" height="20" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M461.12 84.352a397.056 397.056 0 0 1 386.304 489.152 40.704 40.704 0 0 1-79.232-18.816 315.648 315.648 0 1 0-76.992 142.784 40.704 40.704 0 0 1 55.68-3.456c2.624 1.536 5.12 3.456 7.36 5.632l186.56 179.968a40 40 0 0 1 0.512 57.088l-0.512 0.512a40.704 40.704 0 0 1-57.088 0.512l-162.24-156.48A397.056 397.056 0 1 1 461.056 84.352z m67.008 157.376c75.904 20.608 128.768 66.56 155.072 135.616a40.704 40.704 0 0 1-76.16 28.992c-16.704-44.096-48.96-72.064-100.288-86.016a40.704 40.704 0 1 1 21.376-78.592z" fill=""></path></svg>`;
@@ -129,18 +156,28 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         onLoopEnd,
         addGenerateQueue,
         generateQueueViews,
+        fromAv,
+        fromSql,
+        fromAvName,
+        fromAvBlockId,
+        rowsToColsMap,
+        rowsToColsArray,
+        getAvDataByAvId,
+        getAvDataByAvBlockId,
+        getAvDataByAvName,
+        getAvIdFromHtml,
         sortRowCustomFieldsFirst,
         sortRowSortFieldsFirst,
         filterData,
         fetchSyncPost,
         showMessage,
-        querySql,
         putFile,
-        getDataAvIdFromHtml,
+        getFile,
         render,
         renderInfo,
         renderError,
         renderSuccess,
+        addScript,
     };
 
     /////////////// 用户自定义函数区 //////////////////////////////////
@@ -322,6 +359,21 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
 
     // formatStr默认'$1-$2-$3 $4:$5:$6' 分别代表年月日时分秒
     function formatDateTime(content, formatStr = '$1-$2-$3 $4:$5:$6') {
+        if(!/^\d+$/.test(content)) return content;
+        if((content+'').length === 13) {
+            const timestamp = parseInt(content);
+            // 创建一个 Date 对象
+            const date = new Date(timestamp);
+            // 提取年、月、日、时、分、秒
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0'); // 月份从 0 开始，需要加 1
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            // 拼接成 YYYYMMDDHHMMSS 格式
+            content = `${year}${month}${day}${hours}${minutes}${seconds}`;
+        }
         return content?.replace(/^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)$/, formatStr);
     }
 
@@ -737,7 +789,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
     async function insertDatabaseByData(data, avBlockId) {
         const block = await querySql(`SELECT * FROM blocks where type ='av' and id='${avBlockId}'`);
         if(block.length === 0) return getJson(-1, "未找到数据库文档块，请检查数据库文档块id是否正确");
-        const avId = block.map(b => getDataAvIdFromHtml(b.markdown))[0];
+        const avId = block.map(b => getAvIdFromHtml(b.markdown))[0];
         const blockIds = data.map(row => row.id).filter(id => id);
         return await addBlocksToAv(blockIds, avId, avBlockId);
     }
@@ -801,6 +853,201 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         }
     }
 
+    // type row 把数据转变为行数据，即每行一条记录，col 把数据转变为列数据，即每列一条记录，table格式为表格数据方便查询
+    async function fromAv(id, type = 'table') {
+        // 如果匹配到是id类型
+        if(/^2[01]\d{12}\-[a-z0-9]{7}$/i.test(id)) {
+            // 首先尝试用avId获取数据库数据
+            const avApiData = await fetchSyncPost('/api/av/getAttributeView', {"id": id});
+            if(avApiData && avApiData.code === 0 && avApiData?.data?.av?.keyValues) {
+                return getAvDataByAvId(avApiData.data.av.keyValues, type);
+            }
+
+            // 然后用blockId获取数据库数据
+            const block = await fromSql(`SELECT * FROM blocks where type ='av' and id='${id}'`);
+            if(block.length > 0) {
+                const avId = block.map(b => getAvIdFromHtml(b.markdown))[0] || '';
+                if(avId) return getAvDataByAvId(avId, type);
+            }
+        }
+
+        // 最后尝试用avName搜索数据库数据
+        const result = await fetchSyncPost('/api/av/searchAttributeView', {"keyword": id});
+        if(!result || result.code !== 0 || !result?.data?.results || result?.data?.results?.length === 0) return [];
+        const avId = result?.data?.results[0]?.avID || '';
+        if(avId) return getAvDataByAvId(avId, type);
+
+        // 如果都不匹配返回空数组
+        return [];
+    }
+
+    // type row 把数据转变为行数据，即每行一条记录，col 把数据转变为列数据，即每列一条记录，table格式为表格数据方便查询
+    async function getAvDataByAvBlockId(avBlockId, type = 'table') {
+        const block = await fromSql(`SELECT * FROM blocks where type ='av' and id='${avBlockId}'`);
+        if(block.length === 0) return [];
+        const avId = block.map(b => getAvIdFromHtml(b.markdown))[0] || '';
+        return await getAvDataByAvId(avId, type);
+    }
+
+    async function fromAvBlockId(avBlockId, type = 'table') {
+        return getAvDataByAvBlockId(avBlockId, type);
+    }
+
+    // type row 把数据转变为行数据，即每行一条记录，col 把数据转变为列数据，即每列一条记录，table格式为表格数据方便查询
+    async function getAvDataByAvName(name, type = 'table') {
+        const result = await fetchSyncPost('/api/av/searchAttributeView', {"keyword": name});
+        if(!result || result.code !== 0 || !result?.data?.results || result?.data?.results?.length === 0) return [];
+        const avId = result?.data?.results[0]?.avID || '';
+        return await getAvDataByAvId(avId, type);
+    }
+
+    async function fromAvName(name, type = 'table') {
+        return getAvDataByAvName(name, type);
+    }
+
+    // type row 把数据转变为行数据，即每行一条记录，col 把数据转变为列数据，即每列一条记录，table格式为表格数据方便查询
+    async function getAvDataByAvId(avId, type = 'table') {
+        if(!avId) return [];
+        let avData = [];
+        // 获取数据库keys
+        // const data = await fetchSyncPost("/api/av/getAttributeViewKeysByAvID", {
+        //     avID: avId,
+        // });
+        // if(!data || data.code !== 0) return [];
+        // avData = data.data;
+
+        // 获取数据库values
+        let avValues = [];
+        if(typeof avId === 'string') {
+            // 从api获取
+            const avApiData = await fetchSyncPost('/api/av/getAttributeView', {"id": avId});
+            if(!avApiData || avApiData.code !== 0 || !avApiData?.data?.av?.keyValues) return [];
+            avValues = avApiData.data.av.keyValues;
+
+            // 从文件读取
+            // const avFileData = await getFile(`/data/storage/av/${avId}.json`);
+            // if(avFileData && avFileData.code === 404) return [];
+            // avValues = avFileData.keyValues;
+        } else {
+            avValues = avId;
+        }
+
+        // 合并keys values
+        if(type === 'rows' || type === 'row') {
+            return formatAvData(avValues, type);
+        } else if(type === 'cols' || type === 'col') {
+            return formatAvData(avValues, type);
+            //avData = avValues;
+            // avData.forEach(item => {
+            //     item.values = avValues.find(val => val.key.id === item.id)?.values || [];
+            // });
+        } else {
+            return formatAvData(avValues);
+        }
+
+        return avData;
+    }
+
+    // type row 把数据转变为行数据，即每行一条记录，col 把数据转变为列数据，即每列一条记录，table格式为表格数据方便查询
+    function formatAvData(avValues, type = 'table') {
+        if(type === 'cols' || type === 'col') return avValues;
+        let avData = [];
+        const colNameMaps = {};
+        const rowLength = avValues.find(v => v.key.type === 'block')?.values?.length || 0;
+        const padArray = (array, n) => {
+            if (array.length >= n) return array; // 如果长度足够，直接返回
+            return array.concat(new Array(n - array.length).fill().map(() => ({})));
+        };
+        avValues.forEach((col, colIndex) => {
+            colNameMaps[col.key.name] = colNameMaps[col.key.name] !== undefined ? ++colNameMaps[col.key.name] : 0;
+            if (!col.values) col.values = new Array(rowLength).fill().map(() => ({}));
+            col.values = padArray(col.values, rowLength);
+            col.values?.forEach((row, rowIndex) => {
+                row.key = col.key;
+                if (!avData[rowIndex]) avData[rowIndex] = {};
+                const colName = colNameMaps[col.key.name] ? col.key.name + (colNameMaps[col.key.name] + 1) : col.key.name;
+                avData[rowIndex][colName] = row;
+            });
+        });
+        if(type === 'rows' || type === 'row') {
+            return avData;
+        } else {
+            avData = avData.map((item, rowIndex) => {
+                const block = Object.values(item).find(v => v.key.type === 'block');
+                for(const key in item) {
+                    const row = item[key];
+                    // 单选
+                    if(row.key.type === 'select') {
+                        item[key] = row['mSelect'] ? row['mSelect'][0]?.content || '' : '';
+                    }
+                    // 复选框
+                    else if(row.key.type === 'checkbox') {
+                        item[key] = row[row.key.type] ? row[row.key.type].checked : false;
+                    }
+                    // 行号
+                    else if(row.key.type === 'lineNumber') {
+                        item[key] = rowIndex + 1;
+                    }
+                    // 创建时间和更新时间
+                    else if(row.key.type === 'created' || row.key.type === 'updated') {
+                        item[key] = formatTime(block[row.key.type + 'At']) || '';
+                    }
+                    // 模板
+                    else if(row.key.type === 'template') {
+                        item[key] = row.key.template || '';
+                    }
+                    // 资源
+                    else if(row.key.type === 'mAsset') {
+                        item[key] = row[row.key.type]?JSON.stringify(row[row.key.type]):'';
+                    }
+                    // 汇总
+                    else if(row.key.type === 'rollup') {
+                        item[key] = row.key.rollup?JSON.stringify(row.key.rollup):'';
+                    }
+                    // 关联
+                    else if(row.key.type === 'relation') {
+                        const data = row[row.key.type] ? row[row.key.type] : {};
+                        data.relation = row.key.relation || {};
+                        item[key] = JSON.stringify(data);
+                    }
+                    // 数组值
+                    else if(row[row.key.type] && Array.isArray(row[row.key.type])){
+                        item[key] = row[row.key.type]?.map(v => v.content).join(', ') || '';
+                    }
+                    else {
+                        item[key] = row[row.key.type]?.content || '';
+                    }
+                }
+                return item;
+            });
+            return avData;
+        }
+    }
+
+    // 行数据转换为列数据map格式
+    function rowsToColsMap(data) {
+        const columns = Object.keys(data[0]);
+        // 初始化列数据
+        const transposedData = {};
+        // 填充列数据
+        columns.forEach(column => {
+            transposedData[column] = data.map(row => row[column]);
+        });
+        return transposedData;
+    }
+
+    // 行数据转换为列数据array格式
+    function rowsToColsArray(data) {
+        // 获取所有列名
+        const columns = Object.keys(data[0]);
+        // 初始化列数据
+        const transposedData = columns.map(column => {
+            return {
+                [column]: data.map(row => row[column])
+            };
+        });
+        return transposedData;
+    }
 
     // 显示文档封面
     function getTitleImage(ial, maxWidth = '100px', maxHeight = '') {
@@ -915,8 +1162,11 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         }
         // 如果是对象等直接返回数据进行渲染
         else data = sql;
+        // 如果无参数返回所以导出函数
+        if(arguments.length === 0) return callbackFuncs;
+        // 如果未传入item，提醒下
         if(!item) {
-            console.warn('您未传入item参数直接返回了', data);
+            console.warn('您未传入item参数', data);
             return data;
         }
         return render(data, item, fields, beforeRender, afterRender, options) || [];
@@ -1072,9 +1322,20 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
     }
 
     function parseCommand(cmd) {
-        // 返回全部函数
-        if(cmd.startsWith(':funcs')) return callbackFuncs;
-        // 返回指定函数
+        // 返回函数，格式 query(':funcs'); 或 query(':funcs:func1,func2');
+        if(cmd.startsWith(':funcs')) {
+            const funcs = cmd.replace(/^:funcs:?/i, '').split(',').filter(v=>v);
+            if(funcs.length === 0) return callbackFuncs;
+            const newFuncs = {};
+            funcs.forEach(func=>{
+                func = func.trim();
+                if(callbackFuncs[func]) {
+                    newFuncs[func] = callbackFuncs[func];
+                }
+            });
+            return newFuncs;
+        }
+        // 返回指定函数，格式 query(':funcName');
         if(cmd.startsWith(':')) {
             cmd = cmd.substring(1);
             if(callbackFuncs[cmd]) return callbackFuncs[cmd];
@@ -1757,8 +2018,22 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         }
     }
 
+    async function fromSql(sql) {
+        try {
+            const result = await fetchSyncPost('/api/query/sql', { "stmt": sql });
+            if (result.code !== 0) {
+                console.error("查询数据库出错", result.msg);
+                return [];
+            }
+            return result.data;
+        } catch(e) {
+            console.error("查询数据库出错", e.message);
+            return [];
+        }
+    }
+
     // 获取avid
-    function getDataAvIdFromHtml(htmlString) {
+    function getAvIdFromHtml(htmlString) {
         // 使用正则表达式匹配data-av-id的值
         const match = htmlString.match(/data-av-id="([^"]+)"/);
         if (match && match[1]) {
@@ -1820,7 +2095,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         window.mermaid.initialize(config);
     }
 
-    function addScript(path, id) {
+    function addScript(path, id, async = true) {
         return new Promise((resolve) => {
             if (document.getElementById(id)) {
                 // 脚本加载后再次调用直接返回
@@ -1829,7 +2104,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
             }
             const scriptElement = document.createElement("script");
             scriptElement.src = path;
-            scriptElement.async = true;
+            scriptElement.async = async;
             // 循环调用时 Chrome 不会重复请求 js
             document.head.appendChild(scriptElement);
             scriptElement.onload = () => {
@@ -1883,7 +2158,7 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         }
     }
 
-    function putFile(storagePath, data) {
+    async function putFile(storagePath, data) {
         const formData = new FormData();
         formData.append("path", storagePath);
         formData.append("file", new Blob([data]));
@@ -1899,6 +2174,26 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
         }).catch((error) => {
             console.error(error);
             return getJson(error.code, error.message, error);
+        });
+    }
+
+    // 获取文件
+    async function getFile(path, type = 'json') {
+        return fetch("/api/file/getFile", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ path }),
+        }).then((response) => {
+            if (response.ok) {
+                return type === 'json' ? response.json() : response.text();
+            } else {
+                return type === 'json' ? {} : '';
+            }
+        }).catch((error) => {
+            console.error(error);
+            return type === 'json' ? {} : '';
         });
     }
 
