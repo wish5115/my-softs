@@ -51,19 +51,24 @@ return query(`sql语句`, item, '字段列表', beforeRender=({row, index, toLin
 // 在思源代码片段中添加 简单查询alasql扩展 即可，到这里复制 https://gitee.com/wish163/mysoft/blob/main/%E6%80%9D%E6%BA%90/SQL%E7%AE%80%E5%8D%95%E6%9F%A5%E8%AF%A2.alasql.js
 // alaSql 注意事项：1. 嵌套查询用 -> 代替 .  2. 字段中含有中文名需要在中文名字段两边加``包裹
 // alaSql查询示例：
-// return query(alasql("SELECT * FROM ? WHERE `主键` = 'demo1'", [fromAv('20250108042734-mvrbk2f')]), item);
-// return query(alasql("SELECT `主键`->id as id FROM ? WHERE `主键`->id = '20250108042734-mvrbk2f'", [fromAv('20250108042734-mvrbk2f', 'row')]), item);
+// return query("SELECT * FROM ? WHERE `主键` = 'demo1'", [fromAv('20250108042734-mvrbk2f'), item]);
+// return query("SELECT `主键`->id as id FROM ? WHERE `主键`->id = '20250108042734-mvrbk2f'", [fromAv('20250108042734-mvrbk2f', 'row'), item]);
 /* alaSql连表查询示例：
-return query(alasql(`
-    SELECT main.*, related1.关联字段1, related2.关联字段2
+return query(`
+    SELECT main.*, related1.\`关联字段1\`, related2.\`关联字段2\`
     FROM ? AS main
     LEFT JOIN ? AS related1
-    ON main.`主键` = related1.`主键`
+    ON main.\`主键\` = related1.\`主键\`
     LEFT JOIN ? AS related2
-    ON main.`主键` = related2.`主键`
-    WHERE main.`主键` = 'demo1'
-`, [fromAv('mainAvBlockId'), fromAv('relatedAvBlockId1'), fromAv('relatedAvBlockId2')]), item);
+    ON main.\`主键\` = related2.\`主键\`
+    WHERE main.\`主键\` = 'demo1'
+`, [fromAv('mainAvBlockId'), fromAv('relatedAvBlockId1'), fromAv('relatedAvBlockId2'), item]);
 // alaSql查询同样支持SQL标记符，比如 __w80, __color#f00等
+// 复杂查询可直接调用alasql函数，然后把查询结果传给query()第一个参数即可，alasql函数中同样支持SQL标记符。
+// 如：
+return (async () => {
+    return query(alasql("select `序号`, `内容` from ?", [await fromAv('xxxxx', true)]), item);
+})();
 */
 (async () => {
     // 输出全局变量，如果与现有全局变量名冲突，在此处修改即可
@@ -71,15 +76,13 @@ return query(alasql(`
 
     // 输出其他全局变量，方便alaSql中使用
     window.fromAv = fromAv;
-    window.fromAvName = fromAvName;
-    window.fromAvBlockId = fromAvBlockId;
     window.fromSql = fromSql;
 
     // 默认logo信息，用于显示在嵌入块的标题前面
     const defaultLogo = `<svg style="vertical-align:middle;position: relative;top: -2px;opacity: 0.8;" width="20" height="20" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M461.12 84.352a397.056 397.056 0 0 1 386.304 489.152 40.704 40.704 0 0 1-79.232-18.816 315.648 315.648 0 1 0-76.992 142.784 40.704 40.704 0 0 1 55.68-3.456c2.624 1.536 5.12 3.456 7.36 5.632l186.56 179.968a40 40 0 0 1 0.512 57.088l-0.512 0.512a40.704 40.704 0 0 1-57.088 0.512l-162.24-156.48A397.056 397.056 0 1 1 461.056 84.352z m67.008 157.376c75.904 20.608 128.768 66.56 155.072 135.616a40.704 40.704 0 0 1-76.16 28.992c-16.704-44.096-48.96-72.064-100.288-86.016a40.704 40.704 0 1 1 21.376-78.592z" fill=""></path></svg>`;
 
     // 默认标题信息，用于显示在嵌入块的提示信息前面
-    const defaultTitle = '简单查询 0.0.1';
+    const defaultTitle = '简单查询 0.0.2';
 
     // 默认描述信息，用于默认提示信息
     const defaultDesc = '让数据从此不再难查 : )';
@@ -158,8 +161,6 @@ return query(alasql(`
         generateQueueViews,
         fromAv,
         fromSql,
-        fromAvName,
-        fromAvBlockId,
         rowsToColsMap,
         rowsToColsArray,
         getAvDataByAvId,
@@ -178,9 +179,14 @@ return query(alasql(`
         renderError,
         renderSuccess,
         addScript,
+        stripHtml,
     };
 
     /////////////// 用户自定义函数区 //////////////////////////////////
+
+    function stripHtml(html) {
+        return html.replace(/<[^>]+>/g, '');
+    }
 
     function addColor(content, color) {
         return `<span style="color:${color};">${content}</span>`;
@@ -854,43 +860,43 @@ return query(alasql(`
     }
 
     // type row 把数据转变为行数据，即每行一条记录，col 把数据转变为列数据，即每列一条记录，table格式为表格数据方便查询
-    async function fromAv(id, type = 'table') {
-        // 如果匹配到是id类型
-        if(/^2[01]\d{12}\-[a-z0-9]{7}$/i.test(id)) {
-            // 首先尝试用avId获取数据库数据
-            const avApiData = await fetchSyncPost('/api/av/getAttributeView', {"id": id});
-            if(avApiData && avApiData.code === 0 && avApiData?.data?.av?.keyValues) {
-                return getAvDataByAvId(avApiData.data.av.keyValues, type);
+    function fromAv(id, isGetData = false, type = 'table') {
+        if(!isGetData) return '[:--fromAv--:]' + id;
+        const getAvData = async (id, type = 'table') => {
+            // 如果匹配到是id类型
+            if(/^2[01]\d{12}\-[a-z0-9]{7}$/i.test(id)) {
+                // 首先尝试用avId获取数据库数据
+                const avApiData = await fetchSyncPost('/api/av/getAttributeView', {"id": id});
+                if(avApiData && avApiData.code === 0 && avApiData?.data?.av?.keyValues) {
+                    return getAvDataByAvId(avApiData.data.av.keyValues, type);
+                }
+
+                // 然后用blockId获取数据库数据
+                const block = await fromSql(`SELECT * FROM blocks where type ='av' and id='${id}'`, true);
+                if(block.length > 0) {
+                    const avId = block.map(b => getAvIdFromHtml(b.markdown))[0] || '';
+                    if(avId) return getAvDataByAvId(avId, type);
+                }
             }
 
-            // 然后用blockId获取数据库数据
-            const block = await fromSql(`SELECT * FROM blocks where type ='av' and id='${id}'`);
-            if(block.length > 0) {
-                const avId = block.map(b => getAvIdFromHtml(b.markdown))[0] || '';
-                if(avId) return getAvDataByAvId(avId, type);
-            }
-        }
+            // 最后尝试用avName搜索数据库数据
+            const result = await fetchSyncPost('/api/av/searchAttributeView', {"keyword": id});
+            if(!result || result.code !== 0 || !result?.data?.results || result?.data?.results?.length === 0) return [];
+            const avId = result?.data?.results[0]?.avID || '';
+            if(avId) return getAvDataByAvId(avId, type);
 
-        // 最后尝试用avName搜索数据库数据
-        const result = await fetchSyncPost('/api/av/searchAttributeView', {"keyword": id});
-        if(!result || result.code !== 0 || !result?.data?.results || result?.data?.results?.length === 0) return [];
-        const avId = result?.data?.results[0]?.avID || '';
-        if(avId) return getAvDataByAvId(avId, type);
-
-        // 如果都不匹配返回空数组
-        return [];
+            // 如果都不匹配返回空数组
+            return [];
+        };
+        return getAvData(id, type);
     }
 
     // type row 把数据转变为行数据，即每行一条记录，col 把数据转变为列数据，即每列一条记录，table格式为表格数据方便查询
     async function getAvDataByAvBlockId(avBlockId, type = 'table') {
-        const block = await fromSql(`SELECT * FROM blocks where type ='av' and id='${avBlockId}'`);
+        const block = await fromSql(`SELECT * FROM blocks where type ='av' and id='${avBlockId}'`, true);
         if(block.length === 0) return [];
         const avId = block.map(b => getAvIdFromHtml(b.markdown))[0] || '';
         return await getAvDataByAvId(avId, type);
-    }
-
-    async function fromAvBlockId(avBlockId, type = 'table') {
-        return getAvDataByAvBlockId(avBlockId, type);
     }
 
     // type row 把数据转变为行数据，即每行一条记录，col 把数据转变为列数据，即每列一条记录，table格式为表格数据方便查询
@@ -899,10 +905,6 @@ return query(alasql(`
         if(!result || result.code !== 0 || !result?.data?.results || result?.data?.results?.length === 0) return [];
         const avId = result?.data?.results[0]?.avID || '';
         return await getAvDataByAvId(avId, type);
-    }
-
-    async function fromAvName(name, type = 'table') {
-        return getAvDataByAvName(name, type);
     }
 
     // type row 把数据转变为行数据，即每行一条记录，col 把数据转变为列数据，即每列一条记录，table格式为表格数据方便查询
@@ -976,8 +978,17 @@ return query(alasql(`
                 const block = Object.values(item).find(v => v.key.type === 'block');
                 for(const key in item) {
                     const row = item[key];
+                    // 主键
+                    if(row.key.type === 'block') {
+                        if(row.isDetached) {
+                            item[key] = row[row.key.type]?.content || '';
+                        } else {
+                            const html = `<span data-type="block-ref" data-id="${row[row.key.type]?.id||''}" data-subtype="s" class="av__celltext av__celltext--ref">${row[row.key.type]?.content||''}</span>`;
+                            item[key] = html;
+                        }
+                    }
                     // 单选
-                    if(row.key.type === 'select') {
+                    else if(row.key.type === 'select') {
                         item[key] = row['mSelect'] ? row['mSelect'][0]?.content || '' : '';
                     }
                     // 复选框
@@ -990,7 +1001,7 @@ return query(alasql(`
                     }
                     // 创建时间和更新时间
                     else if(row.key.type === 'created' || row.key.type === 'updated') {
-                        item[key] = formatTime(block[row.key.type + 'At']) || '';
+                        item[key] = block[row.key.type + 'At'] || '';
                     }
                     // 模板
                     else if(row.key.type === 'template') {
@@ -1139,26 +1150,44 @@ return query(alasql(`
     // SQL简单查询
     async function query(sql, item, fields, beforeRender, afterRender, options = {}) {
         let data = [];
+        // 判断是否alaSql查询
+        if(Array.isArray(item)) {
+            const itemNode = item.pop();
+            const params = item;
+            item = itemNode;
+            data = await alaQuery(sql, params);
+            return render(data, item, fields, beforeRender, afterRender, options) || [];
+        }
         // 初始化数据
         init(item);
         // 返回回到函数结果
         if(typeof sql === 'function') data = await sql();
         // sql语句查询
         else if(typeof sql === 'string') {
-            // 解析命令函数
-            const cmd = parseCommand(sql);
-            if(cmd) return cmd;
+            if(sql.startsWith('[:--fromAv--:]')) {
+                // 解析fromAv('xxxxx')数据
+                const avId = sql.replace('[:--fromAv--:]', '');
+                data = await fromAv(avId, true);
+            } else {
+                // 解析 fromSql('xxxxx')数据
+                if(sql.startsWith('[:--fromSql--:]')) {
+                    sql = sql.replace('[:--fromSql--:]', '');
+                }
+                // 解析命令函数
+                const cmd = parseCommand(sql, item);
+                if(cmd) return cmd;
 
-            // 返回思源原始样式 select ** from xxx;
-            if(/select\s+\*\*\s+from/i.test(sql)) {
-                sql = sql.replace('**', '*');
+                // 返回思源原始样式 select ** from xxx;
+                if(/select\s+\*\*\s+from/i.test(sql)) {
+                    sql = sql.replace('**', '*');
+                    data = await querySql(sql);
+                    if(typeof data === 'string') return renderError(data, item);
+                    return data.map(item => item.id);
+                }
+                // 返回查询结果
                 data = await querySql(sql);
-                if(typeof data === 'string') return renderError(data, item);
-                return data.map(item => item.id);
+                if(!data) return renderError('未查询到数据', item);
             }
-            // 返回查询结果
-            data = await querySql(sql);
-            if(!data) return renderError('未查询到数据', item);
         }
         // 如果是对象等直接返回数据进行渲染
         else data = sql;
@@ -1170,6 +1199,20 @@ return query(alasql(`
             return data;
         }
         return render(data, item, fields, beforeRender, afterRender, options) || [];
+    }
+
+    async function alaQuery(sql, params, cb, scope) {
+        for(const i in params) {
+            let param = params[i];
+            if(typeof param === 'string' && param.startsWith('[:--fromAv--:]')) {
+                param = param.replace('[:--fromAv--:]', '');
+                params[i] = await fromAv(param, true);
+            } else if(typeof param === 'string' && param.startsWith('[:--fromSql--:]')) {
+                param = param.replace('[:--fromSql--:]', '');
+                params[i] = await fromSql(param, true);
+            }
+        }
+        return alasql(sql, params, cb, scope);
     }
 
     // 渲染html
@@ -1335,8 +1378,13 @@ return query(alasql(`
             });
             return newFuncs;
         }
+        // 外部注册函数
+        else if(cmd.startsWith(':register:') && typeof item === 'function') {
+            const funcName = cmd.replace(/^:register:/i, '');
+            callbackFuncs[funcName] = item;
+        }
         // 返回指定函数，格式 query(':funcName');
-        if(cmd.startsWith(':')) {
+        else if(cmd.startsWith(':')) {
             cmd = cmd.substring(1);
             if(callbackFuncs[cmd]) return callbackFuncs[cmd];
             return '没有找到函数：' + cmd;
@@ -1540,14 +1588,14 @@ return query(alasql(`
             // }
             for(const field in headRow){
                 if(!colsSpace[field]) colsSpace[field] = '1fr';
-                header += `<div class="grid-header ${styles[0] && styles[0].hasOwnProperty(field+'_pin')?'grid-sticky':''}" style="${styles[0]?(styles[0][field+'_style']||''):''}${styles[0]?(styles[0][field+'_head_style']||''):''}">${field}</div>`;
+                header += `<div class="grid-header ${styles[0] && styles[0].hasOwnProperty(field+'_pin')?'grid-sticky':''}" style="${styles[0]?(styles[0][field+'_style']||''):''}${styles[0]?(styles[0][field+'_head_style']||''):''}">${field||''}</div>`;
             }
         }
         let body = ``;
         for(let [index, row] of data.entries()){
             //if((!fields || fields.length === 0) && !hasCustomField) row = sortRowCustomFieldsFirst(row);
             for(const field in row){
-                body += `<div class="grid-cell ${styles[index] && styles[index].hasOwnProperty(field+'_pin')?'grid-sticky':''}" style="${styles[index]?(styles[index][field+'_style']||''):''}${styles[index]?(styles[index][field+'_row_style']||''):''}">${row[field]}</div>`;
+                body += `<div class="grid-cell ${styles[index] && styles[index].hasOwnProperty(field+'_pin')?'grid-sticky':''}" style="${styles[index]?(styles[index][field+'_style']||''):''}${styles[index]?(styles[index][field+'_row_style']||''):''}">${row[field]||''}</div>`;
             }
         }
         return `${getStyle(item, rowNum, colNum, options, colsSpace)}
@@ -1623,6 +1671,9 @@ return query(alasql(`
                 }
                 if(styles.includes('subtype')||styles.includes('stype')) {
                     row[realField] = getSubTypeText(row[field]);
+                }
+                if(styles.includes('strip') || styles.includes('stripHtml')) {
+                    row[realField] = stripHtml(row[field]);
                 }
                 if(styles.includes('md')||styles.includes('markdown')){
                     row[realField] = renderMarkdown(row[realField]);
@@ -2018,18 +2069,22 @@ return query(alasql(`
         }
     }
 
-    async function fromSql(sql) {
-        try {
-            const result = await fetchSyncPost('/api/query/sql', { "stmt": sql });
-            if (result.code !== 0) {
-                console.error("查询数据库出错", result.msg);
+    function fromSql(sql, isGetData = false) {
+        if(!isGetData) return '[:--fromSql--:]' + sql;
+        const getDataFromSql = async (sql) => {
+            try {
+                const result = await fetchSyncPost('/api/query/sql', { "stmt": sql });
+                if (result.code !== 0) {
+                    console.error("查询数据库出错", result.msg);
+                    return [];
+                }
+                return result.data;
+            } catch(e) {
+                console.error("查询数据库出错", e.message);
                 return [];
             }
-            return result.data;
-        } catch(e) {
-            console.error("查询数据库出错", e.message);
-            return [];
-        }
+        };
+        return getDataFromSql(sql);
     }
 
     // 获取avid
