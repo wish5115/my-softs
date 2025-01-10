@@ -4,7 +4,7 @@
 // update: https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/SQL%E7%AE%80%E5%8D%95%E6%9F%A5%E8%AF%A2.js
 // 使用帮助：https://ld246.com/article/1736035967300
 // 版本更新记录
-// 0.0.2 优化细节；增加alSql查询，支持SQL查询数据库等
+// 0.0.2 修复bug；优化细节；增加alSql查询，支持SQL查询数据库等
 /*
 // 调用示例
 // 支持字段后缀进行简单格式化，比如，content as content__link_u_b_i_1, created as created__datetime_2
@@ -1202,17 +1202,22 @@ return (async () => {
     }
 
     async function alaQuery(sql, params, cb, scope) {
-        for(const i in params) {
-            let param = params[i];
-            if(typeof param === 'string' && param.startsWith('[:--fromAv--:]')) {
-                param = param.replace('[:--fromAv--:]', '');
-                params[i] = await fromAv(param, true);
-            } else if(typeof param === 'string' && param.startsWith('[:--fromSql--:]')) {
-                param = param.replace('[:--fromSql--:]', '');
-                params[i] = await fromSql(param, true);
+        try {
+            for(const i in params) {
+                let param = params[i];
+                if(typeof param === 'string' && param.startsWith('[:--fromAv--:]')) {
+                    param = param.replace('[:--fromAv--:]', '');
+                    params[i] = await fromAv(param, true);
+                } else if(typeof param === 'string' && param.startsWith('[:--fromSql--:]')) {
+                    param = param.replace('[:--fromSql--:]', '');
+                    params[i] = await fromSql(param, true);
+                }
             }
+            return alasql(sql, params, cb, scope);
+        } catch (e) {
+            console.error(e);
+            return getError(e.message || '发生未知错误，请打开控制台查看详细信息');
         }
-        return alasql(sql, params, cb, scope);
     }
 
     // 渲染html
@@ -1438,14 +1443,14 @@ return (async () => {
             // 用户自定义选项
             ...options
         };
-        let styles = [], rawData = {}, rowNo = {value: 0};
+        let styles = [], rawData = {}, rowNo = {value: 0}, sortedFields = {value: []};
         const hasCustomField = Object.keys(data[0]||{}).find(key => key.includes('__'));
-        const colsSpace = {};
+        let colsSpace = {};
         let result;
         for (let [index, row] of data.entries()) {
             const rawRow = {};
             // 注意这里的坑，直接修改row的内容，比如row.xx=xxx是可以改变data中的值，而row=[{xx:xxx}]是不会改变data的值，原因是前者改变的引用对象本身，后者改变的是对象的引用
-            row = formatRow(row, rawRow, rowNo);
+            row = formatRow(row, rawRow, rowNo, sortedFields);
             data[index] = row;
             rawData[index] = rawRow;
             if(typeof beforeRender === 'function') {
@@ -1598,6 +1603,13 @@ return (async () => {
                 body += `<div class="grid-cell ${styles[index] && styles[index].hasOwnProperty(field+'_pin')?'grid-sticky':''}" style="${styles[index]?(styles[index][field+'_style']||''):''}${styles[index]?(styles[index][field+'_row_style']||''):''}">${row[field]||''}</div>`;
             }
         }
+        if((!fields || fields.length === 0) && !hasCustomField) {
+            colsSpace = sortRowCustomFieldsFirst(colsSpace);
+        } else if(fields && fields.length > 0) {
+            colsSpace = sortRowCustomFieldsFirst(colsSpace, fields);
+        } else if(hasCustomField && sortedFields.value.length > 0) {
+            colsSpace = sortRowSortFieldsFirst(colsSpace, sortedFields.value);
+        }
         return `${getStyle(item, rowNum, colNum, options, colsSpace)}
         <div class="protyle-wysiwyg__embed__grid-table grid-table-${item.dataset.nodeId}">
             ${header}
@@ -1606,7 +1618,7 @@ return (async () => {
     }
 
     // 解析select id as id__hide, content as content__link_u_b_i, created as created__datetime等
-    function formatRow(row, rawRow, rowNo) {
+    function formatRow(row, rawRow, rowNo, sortedFields) {
         // 检测是否含有用户自定义字段
         const keys = Object.keys(row||{});
         const hasCustomField = keys.find(key => key.includes('__'));
@@ -1638,7 +1650,7 @@ return (async () => {
             headHeightNum = match ? match[1] || match[2] || match[3] : 0;
         }
         //获取排序字段
-        const sortedFields = getSortedFields(keys);
+        sortedFields.value = getSortedFields(keys);
         // 渲染自定义样式
         for(const field in row) {
             if(field.indexOf('__') === -1) continue;
@@ -1811,7 +1823,7 @@ return (async () => {
                 delete row[field];
             }
         }
-        row = sortRowSortFieldsFirst(row, sortedFields);
+        row = sortRowSortFieldsFirst(row, sortedFields.value);
         return row;
     }
 
