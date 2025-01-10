@@ -17,7 +17,8 @@
         buttonElement.onclick = () => {
             // 复制为模板
             const textarea = protyleUtil.querySelector('textarea');
-            const output = textarea.value.replace(/\n/g, '_esc_newline_');
+            let output = textarea.value.replace(/\n/g, '_esc_newline_');
+            output = encodeHTMLEntities(output);
             navigator.clipboard.writeText('{{'+output+'}}');
             buttonElement.innerHTML = '已复制';
             setTimeout(() => {
@@ -31,6 +32,19 @@
 
     function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function encodeHTMLEntities(html) {
+        return html.replace(/[<>&"']/g, (match) => {
+            switch (match) {
+                case '<': return '&lt;';
+                case '>': return '&gt;';
+                case '&': return '&amp;';
+                case '"': return '&quot;';
+                case "'": return '&#39;';
+                default: return match;
+            }
+        });
     }
     
     // 等待元素出现
