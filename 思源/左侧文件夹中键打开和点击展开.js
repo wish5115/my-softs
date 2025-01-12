@@ -1,4 +1,6 @@
 // 左侧文件夹中键打开和点击展开
+// pc版 中键打开，单击展开
+// 触屏版 长按打开 点击展开
 // see https://ld246.com/article/1736401552973
 (()=>{
     whenElementExist(':is(.file-tree, [data-type="sidebar-file"]) .b3-list.b3-list--background').then((tree) => {
