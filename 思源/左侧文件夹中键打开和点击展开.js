@@ -5,6 +5,9 @@
 (()=>{
     // 空文件夹图标代码 📂 1f4c2  📁 1f4c1
     const emptyFolderIconCode = '1f4c2';
+
+    // 思源默认图标
+    const defaultIconCode = siyuan?.storage["local-images"]?.folder || '1f4d1';
     
     whenElementsExist(':is(.file-tree, [data-type="sidebar-file"]) .b3-list.b3-list--background').then((trees) => {
         trees.forEach(tree => {
@@ -87,8 +90,12 @@
     async function addIcon(li) {
         const isFolderFileEmpty = await isFileEmpty(li.dataset.nodeId);
         if(isFolderFileEmpty) {
-            const newIcon = unicode2Emoji(emptyFolderIconCode);
             const icon = li.querySelector('.b3-list-item__icon');
+            const defaultIcon = unicode2Emoji(defaultIconCode);
+            // 用户已自定义图标了返回
+            if(icon?.innerHTML?.trim() !== defaultIcon) return;
+            const newIcon = unicode2Emoji(emptyFolderIconCode);
+            // 空文件图标不等于现有图标则修改
             if(newIcon !==  icon?.innerHTML?.trim()) {
                 const result = await requestApi('/api/attr/setBlockAttrs', {
                     "id": li.dataset.nodeId,
