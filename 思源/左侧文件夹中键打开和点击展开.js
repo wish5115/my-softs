@@ -20,6 +20,7 @@
         
                 // 绑定中键单击
                 tree.addEventListener('mousedown', (event) => {
+                    event.preventDefault();
                     if (event.button === 1) {
                         const {li} = isTreeFolder(event.target);
                         if(!li) return;
@@ -45,6 +46,7 @@
     
                 // 长按事件
                 function handleLongPress(event) {
+                    event.preventDefault();
                     const {li} = isTreeFolder(event.target);
                     if(!li) return;
                     li.click();
