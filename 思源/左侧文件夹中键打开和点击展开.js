@@ -3,72 +3,75 @@
 // 触屏版 长按打开 点击展开
 // see https://ld246.com/article/1736401552973
 (()=>{
-    whenElementExist(':is(.file-tree, [data-type="sidebar-file"]) .b3-list.b3-list--background').then((tree) => {
-        //////// pc版 中键打开，单击展开 ///////////
-        if(!isTouchDevice()) {
-            // 绑定鼠标单击
-            tree.addEventListener('click', (event) => {
-                const {toggleBtn} = isTreeFolder(event.target);
-                if(!toggleBtn) return;
-                if (event.target.classList.contains("b3-list-item__text")){
-                    event.stopPropagation();
-                    event.preventDefault();
-                    toggleBtn.click();
-                }
-            }, { capture: true });
+    whenElementsExist(':is(.file-tree, [data-type="sidebar-file"]) .b3-list.b3-list--background').then((trees) => {
+        console.log(trees, 222);
+        trees.forEach(tree => {
+            //////// pc版 中键打开，单击展开 ///////////
+            if(!isTouchDevice()) {
+                // 绑定鼠标单击
+                tree.addEventListener('click', (event) => {
+                    const {toggleBtn} = isTreeFolder(event.target);
+                    if(!toggleBtn) return;
+                    if (event.target.classList.contains("b3-list-item__text")){
+                        event.stopPropagation();
+                        event.preventDefault();
+                        toggleBtn.click();
+                    }
+                });
+        
+                // 绑定中键单击
+                tree.addEventListener('mousedown', (event) => {
+                    if (event.button === 1) {
+                        const {li} = isTreeFolder(event.target);
+                        if(!li) return;
+                        li.click();
+                    }
+                });
+            }
+
+            //////// 触屏版 长按打开 点击展开 ///////////
+            if(isTouchDevice()) {
+                let pressTimer;
     
-            // 绑定中键单击
-            tree.addEventListener('mousedown', (event) => {
-                if (event.button === 1) {
+                // 点击事件
+                function handleTap(event) {
+                    const {toggleBtn} = isTreeFolder(event.target);
+                    if(!toggleBtn) return;
+                    if (event.target.classList.contains("b3-list-item__text")||event.target.classList.contains("b3-list-item__icon")){
+                        event.stopPropagation();
+                        event.preventDefault();
+                        toggleBtn.click();
+                    }
+                }
+    
+                // 长按事件
+                function handleLongPress(event) {
                     const {li} = isTreeFolder(event.target);
                     if(!li) return;
                     li.click();
                 }
-            });
-        }
-
-        //////// 触屏版 长按打开 点击展开 ///////////
-        if(isTouchDevice()) {
-            let pressTimer;
-
-            // 点击事件
-            function handleTap(event) {
-                const {toggleBtn} = isTreeFolder(event.target);
-                if(!toggleBtn) return;
-                if (event.target.classList.contains("b3-list-item__text")||event.target.classList.contains("b3-list-item__icon")){
-                    event.stopPropagation();
-                    event.preventDefault();
-                    toggleBtn.click();
-                }
+                
+                tree.addEventListener('touchstart', (event) => {
+                    pressTimer = setTimeout(() => {
+                        handleLongPress(event);
+                    }, 500);
+                });
+                
+                tree.addEventListener('touchend', (event) => {
+                    if (pressTimer) {
+                        clearTimeout(pressTimer);
+                        handleTap(event);
+                    }
+                });
+                
+                tree.addEventListener('touchmove', (event) => {
+                    if (pressTimer) {
+                        clearTimeout(pressTimer);
+                        pressTimer = null;
+                    }
+                });
             }
-
-            // 长按事件
-            function handleLongPress(event) {
-                const {li} = isTreeFolder(event.target);
-                if(!li) return;
-                li.click();
-            }
-            
-            tree.addEventListener('touchstart', (event) => {
-                pressTimer = setTimeout(() => {
-                    handleLongPress(event);
-                }, 500);
-            });
-            
-            tree.addEventListener('touchend', (event) => {
-                if (pressTimer) {
-                    clearTimeout(pressTimer);
-                    handleTap(event);
-                }
-            });
-            
-            tree.addEventListener('touchmove', (event) => {
-                if (pressTimer) {
-                    clearTimeout(pressTimer);
-                    pressTimer = null;
-                }
-            });
-        }
+        });
     });
 
     function isTreeFolder(element) {
@@ -85,13 +88,23 @@
         return ("ontouchstart" in window) && navigator.maxTouchPoints > 1;
     }
 
-    function whenElementExist(selector, node) {
+    // 等待多个元素渲染完成
+    function whenElementsExist(selector) {
         return new Promise(resolve => {
-            const check = () => {
-                const el = typeof selector==='function'?selector():(node||document).querySelector(selector);
-                if (el) resolve(el); else requestAnimationFrame(check);
+            const checkForElement = () => {
+                let elements = null;
+                if (typeof selector === 'function') {
+                    elements = selector();
+                } else {
+                    elements = document.querySelectorAll(selector);
+                }
+                if (elements && elements.length > 0) {
+                    resolve(elements);
+                } else {
+                    requestAnimationFrame(checkForElement);
+                }
             };
-            check();
+            checkForElement();
         });
     }
 })();
