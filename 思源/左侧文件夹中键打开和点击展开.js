@@ -4,7 +4,6 @@
 // see https://ld246.com/article/1736401552973
 (()=>{
     whenElementsExist(':is(.file-tree, [data-type="sidebar-file"]) .b3-list.b3-list--background').then((trees) => {
-        console.log(trees, 222);
         trees.forEach(tree => {
             //////// pc版 中键打开，单击展开 ///////////
             if(!isTouchDevice()) {
