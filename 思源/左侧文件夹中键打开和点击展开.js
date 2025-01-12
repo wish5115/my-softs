@@ -20,8 +20,8 @@
         
                 // 绑定中键单击
                 tree.addEventListener('mousedown', (event) => {
-                    event.preventDefault();
                     if (event.button === 1) {
+                        event.preventDefault();
                         const {li} = isTreeFolder(event.target);
                         if(!li) return;
                         li.click();
