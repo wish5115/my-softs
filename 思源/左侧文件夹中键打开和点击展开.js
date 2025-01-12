@@ -6,7 +6,7 @@
     // 空文件夹图标代码 📂 1f4c2  📁 1f4c1
     const emptyFolderIconCode = '1f4c2';
 
-    // 思源默认图标
+    // 思源默认图标，首先读取用户自定义的默认图标，没有用官方默认图标，也可在这里写死
     const defaultIconCode = siyuan?.storage["local-images"]?.folder || '1f4d1';
     
     whenElementsExist(':is(.file-tree, [data-type="sidebar-file"]) .b3-list.b3-list--background').then((trees) => {
