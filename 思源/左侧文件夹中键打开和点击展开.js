@@ -3,6 +3,9 @@
 // 触屏版 长按打开 点击展开
 // see https://ld246.com/article/1736401552973
 (()=>{
+    // 是否更改空文件夹图标
+    const isUpdateFolderIconWhenItEmpty = false;
+    
     // 空文件夹图标代码 📂 1f4c2  📁 1f4c1
     const emptyFolderIconCode = '1f4c2';
 
@@ -23,7 +26,7 @@
                         toggleBtn.click();
 
                         // 添加图标，文件夹的文件内容为空，修改为指定的图标
-                        addIcon(li);
+                        if(isUpdateFolderIconWhenItEmpty) addIcon(li);
                     }
                 });
         
@@ -53,7 +56,7 @@
                         toggleBtn.click();
 
                         // 添加图标，文件夹的文件内容为空，修改为指定的图标
-                        addIcon(li);
+                        if(isUpdateFolderIconWhenItEmpty) addIcon(li);
                     }
                 }
     
