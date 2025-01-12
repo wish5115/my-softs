@@ -20,20 +20,7 @@
                         toggleBtn.click();
 
                         // 添加图标，文件夹的文件内容为空，修改为指定的图标
-                        const isFolderFileEmpty = await isFileEmpty(li.dataset.nodeId);
-                        if(isFolderFileEmpty) {
-                            const newIcon = unicode2Emoji(emptyFolderIconCode);
-                            const icon = li.querySelector('.b3-list-item__icon');
-                            if(newIcon !==  icon?.innerHTML?.trim()) {
-                                const result = await requestApi('/api/attr/setBlockAttrs', {
-                                    "id": li.dataset.nodeId,
-                                    "attrs": { "icon": emptyFolderIconCode }
-                                });
-                                if(result.code === 0) {
-                                    icon.innerHTML = newIcon;
-                                }
-                            }
-                        }
+                        addIcon(li);
                     }
                 });
         
@@ -55,12 +42,15 @@
     
                 // 点击事件
                 function handleTap(event) {
-                    const {toggleBtn} = isTreeFolder(event.target);
+                    const {toggleBtn, li} = isTreeFolder(event.target);
                     if(!toggleBtn) return;
                     if (event.target.classList.contains("b3-list-item__text")||event.target.classList.contains("b3-list-item__icon")){
                         event.stopPropagation();
                         event.preventDefault();
                         toggleBtn.click();
+
+                        // 添加图标，文件夹的文件内容为空，修改为指定的图标
+                        addIcon(li);
                     }
                 }
     
@@ -93,6 +83,23 @@
             }
         });
     });
+
+    async function addIcon(li) {
+        const isFolderFileEmpty = await isFileEmpty(li.dataset.nodeId);
+        if(isFolderFileEmpty) {
+            const newIcon = unicode2Emoji(emptyFolderIconCode);
+            const icon = li.querySelector('.b3-list-item__icon');
+            if(newIcon !==  icon?.innerHTML?.trim()) {
+                const result = await requestApi('/api/attr/setBlockAttrs', {
+                    "id": li.dataset.nodeId,
+                    "attrs": { "icon": emptyFolderIconCode }
+                });
+                if(result.code === 0) {
+                    icon.innerHTML = newIcon;
+                }
+            }
+        }
+    }
 
     async function isFileEmpty(id) {
         const ret = await requestApi('api/block/getTreeStat', {id});
