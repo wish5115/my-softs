@@ -46,7 +46,6 @@
     
                 // 长按事件
                 function handleLongPress(event) {
-                    event.preventDefault();
                     const {li} = isTreeFolder(event.target);
                     if(!li) return;
                     li.click();
