@@ -103,7 +103,7 @@
 
     async function isFileEmpty(id) {
         const ret = await requestApi('api/block/getTreeStat', {id});
-        return ret && ret.code === 0 && ret.data && (ret.data?.runeCount || ret.data?.stat?.runeCount) === 0 || false;
+        return ret && ret.code === 0 && ret.data && (ret.data?.runeCount === 0 || ret.data?.stat?.runeCount === 0) || false;
     }
 
     async function requestApi(url, data, method = 'POST') {
