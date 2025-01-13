@@ -5,6 +5,9 @@
 (()=>{
     // 是否更改空文件夹图标
     const isUpdateFolderIconWhenItEmpty = false;
+
+    // 打开文件夹的方式 midclick 中键 dblclick 双击
+    const openFolderBy = 'midclick';
     
     // 空文件夹图标代码 📂 1f4c2  📁 1f4c1
     const emptyFolderIconCode = '1f4c2';
@@ -31,15 +34,27 @@
                 });
         
                 // 绑定中键单击，无论文件夹或文件都打开
-                tree.addEventListener('mousedown', (event) => {
-                    if (event.button === 1) {
+                if(openFolderBy === 'midclick') {
+                    tree.addEventListener('mousedown', (event) => {
+                        if (event.button === 1) {
+                            event.preventDefault();
+                            //const {li} = isTreeFolder(event.target);
+                            const li = event.target.closest('li[data-type="navigation-file"]:not([data-type="navigation-root"])');
+                            if(!li) return;
+                            li.click();
+                        }
+                    });
+                }
+                // 绑定双击事件，无论文件夹或文件都打开
+                if(openFolderBy === 'dblclick') {
+                    tree.addEventListener('dblclick', (event) => {
                         event.preventDefault();
                         //const {li} = isTreeFolder(event.target);
                         const li = event.target.closest('li[data-type="navigation-file"]:not([data-type="navigation-root"])');
                         if(!li) return;
                         li.click();
-                    }
-                });
+                    });
+                }
             }
 
             //////// 触屏版 长按打开 点击展开 ///////////
