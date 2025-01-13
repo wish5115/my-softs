@@ -5,10 +5,10 @@
     // 图标类型 emoji 或 custom custom代表用户自定义emoji
     const iconType = 'emoji';
     
-    // 折叠文件夹图标 📁 1f4c1 custom输入/emojis/下的路径即可 比如 demo/folder.png
+    // 折叠文件夹图标 📁 1f4c1  iconType是custom时输入/emojis/下的路径即可 比如 demo/folder.png
     const folderIconCode = '1f4c1';
     
-    // 展开文件夹图标 📂 1f4c2 custom输入/emojis/下的路径即可 比如 demo/unfolder.png
+    // 展开文件夹图标 📂 1f4c2  iconType是custom时输入/emojis/下的路径即可 比如 demo/unfolder.png
     const unFolderIconCode = '1f4c2';
 
     // 设置默认图标，用户自定义的图标不会修改，不修改保存为空即可
