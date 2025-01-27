@@ -77,6 +77,7 @@ return (async () => {
     // 输出其他全局变量，方便alaSql中使用
     window.fromAv = fromAv;
     window.fromSql = fromSql;
+    window.fromTable = fromTable;
 
     // 默认logo信息，用于显示在嵌入块的标题前面
     const defaultLogo = `<svg style="vertical-align:middle;position: relative;top: -2px;opacity: 0.8;" width="20" height="20" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M461.12 84.352a397.056 397.056 0 0 1 386.304 489.152 40.704 40.704 0 0 1-79.232-18.816 315.648 315.648 0 1 0-76.992 142.784 40.704 40.704 0 0 1 55.68-3.456c2.624 1.536 5.12 3.456 7.36 5.632l186.56 179.968a40 40 0 0 1 0.512 57.088l-0.512 0.512a40.704 40.704 0 0 1-57.088 0.512l-162.24-156.48A397.056 397.056 0 1 1 461.056 84.352z m67.008 157.376c75.904 20.608 128.768 66.56 155.072 135.616a40.704 40.704 0 0 1-76.16 28.992c-16.704-44.096-48.96-72.064-100.288-86.016a40.704 40.704 0 1 1 21.376-78.592z" fill=""></path></svg>`;
@@ -86,6 +87,17 @@ return (async () => {
 
     // 默认描述信息，用于默认提示信息
     const defaultDesc = '让数据从此不再难查 : )';
+
+    // alaSql用户自定义函数
+    let alaSqlFuncs = {
+        isNumeric,
+        toUpperCase: function (x) {
+            return typeof x === 'string' ? x.toUpperCase() : x;
+        },
+        toLowerCase: function (x) {
+            return typeof x === 'string' ? x.toLowerCase() : x;
+        },
+    };
 
     // 注册回调函数中传递的函数
     let callbackFuncs = {
@@ -98,6 +110,7 @@ return (async () => {
         formatDate,
         formatTime,
         renderMarkdown,
+        renderTask,
         addColor,
         addBgColor,
         setColor,
@@ -161,6 +174,9 @@ return (async () => {
         generateQueueViews,
         fromAv,
         fromSql,
+        fromTable,
+        updateTable,
+        updateAvCell,
         rowsToColsMap,
         rowsToColsArray,
         getAvDataByAvId,
@@ -180,9 +196,31 @@ return (async () => {
         renderSuccess,
         addScript,
         stripHtml,
+        whenElementExist,
+        alaSqlLoaded,
+        addRef,
+        addLink,
+        toRefWithStyle,
     };
 
     /////////////// 用户自定义函数区 //////////////////////////////////
+
+    function registerAlaSqlFuncs() {
+        Object.keys(alaSqlFuncs).forEach(funcName => {
+            if(!alasql.fn[funcName]) alasql.fn[funcName] = alaSqlFuncs[funcName];
+        });
+    }
+
+    function isNumeric(x) {
+        if (typeof x === 'boolean') return false; // 布尔值不是数字
+        if (x === null || x === undefined) return false; // null 和 undefined 不是数字
+        if (x === '') return false; // 空字符串不是数字
+        return !isNaN(parseFloat(x)) && isFinite(x);
+    }
+
+    function deepClone(obj) {
+        return JSON.parse(JSON.stringify(obj));
+    }
 
     function stripHtml(html) {
         return html.replace(/<[^>]+>/g, '');
@@ -342,8 +380,24 @@ return (async () => {
         return `<span data-type="block-ref" data-subtype="d" data-id="${id}" style="">${content}</span>`;
     }
 
+    function toRefWithStyle(content, id, style = '') {
+        return `<span data-type="block-ref" data-subtype="d" data-id="${id}" style="${style}">${content}</span>`;
+    }
+
+    function renderTask(markdown, id, style='') {
+        return toRefWithStyle(renderMarkdown(markdown), id, style);
+    }
+
+    function addRef(content, id) {
+        return toRef(content, id);
+    }
+
     function toLink(content, url) {
         return `<span data-type="a" data-href="${url}" style="">${content}</span>`;
+    }
+
+    function addLink(content, id) {
+        return toLink(content, id);
     }
 
     function toMdLink(content, url, title) {
@@ -394,7 +448,23 @@ return (async () => {
     }
 
     function renderMarkdown(markdown) {
-        return md2Block(markdown);
+        return parseRef(md2Block(markdown));
+    }
+
+    // 解析引用为HTML
+    function parseRef(input) {
+        // 正则表达式匹配 ((id 'content')) 或 ((id "content")) 格式，包括转义字符
+        const regex = /\(\((\d+-[a-z0-9]+)\s+['"]([^'"]+?)['"]\)\)|\(\((\d+-[a-z0-9]+)\s+(&quot;|&#39;)([^&]+?)(&quot;|&#39;)\)\)/g;
+        // 替换函数
+        const result = input.replace(regex, (match, id, content, id2, quoteType1, content2, quoteType2, offset, string) => {
+            // 判断是单引号还是双引号
+            const subtype = (quoteType1 === "'" || quoteType2 === "&#39;") ? 's' : 'd';
+            // 使用 content 或 content2，取决于匹配的是哪种格式
+            const actualContent = content || content2;
+            // 返回替换后的 HTML 标签
+            return `<span data-type="block-ref" data-subtype="${subtype}" data-id="${id || id2}">${actualContent}</span>`;
+        });
+        return result;
     }
 
     function renderChartView(option, width, height, align) {
@@ -861,7 +931,7 @@ return (async () => {
 
     // type row 把数据转变为行数据，即每行一条记录，col 把数据转变为列数据，即每列一条记录，table格式为表格数据方便查询
     function fromAv(id, isGetData = false, type = 'table') {
-        if(!isGetData) return '[:--fromAv--:]' + id;
+        if(!isGetData) return '[:--fromAv--:]' + id + (type === 'table' ? '' : `[:--${type}--:]`);
         const getAvData = async (id, type = 'table') => {
             // 如果匹配到是id类型
             if(/^2[01]\d{12}\-[a-z0-9]{7}$/i.test(id)) {
@@ -1035,6 +1105,79 @@ return (async () => {
         }
     }
 
+    async function updateAvCell(avId, rowId, colId, value) {
+        const result = await fetchSyncPost('/api/av/setAttributeViewBlockAttr', {
+            "avID": avId,
+            "keyID": colId,
+            "rowID": rowId,
+            "value": isObject(value) || Array.isArray(value) ? value : {
+                "text": {
+                    "content": value,
+                }
+            }
+        });
+        return result;
+    }
+
+    function fromTable(id, isGetData = false) {
+        if(!isGetData) return '[:--fromTable--:]' + id;
+        const getTableData = async (id) => {
+            const tableData = await fromSql(`select * from blocks where id = '${id}';`, true);
+            if(tableData && tableData.length > 0) {
+                const tableString = tableData[0].markdown || '';
+                return parseTable(tableString);
+            }
+            return [];
+        };
+        return getTableData(id);
+    }
+
+    async function updateTable(id, data) {
+        const tableMarkdown = typeof data === 'string' ? data : toMarkdownTable(data);
+        const result = await fetchSyncPost('/api/block/updateBlock', {
+            "dataType": "markdown",
+            "data": tableMarkdown,
+            "id": id
+        });
+        return result;
+    }
+
+    function parseTable(table) {
+        // 按行分割表格
+        const rows = table.trim().split('\n');
+        // 提取表头
+        const headers = rows[0].split('|').filter(Boolean).map(header => header.trim());
+        // 提取数据行
+        const dataRows = rows.slice(2);
+        // 解析数据行
+        const result = dataRows.map(row => {
+            const values = row.split('|').filter(Boolean).map(value => value.trim());
+            const obj = {};
+            headers.forEach((header, index) => {
+                obj[header] = isNaN(values[index]) ? values[index] : Number(values[index]);
+            });
+            return obj;
+        });
+        return result;
+    }
+
+    function toMarkdownTable(data) {
+        // 提取表头
+        const headers = Object.keys(data[0]);
+        // 生成表头行
+        const headerRow = `| ${headers.join(' | ')} |`;
+        // 生成分隔线
+        const separator = `| ${headers.map(() => '---').join(' | ')} |`;
+        // 生成数据行
+        const dataRows = data.map(row => {
+            const values = headers.map(header => row[header]);
+            return `| ${values.join(' | ')} |`;
+        }).join('\n');
+        // 组合成完整的 Markdown 表格
+        const markdownTable = `${headerRow}\n${separator}\n${dataRows}`;
+        return markdownTable;
+    }
+
     // 行数据转换为列数据map格式
     function rowsToColsMap(data) {
         const columns = Object.keys(data[0]);
@@ -1156,6 +1299,7 @@ return (async () => {
             const params = item;
             item = itemNode;
             data = await alaQuery(sql, params);
+            if(!item) return data;
             return render(data, item, fields, beforeRender, afterRender, options) || [];
         }
         // 初始化数据
@@ -1166,8 +1310,16 @@ return (async () => {
         else if(typeof sql === 'string') {
             if(sql.startsWith('[:--fromAv--:]')) {
                 // 解析fromAv('xxxxx')数据
-                const avId = sql.replace('[:--fromAv--:]', '');
-                data = await fromAv(avId, true);
+                const param = sql.replace('[:--fromAv--:]', '');
+                const regex = /\[:--(.*?)--:\]$/;
+                const match = param.match(regex);
+                const type = match && match[1] ? match[1] : 'table';
+                const avId = param.replace(regex, '');
+                data = await fromAv(avId, true, type);
+            } else if(sql.startsWith('[:--fromTable--:]')) {
+                // 解析fromTable('xxxxx')数据
+                const tableBlockId = sql.replace('[:--fromTable--:]', '');
+                data = await fromTable(tableBlockId, true);
             } else {
                 // 解析 fromSql('xxxxx')数据
                 if(sql.startsWith('[:--fromSql--:]')) {
@@ -1201,18 +1353,31 @@ return (async () => {
         return render(data, item, fields, beforeRender, afterRender, options) || [];
     }
 
+    async function alaSqlLoaded() {
+        return await whenElementExist(()=>typeof alasql === 'function', 10000, '请先安装AlaSQL扩展');
+    }
+
     async function alaQuery(sql, params, cb, scope) {
         try {
             for(const i in params) {
                 let param = params[i];
                 if(typeof param === 'string' && param.startsWith('[:--fromAv--:]')) {
                     param = param.replace('[:--fromAv--:]', '');
-                    params[i] = await fromAv(param, true);
+                    const regex = /\[:--(.*?)--:\]$/;
+                    const match = param.match(regex);
+                    const type = match && match[1] ? match[1] : 'table';
+                    const avId = param.replace(regex, '');
+                    params[i] = await fromAv(avId, true, type);
                 } else if(typeof param === 'string' && param.startsWith('[:--fromSql--:]')) {
                     param = param.replace('[:--fromSql--:]', '');
                     params[i] = await fromSql(param, true);
+                } else if(typeof param === 'string' && param.startsWith('[:--fromTable--:]')) {
+                    param = param.replace('[:--fromTable--:]', '');
+                    params[i] = await fromTable(param, true);
                 }
             }
+            if(typeof alasql === 'undefined') await alaSqlLoaded();
+            registerAlaSqlFuncs();
             return alasql(sql, params, cb, scope);
         } catch (e) {
             console.error(e);
@@ -1339,10 +1504,10 @@ return (async () => {
             });
             item.querySelector('.protyle-wysiwyg__embed')?.addEventListener('touchstart', (event) => {
                 event.stopPropagation(); // 阻止事件冒泡
-            });
+            }, { passive: true });
             item.querySelector('.protyle-wysiwyg__embed')?.addEventListener('touchmove', (event) => {
                 event.stopPropagation(); // 阻止事件冒泡
-            });
+            }, { passive: true });
 
             // 渲染后回调
             if(typeof afterRender === 'function') {
@@ -1382,6 +1547,12 @@ return (async () => {
                 }
             });
             return newFuncs;
+        }
+        // 外部注册函数alasql函数
+        else if(cmd.startsWith(':regAlaSql:') && typeof item === 'function') {
+            const funcName = cmd.replace(/^:regAlaSql:/i, '');
+            alaSqlFuncs[funcName] = item;
+            if(alasql) alasql.fn[funcName] = item;
         }
         // 外部注册函数
         else if(cmd.startsWith(':register:') && typeof item === 'function') {
@@ -1443,7 +1614,7 @@ return (async () => {
             // 用户自定义选项
             ...options
         };
-        let styles = [], rawData = {}, rowNo = {value: 0}, sortedFields = {value: []};
+        let styles = [], rawData = deepClone(data) || [], rowNo = {value: 0}, sortedFields = {value: []};
         const hasCustomField = Object.keys(data[0]||{}).find(key => key.includes('__'));
         let colsSpace = {};
         let result;
@@ -1471,17 +1642,17 @@ return (async () => {
             for(const field in row){
                 if(row[field+'_style']) {
                     if(!styles[index]) styles[index] = {};
-                    styles[index][field+'_style'] = row[field+'_style'] || '';
+                    styles[index][field+'_style'] = row[field+'_style'] ? row[field+'_style']+';' : '';
                     delete row[field+'_style'];
                 }
                 if(row[field+'_head_style']) {
                     if(!styles[index]) styles[index] = {};
-                    styles[index][field+'_head_style'] = row[field+'_head_style'] || '';
+                    styles[index][field+'_head_style'] = row[field+'_head_style'] ? row[field+'_head_style']+';' : '';
                     delete row[field+'_head_style'];
                 }
                 if(row[field+'_row_style']) {
                     if(!styles[index]) styles[index] = {};
-                    styles[index][field+'_row_style'] = row[field+'_row_style'] || '';
+                    styles[index][field+'_row_style'] = row[field+'_row_style'] ? row[field+'_row_style']+';' : '';
                     delete row[field+'_row_style'];
                 }
                 if(row[field+'_width']) {
@@ -1653,7 +1824,10 @@ return (async () => {
         sortedFields.value = getSortedFields(keys);
         // 渲染自定义样式
         for(const field in row) {
-            if(field.indexOf('__') === -1) continue;
+            if(field.indexOf('__') === -1) {
+                rawRow[field] = row[field];
+                continue;
+            }
             const arr = field.split('__');
             const realField = arr[0];
             rawRow[realField] = row[field];
@@ -1687,7 +1861,7 @@ return (async () => {
                 if(styles.includes('strip') || styles.includes('stripHtml')) {
                     row[realField] = stripHtml(row[field]);
                 }
-                if(styles.includes('md')||styles.includes('markdown')){
+                if(styles.includes('md')||styles.includes('markdown')||styles.includes('render')){
                     row[realField] = renderMarkdown(row[realField]);
                 }
                 if(styles.includes('tag')) {
@@ -1819,6 +1993,9 @@ return (async () => {
                 }
                 if(headHeightNum){
                     row[realField+'_hheight'] = headHeightNum;
+                }
+                if(styles.includes('task')) {
+                    row[realField] = renderTask(row[realField], id);
                 }
                 delete row[field];
             }
@@ -1961,6 +2138,23 @@ return (async () => {
                     }
                 }
             ` : ''}
+            .protyle-wysiwyg__embed__grid-table .list[data-subtype="t"]{
+                margin:0;
+                padding: 0;
+            }
+            .protyle-wysiwyg__embed__grid-table .list[data-subtype="t"] .protyle-action svg {
+                width: 34px;
+                height: 14px;
+            }
+            .protyle-wysiwyg__embed__grid-table .list[data-subtype="t"] [data-node-id].li>[data-node-id] {
+                margin-left: 0px !important;
+            }
+            .protyle-wysiwyg__embed__grid-table .list[data-subtype="t"] [data-node-id] [spellcheck] {
+                display: flex;
+            }
+            .protyle-wysiwyg__embed__grid-table span[data-type~=block-ref]:has(.list[data-subtype="t"]) {
+                color: var(--b3-theme-on-background);
+            }
         </style>`;
     }
 
@@ -2265,22 +2459,29 @@ return (async () => {
     }
 
     // 等待元素渲染完成后执行
-    function whenElementExist(selector) {
-        return new Promise(resolve => {
+    function whenElementExist(selector, parentNode = null, timeout = 5000, errorMsg = '') {
+        return new Promise((resolve, reject) => {
+            let timeoutId; // 用于存储 setTimeout 的 ID
             const checkForElement = () => {
                 let element = null;
                 if (typeof selector === 'function') {
                     element = selector();
                 } else {
-                    element = document.querySelector(selector);
+                    element = (parentNode||document).querySelector(selector);
                 }
                 if (element) {
+                    if(timeoutId) clearTimeout(timeoutId); // 取消 setTimeout
                     resolve(element);
                 } else {
                     requestAnimationFrame(checkForElement);
                 }
             };
             checkForElement();
+            // 设置超时兜底
+            if(timeout > 0) timeoutId = setTimeout(() => {
+                console.error(errorMsg||`Element not found within ${timeout}ms`);
+                reject(new Error(errorMsg||`Element not found within ${timeout}ms`));
+            }, timeout);
         });
     }
 
