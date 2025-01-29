@@ -1,21 +1,23 @@
 // 功能：同步感知
-// version 0.0.4
+// version 0.0.6
 // help: https://ld246.com/article/1726193300954
 // 更新记录
 // 0.0.1 初始版本，增加文件改变时自动同步和用户手动同步时自动感知功能
 // 0.0.2 增加本地同步时间过长时，忽略新的同步请求，以防止多个同步可能引起的干扰
 // 0.0.3 增加发消息时，对关键信息进行简单加密，防止敏感信息外泄
 // 0.0.4 增加同步失败时通知用户，可通过参数开关；增加断线消息补发；去掉控制台调试信息，增加即将同步时的云朵状态（红色代表即将在30秒后开始同步）
+// 0.0.5 修复手动点击同步后，同步按钮红色颜色不消失的问题
+// 0.0.6 改进仅当有两个及以上客户端同时在线时才同步，避免产生多余的同步快照
 (async () => {
 
     /////////////////// 配置区 /////////////////////////////
 
     // appKey see https://docs.goeasy.io/2.x/common/account/developer-account
-    const appKey = '';
+    const appKey = 'BC-f419e44fac954f14949020d7f1d0a87d';
 
     // 引入GoEasy SDK，推荐下载到本地，访问速度更快
-    const jsPath = 'https://cdn.goeasy.io/goeasy-lite-2.13.2.min.js';
-    //const jsPath = '/public/goeasy-lite-2.13.2.min.js';
+    //const jsPath = 'https://cdn.goeasy.io/goeasy-lite-2.13.2.min.js';
+    const jsPath = '/public/goeasy-lite-2.13.2.min.js';
 
     // 消息通道，通常不需要改
     const channel = 'siyuan_sync';
@@ -91,7 +93,8 @@
         //建立连接
         goEasy.connect({
             // see https://docs.goeasy.io/2.x/pubsub/advanced/resend#启用用户离线补发
-            //id: "用户唯一标识，如 user-001", //要启用离线补发，必须指定用户id(这里用不到，思源启动会自动同步)
+            id: siyuan.ws.app.appId,
+            data: {"workspaceDir": siyuan.config.system.workspaceDir, "name": siyuan.config.system.name},
             onSuccess: function () { //连接成功
                 console.log("GoEasy connect successfully.") //连接成功
             },
@@ -102,6 +105,7 @@
         //订阅消息
         goEasy.pubsub.subscribe({
             channel: channel,//替换为您自己的channel
+            presence: { enable: true }, // 监听成员在线状态
             onMessage: async function (message) { //收到消息
                 //console.log("Channel:" + channel + " content:" + message.content);
                 try {
@@ -144,12 +148,27 @@
         // 监控文件改变
         listenChange();
 
+        // 监控同步按钮被点击
+        listenSyncBtnClick();
+
         // 测试时使用
         //window.publishMsg = sendMessage;
         //window.goEasy = goEasy;
     });
 
     /////////////////// 功能函数 /////////////////////////////
+
+    // 获取用户列表
+    function getUsers() {
+        return new Promise((resolve, reject) => {
+            goEasy.pubsub.hereNow({
+                channel: channel,
+                limit: 20, // 可选项，定义返回的最新上线成员列表的数量，默认为10，最多支持返回最新上线的100个成员
+                onSuccess: resolve, // 成功时 resolve
+                onFailed: reject    // 失败时 reject
+            });
+        });
+    }
 
     // 监听文件改变
     // see https://github.com/muhanstudio/siyuan-sync-aware/blob/27f8f7f8c33275c390de0aadca71edda3473f5bf/src/index.ts#L165
@@ -170,12 +189,33 @@
                     if (syncActions.some(item => url.endsWith(item))) {
                         // 开始同步，未开启同步则不同步，使用官方同步则不同步(provider==0为官方同步)
                         if (siyuan.config.sync.enabled && siyuan.config.sync.provider !== 0) {
-                            if (url.endsWith('/api/sync/performSync')) {
-                                // 同步感知，手动同步后通知远程客户端同步
-                                delaySendMessage();
+                            let users;
+                            try {
+                                users = await getUsers();
+                            } catch (e) {
+                                console.warn(e);
+                            }
+                            if(users) {
+                                // 当多个客户端端时执行
+                                if(users.code === 200 && users.content?.amount > 1){
+                                    //console.log('users: ', users);
+                                    if (url.endsWith('/api/sync/performSync')) {
+                                        // 同步感知，手动同步后通知远程客户端同步
+                                        delaySendMessage();
+                                    } else {
+                                        // 自动同步，文件变化后本地先同步，然后通知远程客户端同步
+                                        if (autoSync) delaySync();
+                                    }
+                                }
                             } else {
-                                // 自动同步，文件变化后本地先同步，然后通知远程客户端同步
-                                if (autoSync) delaySync();
+                                // 获取客户端异常时执行
+                                if (url.endsWith('/api/sync/performSync')) {
+                                    // 同步感知，手动同步后通知远程客户端同步
+                                    delaySendMessage();
+                                } else {
+                                    // 自动同步，文件变化后本地先同步，然后通知远程客户端同步
+                                    if (autoSync) delaySync();
+                                }
                             }
                         } else {
                             debugInfo("监听到文件变动，但未开启同步，已忽略本次同步");
@@ -190,10 +230,19 @@
         }
     }
 
+    // 监控同步按钮被点击
+    function listenSyncBtnClick() {
+        const syncBtn = document.querySelector(isMobile() ? "#toolbarSync" : "#barSync svg");
+        syncBtn.addEventListener("click", async function () {
+            willSync(false);
+        });
+    }
+
     // 延迟发送消息，在用户手动同步后，用于通知远程客户端也同步
     function delaySendMessage() {
         if (sendMessageTimer) clearTimeout(sendMessageTimer);
         debugInfo("监听到文件变动，即将在" + autoSyncInterval + "秒后同步数据");
+        //willSync(false);
         sendMessageTimer = setTimeout(async () => {
             const appId = siyuan.ws.app.appId;
             const time = new Date().getTime();
