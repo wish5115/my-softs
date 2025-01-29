@@ -13,7 +13,7 @@
     /////////////////// 配置区 /////////////////////////////
 
     // appKey see https://docs.goeasy.io/2.x/common/account/developer-account
-    const appKey = 'BC-f419e44fac954f14949020d7f1d0a87d';
+    const appKey = '';
 
     // 引入GoEasy SDK，推荐下载到本地，访问速度更快
     //const jsPath = 'https://cdn.goeasy.io/goeasy-lite-2.13.2.min.js';
