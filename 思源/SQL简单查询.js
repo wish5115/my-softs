@@ -405,8 +405,8 @@ return (async () => {
     }
 
     function toMdRef(content, id) {
-        return toMdLink(content, `siyuan://blocks/${id}`, '');
-        //return `((${id} '${content}'))`;
+        //return toMdLink(content, `siyuan://blocks/${id}`, '');
+        return `((${id} '${content}'))`;
     }
 
     function toMdList(list = []) {
