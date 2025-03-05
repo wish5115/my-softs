@@ -1,4 +1,5 @@
 // 思源搜索选中文本或访问选中链接，支持ai搜索和翻译
+// see https://ld246.com/article/1741190049446
 (()=>{
     // 搜索引擎URL，%s% 是搜索关键词
     const searchUrl = 'https://cn.bing.com/search?q=%s%';
