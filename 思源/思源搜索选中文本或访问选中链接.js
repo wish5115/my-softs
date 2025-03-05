@@ -2,7 +2,7 @@
 (()=>{
     // 搜索引擎URL，%s% 是搜索关键词
     const searchUrl = 'https://cn.bing.com/search?q=%s%';
-    // ai引擎URL，%s% 是查询关键词
+    // ai引擎URL，%s% 是查询关键词，支持deepseek-r1
     const aiUrl = 'https://chat.baidu.com/search?word=%s%';
     // 翻译引擎URL，%s% 是翻译关键词
     const fanyiUrl = 'https://fanyi.baidu.com/mtpe-individual/multimodal?query=%s%';
