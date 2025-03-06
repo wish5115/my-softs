@@ -9,7 +9,7 @@
     const fanyiUrl = 'https://fanyi.baidu.com/mtpe-individual/multimodal?query=%s%';
 
     document.addEventListener('selectionchange', (event) => {
-        const selection = window.getSelection().toString();
+        const selection = window.getSelection().toString().trim();
         if(!selection) return;
         const protyle = event.target.activeElement?.closest('.protyle');
         if(!protyle) return;
@@ -34,7 +34,7 @@
 
         // 当按钮被单击执行
         const onButtonClicked = (searchUrl) => {
-            const selection = window.getSelection().toString();
+            const selection = window.getSelection().toString().trim();
             let url = '';
             if(selection.toLowerCase().startsWith('https://') || selection.toLowerCase().startsWith('http://')) {
                 url = selection;
