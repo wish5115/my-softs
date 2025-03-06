@@ -5,6 +5,7 @@
 // 使用帮助：https://ld246.com/article/1736035967300
 // 版本更新记录
 // 0.0.2 修复bug；优化细节；增加alSql查询，支持SQL查询数据库等
+// 0.0.3 修复文本对齐的bug
 /*
 // 调用示例
 // 支持字段后缀进行简单格式化，比如，content as content__link_u_b_i_1, created as created__datetime_2
@@ -298,35 +299,35 @@ return (async () => {
     }
 
     function alignLeft(row, colName) {
-        row[colName + '_style'] = 'justify-content: start;';
+        row[colName + '_style'] = 'justify-content: start;text-align:left;';
     }
 
     function alignRight(row, colName) {
-        row[colName + '_style'] = 'justify-content: end;';
+        row[colName + '_style'] = 'justify-content: end;text-align:right;';
     }
 
     function valignTop(row, colName) {
-        row[colName + '_style'] = 'align-items: start;';
+        row[colName + '_style'] = 'align-items: start;vertical-align:top;';
     }
 
     function valignBottom(row, colName) {
-        row[colName + '_style'] = 'align-items: end;';
+        row[colName + '_style'] = 'align-items: end;vertical-align:bottom;';
     }
 
     function setAlign(row, colName, value) {
-        row[colName + '_style'] = 'justify-content: '+getAlign(value)+';';
+        row[colName + '_style'] = 'justify-content: '+getAlign(value)+';text-align:'+value+';';
     }
 
     function setVAlign(row, colName, value) {
-        row[colName + '_style'] = 'align-items: '+getAlign(value)+';';
+        row[colName + '_style'] = 'align-items: '+getAlign(value)+';vertical-align:'+value+';';
     }
 
     function setHAlign(row, colName, value) {
-        row[colName + '_head_style'] = 'justify-content: '+getAlign(value)+';';
+        row[colName + '_head_style'] = 'justify-content: '+getAlign(value)+';text-align:'+value+';';
     }
 
     function setHVAlign(row, colName, value) {
-        row[colName + '_head_style'] = 'align-items: '+getAlign(value)+';';
+        row[colName + '_head_style'] = 'align-items: '+getAlign(value)+';vertical-align:'+value+';';
     }
 
     function setPin(row, colName, style) {
