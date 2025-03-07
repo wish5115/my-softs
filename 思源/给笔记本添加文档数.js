@@ -1,4 +1,6 @@
 // 给笔记本添加文档数
+// version 0.0.2
+// 0.0.2 兼容手机端
 (() => {
     // 给笔记本添加文档数
     whenElementExist('ul[data-url]').then(() => {
@@ -16,8 +18,9 @@
     });
 
     // 监听右键菜单，动态显示文件夹的文档数
-    whenElementExist('.sy__file').then((fileTree) => {
-        fileTree.addEventListener('contextmenu', (event) => {
+    const treeSelector = isMobile()? '#sidebar .b3-list--mobile' : '.sy__file';
+    whenElementExist(treeSelector).then((fileTree) => {
+        const onMenuShow = (event) => {
             const currLi = event.target.closest('li.b3-list-item:not([data-type="navigation-root"],[data-count="0"])');
             if(!currLi) return;
             whenElementExist('button[data-id="rename"]').then(renameBtn => {
@@ -34,7 +37,18 @@
                     document.body.click();
                 };
             });
-        });
+        };
+        if(isMobile()) {
+            // 监听整个文档的点击事件
+            fileTree.addEventListener('touchend', (event) => {
+                // 检查点击的目标是否是 span[data-type="more-file"]
+                if (event.target.closest('span[data-type="more-file"]')) {
+                    onMenuShow(event);
+                }
+            });
+        } else {
+            fileTree.addEventListener('contextmenu', onMenuShow);
+        }
     });
     
     function whenElementExist(selector, node) {
@@ -76,6 +90,10 @@
             console.log(e);
             return returnType === 'json' ? {code:e.code||1, msg: e.message||"", data: null} : "";
         }
+    }
+
+    function isMobile() {
+        return !!document.getElementById("sidebar");
     }
 
     // 等待元素出现（简版）
