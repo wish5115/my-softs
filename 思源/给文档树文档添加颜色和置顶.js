@@ -94,19 +94,25 @@
         const colorMenu = beforeBtn.parentElement.querySelector('button[data-id="color"]');
         // 生成子菜单
         let subMenus = '';
+        // 是否显示取消颜色
         if(colorData[currLi.dataset.nodeId]){
             colors = {
                 "none": { style: "color:var(--b3-theme-on-background);", description: "取消颜色" },
                 ...colors
             };
+        } else {
+            delete colors['none'];
         }
+        // 遍历生成子菜单
         for (const code in colors) {
             const item = colors[code];
             subMenus += `<button class="b3-menu__item"><span class="b3-menu__label" data-code="${code}" style="${item.style};font-weight:bold;">${item.description}</span></button>`;
         }
+        // 显示子菜单
         colorMenu.onmouseenter = () => {
             colorMenu.querySelector(".b3-menu__submenu .b3-menu__items").innerHTML = subMenus;
         };
+        // 子菜单点击事件
         colorMenu.onclick = (event) => {
             if(!event.target.dataset.code) return;
             if(event.target.dataset.code === 'none') {
