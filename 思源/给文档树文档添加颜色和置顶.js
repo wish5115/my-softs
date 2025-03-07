@@ -52,7 +52,7 @@
     // 生成样式
     genStyle();
 
-    // 监听右键菜单
+    // 监听菜单事件
     const treeSelector = isMobile()? '#sidebar .b3-list--mobile' : '.sy__file';
     whenElementExist(treeSelector).then((fileTree) => {
         const onMenuShow = (event) => {
@@ -66,7 +66,7 @@
             });
         };
         if(isMobile()) {
-            // 监听文档树的点击事件
+            // 监听手机版更多按钮被单击
             fileTree.addEventListener('touchend', (event) => {
                 // 检查点击的目标是否是 span[data-type="more-file"]
                 if (event.target.closest('span[data-type="more-file"]')) {
@@ -74,6 +74,14 @@
                 }
             });
         } else {
+            // 监听更多按钮被单击
+            fileTree.addEventListener('mouseup', (event) => {
+                // 检查点击的目标是否是 span[data-type="more-file"]
+                if (event.target.closest('span[data-type="more-file"]')) {
+                    onMenuShow(event);
+                }
+            });
+            // 监听文档树右键事件
             fileTree.addEventListener('contextmenu', onMenuShow);
         }
     });
@@ -109,6 +117,7 @@
         const html = `<button data-id="color" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTheme"></use></svg><span class="b3-menu__label">颜色</span><svg class="b3-menu__icon b3-menu__icon--small"><use xlink:href="#iconRight"></use></svg><div class="b3-menu__submenu"><div class="b3-menu__items"></div></div></button>`;
         beforeBtn.insertAdjacentHTML('beforebegin', html);
         const colorMenu = beforeBtn.parentElement.querySelector('button[data-id="color"]');
+        
         // 生成子菜单
         let subMenus = '';
         // 是否显示取消颜色
@@ -125,6 +134,7 @@
             const item = colors[code];
             subMenus += `<button class="b3-menu__item"><span class="b3-menu__label" data-code="${code}" style="${item.style};font-weight:bold;">${item.description}</span></button>`;
         }
+        
         // 显示子菜单
         colorMenu.querySelector(".b3-menu__submenu .b3-menu__items").innerHTML = subMenus;
         // 子菜单点击事件
