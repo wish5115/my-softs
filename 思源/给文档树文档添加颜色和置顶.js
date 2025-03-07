@@ -1,6 +1,7 @@
 // 给文档树文档添加颜色和置顶
 // see https://ld246.com/article/1741359650489
 // version 0.0.3
+// 0.0.3 兼容手机版
 (async ()=>{
     // 是否开启置顶功能，true开启，false不开启
     const isEnableTopmost = true;
@@ -52,8 +53,9 @@
     genStyle();
 
     // 监听右键菜单
-    whenElementExist('.sy__file').then((fileTree) => {
-        fileTree.addEventListener('contextmenu', (event) => {
+    const treeSelector = isMobile()? '#sidebar .b3-list--mobile' : '.sy__file';
+    whenElementExist(treeSelector).then((fileTree) => {
+        const onMenuShow = (event) => {
             const currLi = event.target.closest('li.b3-list-item:not([data-type="navigation-root"])');
             if(!currLi) return;
             whenElementExist('button[data-id="rename"]').then(renameBtn => {
@@ -62,7 +64,18 @@
                 genColorMenus(renameBtn, currLi);
                 genSeparator(renameBtn);
             });
-        });
+        };
+        if(isMobile()) {
+            // 监听文档树的点击事件
+            fileTree.addEventListener('touchend', (event) => {
+                // 检查点击的目标是否是 span[data-type="more-file"]
+                if (event.target.closest('span[data-type="more-file"]')) {
+                    onMenuShow(event);
+                }
+            });
+        } else {
+            fileTree.addEventListener('contextmenu', onMenuShow);
+        }
     });
 
     // 添加新图标
@@ -93,7 +106,7 @@
 
     function genColorMenus(beforeBtn, currLi) {
         if(!isEnableColor) return;
-        const html = `<button data-id="color" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTheme"></use></svg><span class="b3-menu__label">颜色</span><svg class="b3-menu__icon b3-menu__icon--small"><use xlink:href="#iconRight"></use></svg><div class="b3-menu__submenu" style="top: 267px; left: 352.453px; bottom: auto;"><div class="b3-menu__items"></div></div></button>`;
+        const html = `<button data-id="color" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTheme"></use></svg><span class="b3-menu__label">颜色</span><svg class="b3-menu__icon b3-menu__icon--small"><use xlink:href="#iconRight"></use></svg><div class="b3-menu__submenu"><div class="b3-menu__items"></div></div></button>`;
         beforeBtn.insertAdjacentHTML('beforebegin', html);
         const colorMenu = beforeBtn.parentElement.querySelector('button[data-id="color"]');
         // 生成子菜单
@@ -113,9 +126,7 @@
             subMenus += `<button class="b3-menu__item"><span class="b3-menu__label" data-code="${code}" style="${item.style};font-weight:bold;">${item.description}</span></button>`;
         }
         // 显示子菜单
-        colorMenu.onmouseenter = () => {
-            colorMenu.querySelector(".b3-menu__submenu .b3-menu__items").innerHTML = subMenus;
-        };
+        colorMenu.querySelector(".b3-menu__submenu .b3-menu__items").innerHTML = subMenus;
         // 子菜单点击事件
         colorMenu.onclick = (event) => {
             if(!event.target.dataset.code) return;
@@ -149,7 +160,7 @@
                 if (topmostData.hasOwnProperty(docId)) {
                     const order = topmostData[docId];
                     topmostStyle += `
-                        .sy__file li[data-node-id="${docId}"] {
+                        :is(.sy__file, #sidebar .b3-list--mobile) li[data-node-id="${docId}"] {
                             order: ${order};
                         }
                     `;
@@ -164,7 +175,7 @@
                 if (colorData.hasOwnProperty(docId)) {
                     const code = colorData[docId];
                     colorStyle += `
-                        .sy__file li[data-node-id="${docId}"] span.b3-list-item__text{
+                        :is(.sy__file, #sidebar .b3-list--mobile) li[data-node-id="${docId}"] span.b3-list-item__text{
                             ${colors[code]['style']};
                         }
                     `;
@@ -173,20 +184,15 @@
         }
         
         const css = `
-            .sy__file ul {
+            /* file tree support order */
+            :is(.sy__file, #sidebar .b3-list--mobile) ul {
                 display: flex;
                 flex-direction: column;
             }
             /* color */
             ${colorStyle}
-            /*.sy__file li[data-node-id="20250127115827-zx3a4fe"] span.b3-list-item__text{
-                color: red;
-            }*/
             /* topmost */
             ${topmostStyle}
-            /*.sy__file li[data-node-id="20250304123309-ahknlqo"] {
-                order: -1;
-            }*/
         `;
         const id = 'sy_file_doc_top_color_style';
         // 检查是否已经存在具有相同 id 的 <style> 元素
@@ -257,6 +263,11 @@
         topmostData['maxIndex'] = -1;
        return topmostData['maxIndex']; 
     }
+
+    function isMobile() {
+        return !!document.getElementById("sidebar");
+    }
+    
     function addSvgSymbol() {
         // 检查是否存在 id 为 "iconTop" 的 <symbol> 元素
         if (!document.querySelector('symbol#iconTop')) {
