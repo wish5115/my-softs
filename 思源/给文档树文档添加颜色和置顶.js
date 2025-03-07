@@ -1,6 +1,6 @@
 // 给文档树文档添加颜色和置顶
 // see https://ld246.com/article/1741359650489
-// version 0.0.2
+// version 0.0.3
 (async ()=>{
     // 是否开启置顶功能，true开启，false不开启
     const isEnableTopmost = true;
@@ -94,10 +94,12 @@
         const colorMenu = beforeBtn.parentElement.querySelector('button[data-id="color"]');
         // 生成子菜单
         let subMenus = '';
-        colors = {
-            "none": { style: "color:var(--b3-theme-on-background);", description: "取消颜色" },
-            ...colors
-        };
+        if(colorData[currLi.dataset.nodeId]){
+            colors = {
+                "none": { style: "color:var(--b3-theme-on-background);", description: "取消颜色" },
+                ...colors
+            };
+        }
         for (const code in colors) {
             const item = colors[code];
             subMenus += `<button class="b3-menu__item"><span class="b3-menu__label" data-code="${code}" style="${item.style};font-weight:bold;">${item.description}</span></button>`;
