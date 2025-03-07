@@ -40,7 +40,7 @@
             });
         };
         if(isMobile()) {
-            // 监听整个文档的点击事件
+            // 监听手机版更多按钮被单击
             fileTree.addEventListener('touchend', (event) => {
                 // 检查点击的目标是否是 span[data-type="more-file"]
                 if (event.target.closest('span[data-type="more-file"]')) {
@@ -48,6 +48,14 @@
                 }
             });
         } else {
+            // 监听手更多按钮被单击
+            fileTree.addEventListener('mouseup', (event) => {
+                // 检查点击的目标是否是 span[data-type="more-file"]
+                if (event.target.closest('span[data-type="more-file"]')) {
+                    onMenuShow(event);
+                }
+            });
+            // 监听文档树右键事件
             fileTree.addEventListener('contextmenu', onMenuShow);
         }
     });
