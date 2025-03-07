@@ -57,12 +57,16 @@
             const currLi = event.target.closest('li.b3-list-item:not([data-type="navigation-root"])');
             if(!currLi) return;
             whenElementExist('button[data-id="rename"]').then(renameBtn => {
+                if(document.querySelector('#sy_file_sp_color_top')) return;
                 genTopmostMenu(renameBtn, currLi);
                 genColorMenus(renameBtn, currLi);
                 genSeparator(renameBtn);
             });
         });
     });
+
+    // 添加新图标
+    addSvgSymbol();
 
     /////// functions //////////////////////
 
@@ -252,5 +256,30 @@
         if(topmostData['maxIndex']) return --topmostData['maxIndex'];
         topmostData['maxIndex'] = -1;
        return topmostData['maxIndex']; 
+    }
+    function addSvgSymbol() {
+        // 检查是否存在 id 为 "iconTop" 的 <symbol> 元素
+        if (!document.querySelector('symbol#iconTop')) {
+            // 创建 SVG 字符串
+            const svgString = `
+                <svg data-name="sy-file-top-color" style="position: absolute; width: 0; height: 0; overflow: hidden;" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <symbol id="iconTop" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" stroke-width="0.5">
+                            <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                            <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                            <g id="SVGRepo_iconCarrier">
+                                <g>
+                                    <path d="M2.5 2.5a.75.75 0 010-1.5H13a.75.75 0 010 1.5H2.5zM2.985 9.795a.75.75 0 001.06-.03L7 6.636v7.614a.75.75 0 001.5 0V6.636l2.955 3.129a.75.75 0 001.09-1.03l-4.25-4.5a.75.75 0 00-1.09 0l-4.25 4.5a.75.75 0 00.03 1.06z"></path>
+                                </g>
+                            </g>
+                        </symbol>
+                    </defs>
+                </svg>
+            `;
+            // 将 SVG 字符串转换为 DOM 并追加到 body
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
+            document.body.appendChild(svgDoc.documentElement);
+        }
     }
 })();
