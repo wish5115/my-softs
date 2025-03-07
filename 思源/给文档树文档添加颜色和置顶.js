@@ -1,4 +1,6 @@
 // 给文档树文档添加颜色和置顶
+// see https://ld246.com/article/1741359650489
+// version 0.0.2
 (async ()=>{
     // 是否开启置顶功能，true开启，false不开启
     const isEnableTopmost = true;
@@ -9,7 +11,7 @@
     // 预设颜色列表，格式 {"编码":{style:"颜色值", "description":"颜色描述"}}，编码值必须唯一
     // 也可以把该配置贴出来与大家分享您的创意
     //该颜色组采用20种人类最易识别的颜色 see https://zhuanlan.zhihu.com/p/508870810
-    const colors = {
+    let colors = {
         "orangeRed": { style: "color:#e6194B", description: "橙红色" },
         "green": { style: "color:#3cb44b", description: "绿色" },
         "yellow": { style: "color:#ffe119", description: "黄色" },
@@ -66,11 +68,18 @@
 
     function genTopmostMenu(beforeBtn, currLi) {
         if(!isEnableTopmost) return;
-        const html = `<button data-id="topmost" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTop"></use></svg><span class="b3-menu__label">置顶</span></button>`;
+        const menuText = topmostData[currLi.dataset.nodeId] ? '取消置顶' : '置顶';
+        const html = `<button data-id="topmost" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTop"></use></svg><span class="b3-menu__label">${menuText}</span></button>`;
         beforeBtn.insertAdjacentHTML('beforebegin', html);
         beforeBtn.parentElement.querySelector('button[data-id="topmost"]').onclick = () => {
             // 保存置顶数据
-            topmostData[currLi.dataset.nodeId] = getOrder();
+            if(topmostData[currLi.dataset.nodeId]) {
+                // 删除置顶
+                delete topmostData[currLi.dataset.nodeId];
+            } else {
+                // 置顶
+                topmostData[currLi.dataset.nodeId] = getOrder();
+            }
             putFile('/data/storage/tree_topmost.json', JSON.stringify(topmostData));
             // 更新置顶样式
             genStyle();
@@ -85,6 +94,10 @@
         const colorMenu = beforeBtn.parentElement.querySelector('button[data-id="color"]');
         // 生成子菜单
         let subMenus = '';
+        colors = {
+            "none": { style: "color:var(--b3-theme-on-background);", description: "取消颜色" },
+            ...colors
+        };
         for (const code in colors) {
             const item = colors[code];
             subMenus += `<button class="b3-menu__item"><span class="b3-menu__label" data-code="${code}" style="${item.style};font-weight:bold;">${item.description}</span></button>`;
@@ -94,10 +107,15 @@
         };
         colorMenu.onclick = (event) => {
             if(!event.target.dataset.code) return;
-            const color = colors[event.target.dataset.code];
-            if(!color) return;
-            // 保存颜色数据
-            colorData[currLi.dataset.nodeId] = event.target.dataset.code;
+            if(event.target.dataset.code === 'none') {
+                // 删除颜色数据
+                delete colorData[currLi.dataset.nodeId]
+            } else {
+                const color = colors[event.target.dataset.code];
+                if(!color) return;
+                // 保存颜色数据
+                colorData[currLi.dataset.nodeId] = event.target.dataset.code; 
+            }
             putFile('/data/storage/tree_colors.json', JSON.stringify(colorData));
             // 更新颜色样式
             genStyle();
