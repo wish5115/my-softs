@@ -1,5 +1,6 @@
 // 给笔记本添加文档数
 (() => {
+    // 给笔记本添加文档数
     whenElementExist('ul[data-url]').then(() => {
         const boxes = document.querySelectorAll('ul[data-url]');
         boxes.forEach(async box => {
@@ -11,6 +12,28 @@
             const boxText = li.querySelector('span.b3-list-item__text');
             if(!boxText) return;
             boxText.textContent += ` (${count})`;
+        });
+    });
+
+    // 监听右键菜单，动态显示文件夹的文档数
+    whenElementExist('.sy__file').then((fileTree) => {
+        fileTree.addEventListener('contextmenu', (event) => {
+            const currLi = event.target.closest('li.b3-list-item:not([data-type="navigation-root"],[data-count="0"])');
+            if(!currLi) return;
+            whenElementExist('button[data-id="rename"]').then(renameBtn => {
+                const html = `<button data-id="docNums" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconList"></use></svg><span class="b3-menu__label">显示文档数</span></button>`;
+                renameBtn.insertAdjacentHTML('afterend', html);
+                renameBtn.parentElement.querySelector('button[data-id="docNums"]').onclick = async () => {
+                    const response = await query(`SELECT count(*) as count FROM blocks where path like '%/${currLi.dataset.nodeId}%' and type = 'd' and id != '${currLi.dataset.nodeId}';`);
+                    if(!response[0] || !response[0]['count']) {document.body.click();return;}
+                    const count = response[0]['count'];
+                    const boxText = currLi.querySelector('span.b3-list-item__text');
+                    if(!boxText) return;
+                    const text = boxText.textContent.replace(/\s*\(\d+\)$/, '');
+                    boxText.textContent = text + ` (${count})`;
+                    document.body.click();
+                };
+            });
         });
     });
     
