@@ -24,6 +24,8 @@
         const onMenuShow = (event) => {
             const currLi = event.target.closest('li.b3-list-item:not([data-type="navigation-root"],[data-count="0"])');
             if(!currLi) return;
+            // 关闭上次的菜单，防止2个菜单冲突
+            document.body.click();
             whenElementExist('button[data-id="rename"]').then(renameBtn => {
                 const html = `<button data-id="docNums" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconList"></use></svg><span class="b3-menu__label">显示文档数</span></button>`;
                 renameBtn.insertAdjacentHTML('afterend', html);
