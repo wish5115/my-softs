@@ -1,7 +1,8 @@
 // 给笔记本添加文档数
 // see https://ld246.com/article/1741339328286
-// version 0.0.2
+// version 0.0.3
 // 0.0.2 兼容手机端
+// 0.0.3 修复频繁右键可能导致两个右键菜单冲突的问题
 (() => {
     // 给笔记本添加文档数
     whenElementExist('ul[data-url]').then(() => {
