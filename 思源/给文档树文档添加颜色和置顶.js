@@ -1,7 +1,8 @@
 // 给文档树文档添加颜色和置顶
 // see https://ld246.com/article/1741359650489
-// version 0.0.3
+// version 0.0.4
 // 0.0.3 兼容手机版
+// 0.0.4 修复右键时可能出现的与上一个未关闭的菜单冲突问题
 (async ()=>{
     // 是否开启置顶功能，true开启，false不开启
     const isEnableTopmost = true;
@@ -58,6 +59,8 @@
         const onMenuShow = (event) => {
             const currLi = event.target.closest('li.b3-list-item:not([data-type="navigation-root"])');
             if(!currLi) return;
+            // 关闭上次的菜单，防止与上一个未关闭的菜单冲突
+            closeMenu();
             whenElementExist('button[data-id="rename"]').then(renameBtn => {
                 if(document.querySelector('#sy_file_sp_color_top')) return;
                 genTopmostMenu(renameBtn, currLi);
