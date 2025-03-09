@@ -6,7 +6,7 @@
 // 版本更新记录
 // 0.0.2 修复bug；优化细节；增加alSql查询，支持SQL查询数据库等
 // 0.0.3 修复文本对齐的bug
-// 0.0.4 修复Lute解析Markdown问题，增加单元格cellMaxHeight和cellMinWidth选项设置
+// 0.0.4 修复Lute解析Markdown问题，增加单元格cellMaxHeight和cellMinWidth设置选项
 /*
 // 调用示例
 // 支持字段后缀进行简单格式化，比如，content as content__link_u_b_i_1, created as created__datetime_2
