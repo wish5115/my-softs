@@ -1,8 +1,13 @@
 // 给文档树文档添加颜色和置顶
 // see https://ld246.com/article/1741359650489
-// version 0.0.4
+// version 0.0.5
 // 0.0.3 兼容手机版
 // 0.0.4 修复右键时可能出现的与上一个未关闭的菜单冲突问题
+// 0.0.5 修改默认配色方案，增加tree_colors_user_config.json用户配色方案文件
+// 存储文件及使用说明
+// 1. 修改/data/storage/tree_colors_user_config.json文件即可修改默认配色方案（第一次运行后生成）
+// 2. 取消全部置顶只需删除/data/storage/tree_topmost.json文件即可（第一次置顶时生成）
+// 3. 取消全部颜色只需删除/data/storage/tree_colors.json文件即可（第一次设置颜色时生成）
 (async ()=>{
     // 是否开启置顶功能，true开启，false不开启
     const isEnableTopmost = true;
@@ -10,35 +15,38 @@
     // 是否开启颜色功能，true开启，false不开启
     const isEnableColor = true;
 
-    // 预设颜色列表，格式 {"编码":{style:"颜色值", "description":"颜色描述"}}，编码值必须唯一
-    // 也可以把该配置贴出来与大家分享您的创意
-    //该颜色组采用20种人类最易识别的颜色 see https://zhuanlan.zhihu.com/p/508870810
+    // 预设颜色列表，格式 {"主题":{"明暗风格":{"编码":{style:"颜色值", "description":"颜色描述"}}}}，编码值必须唯一，编码修改则原来设置的颜色将失效
+    // 第一次运行后，会把该默认配置保存到 /data/storage/tree_colors_user_config.json 中，以后配置颜色只需要修改该文件即可，这样不受代码片段升级的影响
+    // 也可以把 tree_colors_user_config.json 发出来与大家分享您的创意
+    // 该配色灵感来自 @Floria233 大佬提供的配色方案
+    // see https://ld246.com/article/1741359650489/comment/1741430150736?r=wilsons#comments
     let colors = {
-        "orangeRed": { style: "color:#e6194B", description: "橙红色" },
-        "green": { style: "color:#3cb44b", description: "绿色" },
-        "yellow": { style: "color:#ffe119", description: "黄色" },
-        "blueDark": { style: "color:#4363d8", description: "深蓝色" },
-        "orange": { style: "color:#f58231", description: "橙色" },
-        "purple": { style: "color:#911eb4", description: "紫色" },
-        "cyan": { style: "color:#42d4f4", description: "青色" },
-        "magenta": { style: "color:#f032e6", description: "洋红色" },
-        "limeGreen": { style: "color:#bfef45", description: "黄绿色" },
-        "pink": { style: "color:#fabed4", description: "粉色" },
-        "teal": { style: "color:#469990", description: "蓝绿色" },
-        "lavender": { style: "color:#dcbeff", description: "薰衣草紫" },
-        "brown": { style: "color:#9A6324", description: "棕色" },
-        "beige": { style: "color:#fffac8", description: "米色" },
-        "maroon": { style: "color:#800000", description: "栗色" },
-        "mintGreen": { style: "color:#aaffc3", description: "薄荷绿色" },
-        "olive": { style: "color:#808000", description: "橄榄色" },
-        "apricot": { style: "color:#ffd8b1", description: "杏色" },
-        "navyBlue": { style: "color:#000075", description: "海军蓝" },
-        "gray": { style: "color:#a9a9a9", description: "灰色" },
-        //"white": { style: "color:#ffffff", description: "白色" },
-        //"black": { style: "color:#000000", description: "黑色" }
+        "default": {
+            "light": {
+                "now": { "style": "color:#1D4ED8;font-weight:bold;", "description": "NOW" },
+                "important": { "style": "color:#B91C1C;font-weight:bold;", "description": "重要" },
+                "completed": { "style": "color:#15803D;font-weight:bold;", "description": "完成" },
+                "todo": { "style": "color:#D97706;font-weight:bold;", "description": "TODO" },
+                "pass": { "style": "color:#8E8E8E;font-weight:bold;", "description": "PASS" },
+                "like": { "style": "color:#9333EA;font-weight:bold;", "description": "喜欢" },
+                "special": { "style": "color:#D946EF;font-weight:bold;", "description": "特别" }
+            },
+            "dark": {
+                "now": { "style": "color:#42A5F5;font-weight:bold;", "description": "NOW" },
+                "important": { "style": "color:#FF5252;font-weight:bold;", "description": "重要" },
+                "completed": { "style": "color:#66BB6A;font-weight:bold;", "description": "完成" },
+                "todo": { "style": "color:#FFB300;font-weight:bold;", "description": "TODO" },
+                "pass": { "style": "color:#8E8E8E;font-weight:bold;", "description": "PASS" },
+                "like": { "style": "color:#E040FB;font-weight:bold;", "description": "喜欢" },
+                "special": { "style": "color:#CE93D8;font-weight:bold;", "description": "特别" }
+            }
+        }
     };
 
     /////// main //////////////////////
+
+    // 保存原始颜色配置
+    const originColors = JSON.parse(JSON.stringify(colors));
     
     // 获取置顶数据，格式 {"docId":"order"}
     let topmostData = await getFile('/data/storage/tree_topmost.json') || '{}';
@@ -49,6 +57,18 @@
     let colorData = await getFile('/data/storage/tree_colors.json') || '{}';
     colorData = JSON.parse(colorData);
     if(colorData.code && colorData.code !== 0) colorData = {};
+
+    // 获取用户颜色配置
+    let colorConfig = await getFile('/data/storage/tree_colors_user_config.json') || '{}';
+    colorConfig = JSON.parse(colorConfig);
+    if(colorConfig.code && colorConfig.code !== 0) colorConfig = {};
+    if(isEmptyObject(colorConfig)) {
+        // 第一次运行保存默认配色方案
+        putFile('/data/storage/tree_colors_user_config.json', JSON.stringify(colors, null, 4));
+    }
+    
+    // 生成颜色数据
+    genColors();
     
     // 生成样式
     genStyle();
@@ -92,7 +112,31 @@
     // 添加新图标
     addSvgSymbol();
 
+    // 监听主题和明暗风格切换
+    observeThemeChange((attributeName, newValue) => {
+        // 生成颜色数据
+        genColors();
+        // 生成样式
+        genStyle();
+    });
+
     /////// functions //////////////////////
+
+    function genColors() {
+        // 获取主题和明暗风格
+        const mode = siyuan.config.appearance.mode === 0 ? 'light' : 'dark';
+        const theme = siyuan.config.appearance.mode === 0 ? siyuan.config.appearance.themeLight : siyuan.config.appearance.themeDark;
+        // 获取默认颜色配置
+        const defaultDefaultColors = originColors['default'][mode] || {};
+        const defaultThemeColors = originColors[theme] ? (originColors[theme][mode] || {}) : {};
+        const defaultColors = {...defaultDefaultColors, ...defaultThemeColors};
+        // 获取用户颜色配置
+        const userDefaultColors = colorConfig['default'] ? (colorConfig['default'][mode] || {}) : {};
+        const userThemeColors = colorConfig[theme] ? (colorConfig[theme][mode] || {}) : {};
+        const userColors = {...userDefaultColors, ...userThemeColors};
+        // 合并用户配置和默认配置
+        colors = {...defaultColors, ...userColors};
+    }
 
     function genTopmostMenu(beforeBtn, currLi) {
         if(!isEnableTopmost) return;
@@ -135,7 +179,7 @@
         // 遍历生成子菜单
         for (const code in colors) {
             const item = colors[code];
-            subMenus += `<button class="b3-menu__item"><span class="b3-menu__label" data-code="${code}" style="${item.style};font-weight:bold;">${item.description}</span></button>`;
+            subMenus += `<button class="b3-menu__item"><span class="b3-menu__label" data-code="${code}" style="${item.style}">${item.description}</span></button>`;
         }
         
         // 显示子菜单
@@ -174,7 +218,7 @@
                     const order = topmostData[docId];
                     topmostStyle += `
                         :is(.sy__file, #sidebar .b3-list--mobile) li[data-node-id="${docId}"] {
-                            order: ${order};
+                            order: ${order||0};
                         }
                     `;
                 }
@@ -189,7 +233,7 @@
                     const code = colorData[docId];
                     colorStyle += `
                         :is(.sy__file, #sidebar .b3-list--mobile) li[data-node-id="${docId}"] span.b3-list-item__text{
-                            ${colors[code]['style']};
+                            ${colors[code]?.style||''};
                         }
                     `;
                 }
@@ -280,6 +324,10 @@
     function isMobile() {
         return !!document.getElementById("sidebar");
     }
+
+    function isEmptyObject(obj) {
+      return obj == null || Object.keys(obj).length === 0;
+    }
     
     function addSvgSymbol() {
         // 检查是否存在 id 为 "iconTop" 的 <symbol> 元素
@@ -305,5 +353,39 @@
             const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
             document.body.appendChild(svgDoc.documentElement);
         }
+    }
+
+    /**
+     * 监听 HTML 标签的主题相关属性变化
+     * @param {Function} callback - 回调函数，接收变化的属性名和新值
+     */
+    function observeThemeChange(callback) {
+        // 获取目标元素（通常是 <html> 标签）
+        const targetElement = document.documentElement;
+
+        // 创建 MutationObserver 实例
+        const observer = new MutationObserver((mutationsList) => {
+            mutationsList.forEach((mutation) => {
+                if (mutation.type === 'attributes') {
+                    const attributeName = mutation.attributeName;
+                    const newValue = targetElement.getAttribute(attributeName);
+
+                    // 检查是否是目标属性
+                    if (['data-theme-mode', 'data-light-theme', 'data-dark-theme'].includes(attributeName)) {
+                        // 调用回调函数，传递属性名和新值
+                        callback(attributeName, newValue);
+                    }
+                }
+            });
+        });
+
+        // 配置观察选项
+        const config = {
+            attributes: true, // 监听属性变化
+            attributeFilter: ['data-theme-mode', 'data-light-theme', 'data-dark-theme'] // 仅监听指定属性
+        };
+
+        // 开始观察目标元素
+        observer.observe(targetElement, config);
     }
 })();
