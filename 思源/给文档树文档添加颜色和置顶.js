@@ -20,6 +20,8 @@
     // 也可以把 tree_colors_user_config.json 发出来与大家分享您的创意
     // 该配色灵感来自 @Floria233 大佬提供的配色方案
     // see https://ld246.com/article/1741359650489/comment/1741430150736?r=wilsons#comments
+    // （切换主题或亮色暗色风格时自动会切换配色方案）
+    // 为了让目录树的颜色更突出，默认加了加粗显示（font-weight:bold样式），如果你不需要去掉这个样式即可
     let colors = {
         "default": {
             "light": {
