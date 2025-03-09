@@ -2091,7 +2091,7 @@ return (async () => {
                 border-collapse: collapse;
                 width: 100%;
                 cursor: text;
-                ${options.tableStyle?options.tableStyle:''}
+                ${options.tableStyle?options.tableStyle+';':''}
             }
             .grid-table-${id} > div {
                 ${(options.tableBorder && !options.onlyShowBottomBorder)?'border: '+tableBorderStyle:''};
@@ -2104,12 +2104,12 @@ return (async () => {
                 display: grid;
                 justify-content: center;
                 align-items: center;
-                ${options.cellMaxHeight?`max-height:${options.cellMaxHeight}`:' max-height:200px'}
-                ${options.cellMinWidth?`min-width:${options.cellMinWidth}`:'min-width:100px'}
+                ${options.cellMaxHeight?`max-height:${options.cellMaxHeight};`:' max-height:200px;'}
+                ${options.cellMinWidth?`min-width:${options.cellMinWidth};`:'min-width:100px;'}
                 ${options.cellWidth?`min-width:auto;width:${options.cellWidth}${getUnit(options.cellWidth)};`:''}
                 ${options.cellHeight?`max-height:fit-content;height:${options.cellHeight}${getUnit(options.cellHeight)};`:''}
-                ${options.cellAlign?'justify-content:'+getAlign(options.cellAlign):''}
-                ${options.cellVAlign?'align-items:'+getAlign(options.cellVAlign):''}
+                ${options.cellAlign?'justify-content:'+getAlign(options.cellAlign)+';':''}
+                ${options.cellVAlign?'align-items:'+getAlign(options.cellVAlign)+';':''}
                 ${options.cellStyle?options.cellStyle:''}
             }
             ${lastColStyle.join(',')} {
@@ -2123,9 +2123,9 @@ return (async () => {
                 ${options.headerBackgroundColor?'background-color: '+options.headerBackgroundColor+'!important;':''}
                 ${options.headerSticky?'position: sticky;top: 0;':''}
                 ${options.headHeight?`max-height:fit-content;height:${options.headHeight}${getUnit(options.headHeight)};`:''}
-                ${options.headAlign?'justify-content:'+getAlign(options.headAlign):''}
-                ${options.headVAlign?'align-items:'+getAlign(options.headVAlign):''}
-                ${options.headerStyle?options.headerStyle:''}
+                ${options.headAlign?'justify-content:'+getAlign(options.headAlign)+';':''}
+                ${options.headVAlign?'align-items:'+getAlign(options.headVAlign)+';':''}
+                ${options.headerStyle?options.headerStyle+';':''}
             }
             .grid-table-${id} > .grid-sticky {
                 position: sticky;
