@@ -1,11 +1,12 @@
 // SQL简单查询
 // 支持多字段查询，支持自定义查询结果，支持多种视图table,list,chart,mermaid等，支持数据库查询，可以通过SQL查数据库，连表查数据库及sqlite等。
-// version 0.0.2
+// version 0.0.4
 // update: https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/SQL%E7%AE%80%E5%8D%95%E6%9F%A5%E8%AF%A2.js
 // 使用帮助：https://ld246.com/article/1736035967300
 // 版本更新记录
 // 0.0.2 修复bug；优化细节；增加alSql查询，支持SQL查询数据库等
 // 0.0.3 修复文本对齐的bug
+// 0.0.4 修复Lute解析Markdown问题，增加单元格cellMaxHeight和cellMinWidth选项设置
 /*
 // 调用示例
 // 支持字段后缀进行简单格式化，比如，content as content__link_u_b_i_1, created as created__datetime_2
@@ -202,6 +203,7 @@ return (async () => {
         addRef,
         addLink,
         toRefWithStyle,
+        getLute,
     };
 
     /////////////// 用户自定义函数区 //////////////////////////////////
@@ -449,7 +451,8 @@ return (async () => {
     }
 
     function renderMarkdown(markdown) {
-        return parseRef(md2Block(markdown));
+        return md2Block(markdown);
+        //return parseRef(md2Block(markdown));
     }
 
     // 解析引用为HTML
@@ -519,11 +522,11 @@ return (async () => {
     }
 
     function md2Block(markdown) {
-        return Lute.New().Md2BlockDOM(markdown);
+        return getLute().Md2BlockDOM(markdown);
     }
 
     function block2Md(block) {
-        return Lute.New().BlockDOM2Md(block);
+        return getLute().BlockDOM2Md(block);
     }
 
     function generateChartView(code, item, pos='after', autoUpdate = false, relation = true) {
@@ -1599,6 +1602,8 @@ return (async () => {
                 tableStyle: '', // 表格样式
                 cellWidth: '',  // 单元格宽度
                 cellHeight: '', // 单元格高度
+                cellMinWidth: '', // 单元格最小宽度，none不限制
+                cellMaxHeight: '', // 单元格最大高度，none不限制
                 cellAlign: '', // 单元格对齐
                 cellVAlign: '', // 单元格垂直对齐
                 cellStyle: '', // 单元格样式
@@ -2094,13 +2099,13 @@ return (async () => {
                 border-bottom: ${(options.tableBorder && options.onlyShowBottomBorder)?tableBorderStyle:0};
                 padding: 5px;
                 text-align: center;
-                max-height: 100px;
-                min-width: 200px;
                 overflow: auto;
                 box-sizing: border-box;
                 display: grid;
                 justify-content: center;
                 align-items: center;
+                ${options.cellMaxHeight?`max-height:${options.cellMaxHeight}`:' max-height:200px'}
+                ${options.cellMinWidth?`min-width:${options.cellMinWidth}`:'min-width:100px'}
                 ${options.cellWidth?`min-width:auto;width:${options.cellWidth}${getUnit(options.cellWidth)};`:''}
                 ${options.cellHeight?`max-height:fit-content;height:${options.cellHeight}${getUnit(options.cellHeight)};`:''}
                 ${options.cellAlign?'justify-content:'+getAlign(options.cellAlign):''}
@@ -2687,6 +2692,109 @@ return (async () => {
         delete queriesData[item.dataset.nodeId][key];
     }
 
+    function getLute() {
+        const setLute = (options) => {
+            const lute = window.Lute.New();
+            lute.SetSpellcheck(window.siyuan.config.editor.spellcheck);
+            lute.SetProtyleMarkNetImg(window.siyuan.config.editor.displayNetImgMark);
+            lute.SetFileAnnotationRef(true);
+            lute.SetHTMLTag2TextMark(true);
+            lute.SetTextMark(true);
+            lute.SetHeadingID(false);
+            lute.SetYamlFrontMatter(false);
+            lute.PutEmojis(options.emojis);
+            lute.SetEmojiSite(options.emojiSite);
+            lute.SetHeadingAnchor(options.headingAnchor);
+            lute.SetInlineMathAllowDigitAfterOpenMarker(true);
+            lute.SetToC(false);
+            lute.SetIndentCodeBlock(false);
+            lute.SetParagraphBeginningSpace(true);
+            lute.SetSetext(false);
+            lute.SetFootnotes(false);
+            lute.SetLinkRef(false);
+            lute.SetSanitize(options.sanitize);
+            lute.SetChineseParagraphBeginningSpace(options.paragraphBeginningSpace);
+            lute.SetRenderListStyle(options.listStyle);
+            lute.SetImgPathAllowSpace(true);
+            lute.SetKramdownIAL(true);
+            lute.SetTag(true);
+            lute.SetSuperBlock(true);
+            lute.SetMark(true);
+            lute.SetInlineAsterisk(window.siyuan.config.editor.markdown.inlineAsterisk);
+            lute.SetInlineUnderscore(window.siyuan.config.editor.markdown.inlineUnderscore);
+            lute.SetSup(window.siyuan.config.editor.markdown.inlineSup);
+            lute.SetSub(window.siyuan.config.editor.markdown.inlineSub);
+            lute.SetTag(window.siyuan.config.editor.markdown.inlineTag);
+            lute.SetInlineMath(window.siyuan.config.editor.markdown.inlineMath);
+            lute.SetGFMStrikethrough1(false);
+            lute.SetGFMStrikethrough(window.siyuan.config.editor.markdown.inlineStrikethrough);
+            lute.SetMark(window.siyuan.config.editor.markdown.inlineMark);
+            lute.SetSpin(true);
+            lute.SetProtyleWYSIWYG(true);
+            if (options.lazyLoadImage) {
+                lute.SetImageLazyLoading(options.lazyLoadImage);
+            }
+            lute.SetBlockRef(true);
+            if (window.siyuan.emojis[0].items.length > 0) {
+                const emojis = {};
+                window.siyuan.emojis[0].items.forEach(item => {
+                    emojis[item.keywords] = options.emojiSite + "/" + item.unicode;
+                });
+                lute.PutEmojis(emojis);
+            }
+            return lute;
+        };
+        
+        // 1. 优化查找函数（仅匹配 .editor.protyle 结尾路径）
+        function findProtylePaths(obj) {
+            const results = [];
+            const seen = new Set();
+        
+            function walk(obj, path = '') {
+                if (!obj || seen.has(obj)) return;
+                seen.add(obj);
+        
+                for (const [key, value] of Object.entries(obj)) {
+                    const currentPath = path ? `${path}.${key}` : key;
+                    
+                    // 检查是否以 .editor.protyle 结尾
+                    if (currentPath.endsWith('.editor.protyle')) {
+                        results.push({ path: currentPath, value });
+                    }
+        
+                    if (typeof value === 'object') {
+                        walk(value, currentPath);
+                    }
+                }
+            }
+        
+            walk(obj);
+            return results;
+        }
+        
+        // 2. 获取目标对象
+        const protylePaths = findProtylePaths(window.siyuan);
+        const firstProtyle = protylePaths[0]?.value;
+        
+        if (firstProtyle) {
+            // 3. 动态设置 lute 并调用
+            firstProtyle.lute = setLute({
+                emojiSite: firstProtyle.options?.hint?.emojiPath,
+                emojis: firstProtyle.options?.hint?.emoji,
+                headingAnchor: false,
+                listStyle: firstProtyle.options?.preview?.markdown?.listStyle,
+                paragraphBeginningSpace: firstProtyle.options?.preview?.markdown?.paragraphBeginningSpace,
+                sanitize: firstProtyle.options?.preview?.markdown?.sanitize,
+            });
+        
+            // 4. 获取lute实例
+            return firstProtyle.lute;
+        } else {
+            console.warn('未找到符合条件的 protyle 对象');
+            return Lute.New();
+        }
+    }
+
     ///////////// 工具 //////////////////////////
     // 给查询窗口增加添加查询模板功能
     observerProtyleUtil(async protyleUtil => {
@@ -2744,6 +2852,8 @@ item, '', '', '',
     tableStyle: '', // 表格样式
     cellWidth: '',  // 单元格宽度
     cellHeight: '', // 单元格高度
+    cellMinWidth: '', // 单元格最小宽度，none不限制
+    cellMaxHeight: '', // 单元格最大高度，none不限制
     cellAlign: '', // 单元格对齐
     cellVAlign: '', // 单元格垂直对齐
     cellStyle: '', // 单元格样式
@@ -2866,6 +2976,8 @@ return query(
         tableStyle: '', // 表格样式
         cellWidth: '',  // 单元格宽度
         cellHeight: '', // 单元格高度
+        cellMinWidth: '', // 单元格最小宽度，none不限制
+        cellMaxHeight: '', // 单元格最大高度，none不限制
         cellAlign: '', // 单元格对齐
         cellVAlign: '', // 单元格垂直对齐
         cellStyle: '', // 单元格样式
