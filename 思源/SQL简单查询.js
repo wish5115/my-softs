@@ -1,12 +1,13 @@
 // SQL简单查询
 // 支持多字段查询，支持自定义查询结果，支持多种视图table,list,chart,mermaid等，支持数据库查询，可以通过SQL查数据库，连表查数据库及sqlite等。
-// version 0.0.4
+// version 0.0.5
 // update: https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/SQL%E7%AE%80%E5%8D%95%E6%9F%A5%E8%AF%A2.js
 // 使用帮助：https://ld246.com/article/1736035967300
 // 版本更新记录
 // 0.0.2 修复bug；优化细节；增加alSql查询，支持SQL查询数据库等
 // 0.0.3 修复文本对齐的bug
 // 0.0.4 修复Lute解析Markdown问题，增加单元格cellMaxHeight和cellMinWidth设置选项
+// 0.0.5 增加autoLoading选项；修改生成视图加载时默认自动生成；优化部分样式，增加鲁棒性。
 /*
 // 调用示例
 // 支持字段后缀进行简单格式化，比如，content as content__link_u_b_i_1, created as created__datetime_2
@@ -529,18 +530,18 @@ return (async () => {
         return getLute().BlockDOM2Md(block);
     }
 
-    function generateChartView(code, item, pos='after', autoUpdate = false, relation = true) {
+    function generateChartView(code, item, pos='after', autoUpdate = true, relation = true) {
         code = typeof code === 'string' ? code : JSON.stringify(code);
         const markdown = `\`\`\`echarts\n${code}\n\`\`\``;
         return generateViewByMarkdown(markdown, item, pos, 'NodeCodeBlock', 'echarts', autoUpdate, relation);
     }
 
-    function generateMermaidView(code, item, pos='after', autoUpdate = false, relation = true) {
+    function generateMermaidView(code, item, pos='after', autoUpdate = true, relation = true) {
         const markdown = `\`\`\`mermaid\n${code}\n\`\`\``;
         return generateViewByMarkdown(markdown, item, pos, 'NodeCodeBlock', 'mermaid', autoUpdate, relation);
     }
 
-    async function generateViewByMarkdown(markdown, item, pos='after', domType = '', domSubType='', autoUpdate = false, relation = true) {
+    async function generateViewByMarkdown(markdown, item, pos='after', domType = '', domSubType='', autoUpdate = true, relation = true) {
         if(!item) return getError('缺少item参数');
         if(!autoUpdate && isLoading(item)) return getInfo();
         markdown = typeof markdown === 'string' ? markdown : JSON.stringify(markdown) || Object.toString(markdown);
@@ -552,7 +553,7 @@ return (async () => {
         return getSuccess('生成成功');
     }
 
-    async function generateViewByDom(dom, item, pos='after', domType = '', domSubType='', autoUpdate = false, relation = true) {
+    async function generateViewByDom(dom, item, pos='after', domType = '', domSubType='', autoUpdate = true, relation = true) {
         if(!item) return getError('缺少item参数');
         if(!autoUpdate && isLoading(item)) return getInfo();
         const result = await insertUpdateBlock(dom, item, pos, domType, domSubType, relation, 'dom');
@@ -563,7 +564,7 @@ return (async () => {
         return getSuccess('生成成功');
     }
 
-    async function generateListView(data, item, pos = 'after', refIds = [], linkUrls = [], autoUpdate = false, relation = true) {
+    async function generateListView(data, item, pos = 'after', refIds = [], linkUrls = [], autoUpdate = true, relation = true) {
         if(!item) return getError('缺少item参数');
         if(!autoUpdate && isLoading(item)) return getInfo();
         const markdown = typeof data === 'string' ? data : generateListMarkdownByArray(data, 'list', refIds, linkUrls);
@@ -575,7 +576,7 @@ return (async () => {
         return getSuccess('生成成功');
     }
 
-    async function generateTaskView(data, item, pos = 'after', refIds = [], linkUrls = [], autoUpdate = false, relation = true) {
+    async function generateTaskView(data, item, pos = 'after', refIds = [], linkUrls = [], autoUpdate = true, relation = true) {
         if(!item) return getError('缺少item参数');
         if(!autoUpdate && isLoading(item)) return getInfo();
         const markdown = typeof data === 'string' ? data : generateListMarkdownByArray(data, 'task', refIds, linkUrls);
@@ -604,7 +605,7 @@ return (async () => {
         return `${headerString}${separatorString}${bodyString}`;
     }
 
-    async function generateTableView(data, item, pos = 'after', autoUpdate = false, relation = true) {
+    async function generateTableView(data, item, pos = 'after', autoUpdate = true, relation = true) {
         if(!item) return getError('缺少item参数');
         if(!autoUpdate && isLoading(item)) return getInfo();
         const markdown = typeof data === 'string' ? data : generateTableMarkdownByData(data);
@@ -629,11 +630,11 @@ return (async () => {
         throw new Error(`${functionName} is not a function`);
     }
 
-    async function generateAVView(data, item, pos = 'after', idField='', pkField='', autoUpdate = false, relation = true) {
+    async function generateAVView(data, item, pos = 'after', idField='', pkField='', autoUpdate = true, relation = true) {
         return generateDatabaseView(data, item, pos, idField, pkField, autoUpdate, relation);
     }
 
-    async function generateDatabaseView(data, item, pos = 'after', idField='', pkField='', autoUpdate = false, relation = true) {
+    async function generateDatabaseView(data, item, pos = 'after', idField='', pkField='', autoUpdate = true, relation = true) {
         if(!item) return getError('缺少item参数');
         if(!autoUpdate && isLoading(item)) return getInfo();
         const result = await generateDatabaseByData(data, item, pos, idField, pkField, relation);
@@ -1284,6 +1285,17 @@ return (async () => {
         //return !!queriesData[item.dataset.nodeId]?.isLoading;
     }
 
+    function isGlobalLoading(item) {
+        // 动态加载
+        if(getQueriesData(item, 'firstGlobalLoading')) {
+            setQueriesData(item, 'firstGlobalLoading', false);
+            return true;
+        }
+        return false;
+        // 静态加载
+        //return !!queriesData[item.dataset.nodeId]?.isGlobalLoading;
+    }
+
     /////////////// 核心功能区 //////////////////////////////////
 
     // 实例数据
@@ -1616,10 +1628,12 @@ return (async () => {
                 queryTitle: defaultTitle, // 简单查询标题
                 queryDesc: defaultDesc, // 简单查询描述
                 queryLogo: defaultLogo, // 简单查询logo
+                autoLoading: true, // 是否自动加载，默认true
             },
             // 用户自定义选项
             ...options
         };
+        if(!options.autoLoading && isGlobalLoading(item)) return getInfo(); // 不自动加载时返回
         let styles = [], rawData = deepClone(data) || [], rowNo = {value: 0}, sortedFields = {value: []};
         const hasCustomField = Object.keys(data[0]||{}).find(key => key.includes('__'));
         let colsSpace = {};
@@ -2866,6 +2880,7 @@ item, '', '', '',
     queryLogo: '', // 简单查询logo，可针对不同的查询设置不同的logo
     queryTitle: '', // 简单查询标题，可针对不同的查询设置不同的标题
     queryDesc: '', // 简单查询描述，可针对不同的查询设置不同的描述
+    autoLoading: true, // 是否自动加载，默认true
 });
 
 // 常用字段后缀说明：
@@ -2990,6 +3005,7 @@ return query(
         queryLogo: '', // 简单查询logo，可针对不同的查询设置不同的logo
         queryTitle: '', // 简单查询标题，可针对不同的查询设置不同的标题
         queryDesc: '', // 简单查询描述，可针对不同的查询设置不同的描述
+        autoLoading: true, // 是否自动加载，默认true
     }
 );`;
             buttonElement.innerHTML = '已添加';
@@ -3013,6 +3029,7 @@ return query(
                     if (node.nodeType === Node.ELEMENT_NODE) {
                         if(node.matches('[data-type="NodeBlockQueryEmbed"][data-content^="//!js"]')) {
                             setQueriesData(node, 'firstLoading', true);
+                            setQueriesData(node, 'firstGlobalLoading', true);
                         }
                     }
                 }
