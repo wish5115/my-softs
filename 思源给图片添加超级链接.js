@@ -1,6 +1,7 @@
 // 给图片添加超链接
-// version 0.0.2
 // see https://ld246.com/article/1728779161490
+// version 0.0.2
+// 0.0.2 图片菜单增加跳转地址，修复跳转可能失败的问题，改进网络标志样式
 (()=>{
     // 是否显示网络标志
     const isShowNetFlag = true;
@@ -14,13 +15,13 @@
                     position: absolute;
                     left: 5px;
                     top: 5px;
-                    font-size: 12px;
+                    font-size: 11px;
                     z-index: 1;
-                    width: 22px;
-                    height: 21px;
-                    padding: 0px;
-                    border-radius: 6px;
-                    background-color: #ffffffaa;
+                    width: 18px;
+                    height: 18px;
+                    padding: 1px;
+                    border-radius: var(--b3-border-radius);
+                    background-color: var(--b3-theme-surface-lighter);
                 }
                 /* 错开与网络图片标志的冲突 */
                 [data-type="img"] > span:has(> span.img__net):has(> img[src*="url="])::before {
@@ -95,23 +96,34 @@
             urlField.addEventListener('input', () => {
                 // 获取用户输入的新 URL
                 const newUrl = urlField.value.trim();
-                // 如果新 URL 为空，则不进行任何操作
-                if (!newUrl) return;
+            
                 // 获取 imgField 的当前内容
                 let imgFieldValue = imgField.value;
-                // 检查是否已有 url 参数
-                const urlParamRegex = /(url=)[^&\s]*/;
-                if (urlParamRegex.test(imgFieldValue)) {
-                    // 如果有 url 参数，则替换其值
-                    imgFieldValue = imgFieldValue.replace(urlParamRegex, `$1${encodeURIComponent(newUrl)}`);
+            
+                if (newUrl) {
+                    // 如果新 URL 不为空，则更新或添加 url 参数
+                    const urlParamRegex = /(url=)[^&\s]*/;
+                    if (urlParamRegex.test(imgFieldValue)) {
+                        // 如果有 url 参数，则替换其值
+                        imgFieldValue = imgFieldValue.replace(urlParamRegex, `$1${encodeURIComponent(newUrl)}`);
+                    } else {
+                        // 如果没有 url 参数，则添加新的 url 参数
+                        const separator = imgFieldValue.includes('?') ? '&' : '?';
+                        imgFieldValue += `${separator}url=${encodeURIComponent(newUrl)}`;
+                    }
                 } else {
-                    // 如果没有 url 参数，则添加新的 url 参数
-                    const separator = imgFieldValue.includes('?') ? '&' : '?';
-                    imgFieldValue += `${separator}url=${encodeURIComponent(newUrl)}`;
+                    // 如果新 URL 为空，则移除 url 参数
+                    const urlParamRegex = /([&?])url=[^&\s]*/;
+                    imgFieldValue = imgFieldValue.replace(urlParamRegex, (match, p1) => {
+                        // 如果移除后只剩下一个 '?' 或 '&'，则清理多余的分隔符
+                        return p1 === '?' && !/&/.test(imgFieldValue) ? '' : '';
+                    });
                 }
+            
                 // 将更新后的内容写回 imgField
                 imgField.value = imgFieldValue;
-                // 触发imgField输入事件
+            
+                // 强制触发 imgField 的输入事件
                 imgField.dispatchEvent(new Event('input'));
             });
         });
