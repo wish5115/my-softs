@@ -5,7 +5,7 @@
 // 0.0.3 修复频繁右键可能导致两个右键菜单冲突的问题
 (() => {
     // 给笔记本添加文档数
-    whenElementExist('ul[data-url]').then(() => {
+    const setBoxCount = () => {
         const boxes = document.querySelectorAll('ul[data-url]');
         boxes.forEach(async box => {
             const response = await query(`SELECT count(*) as count FROM blocks where box = '${box.dataset.url}' and type = 'd';`);
@@ -15,9 +15,17 @@
             if(!li) return;
             const boxText = li.querySelector('span.b3-list-item__text');
             if(!boxText) return;
-            boxText.textContent += ` (${count})`;
+            const text = boxText.textContent.replace(/\s*\(\d+\)$/, '');
+            boxText.textContent = text + ` (${count})`;
         });
+    };
+    whenElementExist('ul[data-url]').then(() => {
+        setBoxCount();
     });
+    // 每小时更新一次笔记本文档数
+    setInterval(() => {
+        setBoxCount();
+    }, 3600000);
 
     // 监听右键菜单，动态显示文件夹的文档数
     const treeSelector = isMobile()? '#sidebar .b3-list--mobile' : '.sy__file';
