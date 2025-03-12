@@ -3,11 +3,11 @@
 // version 0.0.2
 // 0.0.2 图片菜单增加跳转地址，修复跳转可能失败的问题，改进网络标志样式
 (()=>{
-    // 是否显示网络标志
-    const isShowNetFlag = true;
+    // 是否显示链接标志
+    const isShowLinkFlag = true;
     
     whenElementExist(isMobile()?'body':'.layout__center').then((el)=>{
-        if(isShowNetFlag) {
+        if(isShowLinkFlag) {
             addStyle(`
                /* 显示链接标记 */
                [data-type="img"] > span:has(> img[src*="url="])::before {
