@@ -1,5 +1,9 @@
-// 移到回收站（暂不支持批量移动）
+// 移到回收站（支持批量移动）
 // see 
+// version 0.0.1
+// 未来计划：
+// 1. 清空回收
+// 2. 回收站还原
 (() => {
 
     // 回收站笔记本id，可在笔记本右键设置中查看
@@ -23,10 +27,26 @@
                 const html = `<button data-id="moveToTrash" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTrashcan"></use></svg><span class="b3-menu__label">移动到回收站</span></button>`;
                 targetMenu.insertAdjacentHTML('beforebegin', html);
                 targetMenu.parentElement.querySelector('button[data-id="moveToTrash"]').onclick = async () => {
-                    if(!confirm('你确定要移动该文档到回收站吗？')) return;
+                    if(!confirm('您确定要移动这些文档到回收站吗？')) return;
+                    
                     document.body.click();
+                    const focusLis = document.querySelectorAll(treeSelector+' li.b3-list-item--focus:not([data-type="navigation-root"])');
+                    
+                    // 设置来源path
+                    const pathAndIdList = Array.from(focusLis).map(item => ({id:item.dataset.nodeId, path:item.dataset.path}));
+                    pathAndIdList.forEach(async item => {
+                        await fetchSyncPost('/api/attr/setBlockAttrs', {
+                            "id": item.id,
+                            "attrs": {
+                                "custom-from-path": item.path
+                            }
+                        });
+                    });
+
+                    // 移动到回收站
+                    const paths = Array.from(focusLis).map(item => item.dataset.path);
                     const result = await fetchSyncPost('/api/filetree/moveDocs', {
-                      "fromPaths": [currLi.dataset.path],
+                      "fromPaths": paths,
                       "toNotebook": toBoxId,
                       "toPath": "/"
                     });
