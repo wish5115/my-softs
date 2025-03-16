@@ -1,6 +1,7 @@
 // 移到回收站（支持批量移动）
 // see https://ld246.com/article/1742083860299
-// version 0.0.1
+// version 0.0.2
+// 0.0.2 修复来源属性添加失败问题；增加isShowConfirm参数
 // 未来计划：
 // 1. 清空回收
 // 2. 回收站还原
@@ -38,14 +39,15 @@
                     
                     // 设置来源path
                     const pathAndIdList = Array.from(focusLis).map(item => ({id:item.dataset.nodeId, path:item.dataset.path}));
-                    pathAndIdList.forEach(async item => {
+                    for(const i in pathAndIdList) {
+                        const item = pathAndIdList[i];
                         await fetchSyncPost('/api/attr/setBlockAttrs', {
                             "id": item.id,
                             "attrs": {
                                 "custom-from-path": item.path
                             }
                         });
-                    });
+                    }
 
                     // 移动到回收站
                     const paths = Array.from(focusLis).map(item => item.dataset.path);
