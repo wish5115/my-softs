@@ -8,7 +8,7 @@
     // 回收站笔记本id，可在笔记本右键设置中查看
     const toBoxId = '20250316032243-coo9k2t';
 
-    // 删除时，是否弹窗确认对话框，true弹出，fasle不弹出
+    // 删除文档或清空回收站时，是否弹窗确认对话框，true弹出，fasle不弹出
     const isShowConfirm = true;
     
     // 监听右键菜单，动态显示文件夹的文档数
@@ -32,6 +32,7 @@
                     const html = `<button data-id="clearAll" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTrashcan"></use></svg><span class="b3-menu__label">清空回收站</span></button>`;
                     targetMenu.insertAdjacentHTML('beforebegin', html);
                     targetMenu.parentElement.querySelector('button[data-id="clearAll"]').onclick = async () => {
+                        if(isShowConfirm) if(!confirm('您确定要清空回收站吗？')) {document.body.click();return;}
                         const docs = document.querySelectorAll(`[data-url="${toBoxId}"] > ul > li`);
                         docs.forEach(doc => {
                             fetchSyncPost('/api/filetree/removeDoc', {
@@ -84,7 +85,7 @@
                     const html = `<button data-id="moveToTrash" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTrashcan"></use></svg><span class="b3-menu__label">移动到回收站</span></button>`;
                     targetMenu.insertAdjacentHTML('beforebegin', html);
                     targetMenu.parentElement.querySelector('button[data-id="moveToTrash"]').onclick = async () => {
-                        if(isShowConfirm) if(!confirm('您确定要移动这些文档到回收站吗？')) return;
+                        if(isShowConfirm) if(!confirm('您确定要移动这些文档到回收站吗？')) {document.body.click();return;};
                         
                         document.body.click();
                         const focusLis = document.querySelectorAll(treeSelector+' li.b3-list-item--focus:not([data-type="navigation-root"])');
