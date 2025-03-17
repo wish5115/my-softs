@@ -141,11 +141,89 @@
         }
     });
 
+    // 监听鼠标点击事件
+    document.addEventListener('mouseup', (event) => {
+        // 检查点击的目标元素是否具有 data-type="doc"
+        if (event.target.closest('button[data-type="doc"]')) {
+            whenElementExist('button[data-id="delete"]').then((delBtn) => {
+                if(!delBtn) return;
+                const delBtnLabel = delBtn.querySelector('.b3-menu__label');
+                delBtnLabel.style.color = siyuan.config.appearance.mode === 0 ? '#f53c3c' : '#ff7171';
+                delBtnLabel.textContent = '永久删除';
+                // 生成按钮
+                const html = `
+                    <button data-id="moveToTrash2" class="b3-menu__item b3-menu__item--current">
+                        <svg class="b3-menu__icon" style="">
+                            <use xlink:href="#iconTrashcan"></use>
+                        </svg>
+                        <span class="b3-menu__label">移动到回收站</span>
+                    </button>`;
+                delBtn.insertAdjacentHTML('beforebegin', html);
+                const toTrashBtn = delBtn.parentElement.querySelector('button[data-id="moveToTrash2"]');
+                if(!toTrashBtn) return;
+                toTrashBtn.onclick = async () => {
+                    document.body.click();
+
+                    // 获取文档信息
+                    const protyle = event.target.closest('.protyle');
+                    const docId = protyle?.querySelector('.protyle-title')?.dataset?.nodeId;
+                    if(!docId) return;
+                    let doc = await querySql(`select path,box from blocks where id = '${docId}'`);
+                    doc = doc[0];
+                    if(!doc || !doc.path || !doc.box) return;
+
+                    // 判断是否已在回收站中
+                    if(doc.box === toBoxId) {
+                        showMessage('文档已在回收站中', true);
+                        return;
+                    }
+
+                    // 设置文档来源
+                    await fetchSyncPost('/api/attr/setBlockAttrs', {
+                        "id": docId,
+                        "attrs": {
+                            "custom-from-path": doc.path,
+                            "custom-from-box": doc.box,
+                        }
+                    });
+
+                     // 移动到回收站
+                    const result = await fetchSyncPost('/api/filetree/moveDocs', {
+                      "fromPaths": [doc.path],
+                      "toNotebook": toBoxId,
+                      "toPath": "/"
+                    });
+                    if(result && result.code === 0) {
+                        showMessage('文档已移动到回收站');
+                    } else {
+                        console.error('移动到回收站失败', result);
+                        showMessage('移动到回收站失败', true);
+                    }
+
+                    // 关闭当前文档
+                    const wnd = protyle.closest('[data-type="wnd"]');
+                    if(!wnd) return;
+                    const focusTabCloseBtn = wnd.querySelector('.layout-tab-bar li.item--focus .item__close');
+                    if(!focusTabCloseBtn) return;
+                    if(focusTabCloseBtn.closest('li.item--pin')) {
+                        focusTabCloseBtn.click();
+                        await sleep(40);
+                    }
+                    focusTabCloseBtn.click();
+                };
+            });
+        }
+    });
+
     function showMessage(message, isError = false, delay = 7000) {
         return fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
             "method": "POST",
             "body": JSON.stringify({"msg": message, "timeout": delay})
         });
+    }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
     
     function whenElementExist(selector, node) {
