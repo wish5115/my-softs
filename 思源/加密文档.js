@@ -1,6 +1,7 @@
 // 加密文档（非真正加密）
 // see https://ld246.com/article/1742364416944
-//version 0.0.1
+//version 0.0.2
+// 0.0.2 默认密码框获取焦点；默认过期时间是1秒
 // 使用方法
 // 文档树右键选择加密/取消加密即可
 // 查看所有加密文档（把下面的代码粘贴到任意文档中即可）
@@ -15,7 +16,7 @@
     const pw = '12345123abcde45667890';
 
     // 解密后的过期时间，单位秒，0代表不过期，即直到下次刷新页面前一直有效
-    const expireTime = 0;
+    const expireTime = 1;
 
     // 加密文档id列表
     let encryptedDocIds = await getFile('/data/storage/encrypted_ids.json');
@@ -30,6 +31,7 @@
         if(pass) return;
         editor.innerHTML = `<input type="text" class="fn__size200 b3-text-field" placeholder="请输入密码"><span id="pwd-tips"></span>`;
         const input = editor.querySelector('input');
+        input.focus();
         input.addEventListener('input', ()=>{
             const rpw = getRealPw(pw);
             if(rpw === input.value.trim()) {
