@@ -1,4 +1,5 @@
 // 加密文档（非真正加密）
+// 注意： 该代码并不会加密原文，只是打开文档需要输入密码而已，且是前端加密，专业人员可以通过访问 js 源码分析出密码，因此请勿用于重要信息的保密！
 // see https://ld246.com/article/1742364416944
 //version 0.0.2
 // 0.0.2 修复偶发显示原文的bug；默认密码框自动获取焦点；默认过期时间改为1秒
@@ -6,8 +7,9 @@
 // 文档树右键选择加密/取消加密即可
 // 查看所有加密文档（把下面的代码粘贴到任意文档中即可）
 // {{//!js_esc_newline_return (async ()=&gt;{_esc_newline_    const ids = await fetchSyncPost(&quot;/api/file/getFile&quot;, {path:'/data/storage/encrypted_ids.json'});_esc_newline_    const result = await fetchSyncPost('/api/query/sql', { &quot;stmt&quot;:`select id, content from blocks where id in( ${ids.map(item=&gt;`'${item}'`).join(',')})` });_esc_newline_    const timer=setInterval(()=&gt; {_esc_newline_        if(!item.querySelector('.protyle-wysiwyg__embed')) return;_esc_newline_        clearInterval(timer);_esc_newline_        if(!result || !result.data) return;_esc_newline_        result.data.forEach((row)=&gt;{_esc_newline_            item.querySelector(`.protyle-wysiwyg__embed[data-id=&quot;${row.id}&quot;]`).innerHTML = row.content;_esc_newline_        });_esc_newline_    });_esc_newline_    return ids;_esc_newline_})();}}
-// 暂不支持文件夹，不过可以通过先获取文件夹所有文档的id后放入配置列表实现
+// 注意：暂不支持文件夹，不过可以通过先获取文件夹所有文档的 id 后放入/data/storage/encrypted_ids.json 文件中实现
 // 加密文档id存储在 /data/storage/encrypted_ids.json文件中
+// 所有文档共用一个密码，一个解密所有都解密（暂不支持对单个文档单独设置密码）
 (async () => {
 
     // 解密密码，前中后各5个字符的干扰码，所以你的真实密码在两边
