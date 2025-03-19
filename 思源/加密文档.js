@@ -1,7 +1,7 @@
 // 加密文档（非真正加密）
 // see https://ld246.com/article/1742364416944
 //version 0.0.2
-// 0.0.2 默认密码框获取焦点；默认过期时间是1秒
+// 0.0.2 修复偶发显示原文的bug；默认密码框自动获取焦点；默认过期时间改为1秒
 // 使用方法
 // 文档树右键选择加密/取消加密即可
 // 查看所有加密文档（把下面的代码粘贴到任意文档中即可）
@@ -26,35 +26,38 @@
     let pass = false;
     observeEditorLoaded((editor)=>{
         // 获取文档id
-        const docId = editor.closest('.protyle').querySelector('.protyle-title')?.dataset?.nodeId;
+        const protyle = editor.closest('.protyle');
+        const docId = protyle.querySelector('.protyle-title')?.dataset?.nodeId;
         if(!encryptedDocIds.includes(docId)) return;
         if(pass) return;
-        editor.innerHTML = `<input type="text" class="fn__size200 b3-text-field" placeholder="请输入密码"><span id="pwd-tips"></span>`;
-        const input = editor.querySelector('input');
-        input.focus();
-        input.addEventListener('input', ()=>{
-            const rpw = getRealPw(pw);
-            if(rpw === input.value.trim()) {
-                pass = true;
-                if(expireTime > 0) {
-                    setTimeout(()=>{pass = false;}, expireTime*1000);
-                }
-                const protyle = getProtyle();
-                if(protyle?.model?.editor?.reload) {
-                    protyle.model.editor.reload();
+        whenElementExist(()=>protyle.dataset.loading==='finished').then(() => {
+            editor.innerHTML = `<input type="text" class="fn__size200 b3-text-field" placeholder="请输入密码"><span id="pwd-tips"></span>`;
+            const input = editor.querySelector('input');
+            input.focus();
+            input.addEventListener('input', ()=>{
+                const rpw = getRealPw(pw);
+                if(rpw === input.value.trim()) {
+                    pass = true;
+                    if(expireTime > 0) {
+                        setTimeout(()=>{pass = false;}, expireTime*1000);
+                    }
+                    const protyle = getProtyle();
+                    if(protyle?.model?.editor?.reload) {
+                        protyle.model.editor.reload();
+                    } else {
+                        editor.closest('.protyle').querySelector('button[data-type="more"]').click();
+                        whenElementExist('#commonMenu button[data-id="refresh"]').then((refresh)=>{
+                            refresh.click();
+                        });
+                    }
                 } else {
-                    editor.closest('.protyle').querySelector('button[data-type="more"]').click();
-                    whenElementExist('#commonMenu button[data-id="refresh"]').then((refresh)=>{
-                        refresh.click();
-                    });
+                    const tips = editor.querySelector('#pwd-tips');
+                    tips.innerHTML = '密码错误';
+                    tips.style.fontSize = '14px';
+                    tips.style.marginTop = '4px';
+                    setTimeout(()=>{tips.innerHTML = '';}, 2000);
                 }
-            } else {
-                const tips = editor.querySelector('#pwd-tips');
-                tips.innerHTML = '密码错误';
-                tips.style.fontSize = '14px';
-                tips.style.marginTop = '4px';
-                setTimeout(()=>{tips.innerHTML = '';}, 2000);
-            }
+            });
         });
     });
 
