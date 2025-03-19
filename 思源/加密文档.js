@@ -25,12 +25,13 @@
     
     let pass = false;
     observeEditorLoaded((editor)=>{
-        // 获取文档id
-        const protyle = editor.closest('.protyle');
-        const docId = protyle.querySelector('.protyle-title')?.dataset?.nodeId;
-        if(!encryptedDocIds.includes(docId)) return;
         if(pass) return;
-        whenElementExist(()=>protyle.dataset.loading==='finished').then(() => {
+        whenElementExist(()=>editor.closest('.protyle')?.dataset?.loading==='finished').then(() => {
+            // 获取文档id
+            const protyle = editor.closest('.protyle');
+            const docId = protyle.querySelector('.protyle-title')?.dataset?.nodeId;
+            if(!encryptedDocIds.includes(docId)) return;
+            // 生成密码框
             editor.innerHTML = `<input type="text" class="fn__size200 b3-text-field" placeholder="请输入密码"><span id="pwd-tips"></span>`;
             const input = editor.querySelector('input');
             input.focus();
