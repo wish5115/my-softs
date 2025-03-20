@@ -1,8 +1,9 @@
 // 加密文档（非真正加密）
 // 注意： 该代码并不会加密原文，只是打开文档需要输入密码而已，且是前端加密，专业人员可以通过访问 js 源码分析出密码，因此请勿用于重要信息的保密！
 // see https://ld246.com/article/1742364416944
-//version 0.0.2
+//version 0.0.3
 // 0.0.2 修复偶发显示原文的bug；默认密码框自动获取焦点；默认过期时间改为1秒
+// 0.0.3 修复嵌入块显示bug
 // 使用方法
 // 文档树右键选择加密/取消加密即可
 // 查看所有加密文档（把下面的代码粘贴到任意文档中即可）
@@ -170,14 +171,16 @@
                     }
                     // 监控嵌入块
                     if(mutation.target?.dataset?.type === 'NodeBlockQueryEmbed') {
-                        const embed = mutation.target.querySelector('.protyle-wysiwyg__embed');
-                        if(!pass && embed && encryptedDocIds.includes(embed.dataset.id)) {
-                            let text = embed.querySelector('.protyle-breadcrumb__text')?.innerHTML;
-                            if(!text) {
-                                text = (await requestApi('/api/block/getDocInfo', {id:embed.dataset.id}))?.data?.name;
+                        const embeds = mutation.target.querySelectorAll('.protyle-wysiwyg__embed');
+                        embeds.forEach(async embed => {
+                            if(!pass && embed && encryptedDocIds.includes(embed.dataset.id)) {
+                                let text = embed.querySelector('.protyle-breadcrumb__text')?.innerHTML;
+                                if(!text) {
+                                    text = (await requestApi('/api/block/getDocInfo', {id:embed.dataset.id}))?.data?.name;
+                                }
+                                embed.innerHTML = text + ' (已加密)';
                             }
-                            embed.innerHTML = '嵌入块 ' + text + ' (已加密)';
-                        }
+                        });
                     }
                     // 监控预览窗口被加载
                     mutation.addedNodes.forEach(node => {
