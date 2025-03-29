@@ -1,9 +1,10 @@
 // 加密文档（非真正加密）
 // 注意： 该代码并不会加密原文，只是打开文档需要输入密码而已，且是前端加密，专业人员可以通过访问 js 源码分析出密码，因此请勿用于重要信息的保密！
 // see https://ld246.com/article/1742364416944
-//version 0.0.3
+//version 0.0.4
 // 0.0.2 修复偶发显示原文的bug；默认密码框自动获取焦点；默认过期时间改为1秒
 // 0.0.3 修复嵌入块显示bug
+// 0.0.4 修复搜索预览和导出预览被加载显示bug
 // 使用方法
 // 文档树右键选择加密/取消加密即可
 // 查看所有加密文档（把下面的代码粘贴到任意文档中即可）
@@ -19,7 +20,7 @@
     const pw = '12345123abcde45667890';
 
     // 解密后的过期时间，单位秒，0代表不过期，即直到下次刷新页面前一直有效
-    const expireTime = 1;
+    const expireTime = 30;
 
     // 加密文档id列表
     let encryptedDocIds = await getFile('/data/storage/encrypted_ids.json');
@@ -182,14 +183,44 @@
                             }
                         });
                     }
-                    // 监控预览窗口被加载
                     mutation.addedNodes.forEach(node => {
+                        // 监控预览窗口被加载
                         if (node.nodeType === 1 && node.matches('.block__popover')) {
                             if(!pass && encryptedDocIds.includes(node?.dataset?.oid)) {
                                 whenElementExist(()=>node.querySelector('.protyle[data-loading="finished"] .protyle-wysiwyg')).then(async (content)=>{
                                     content.innerHTML = '该文档已加密';
                                 });
                             }
+                        }
+                        // 监控搜索预览被加载
+                        if (node.nodeType === 1 && node.matches('.protyle-breadcrumb__item--active') && node.closest('#searchPreview')) {
+                            const searchPreview = node.closest('#searchPreview');
+                            whenElementExist(()=>searchPreview.matches('[data-loading="finished"]') && searchPreview.querySelector('.protyle-breadcrumb__bar .popover__block')).then(async ()=>{
+                                const block = searchPreview.querySelector('.protyle-breadcrumb__bar .popover__block');
+                                if(!pass && encryptedDocIds.includes(block?.dataset?.id)) {
+                                    searchPreview.querySelector('.protyle-wysiwyg').innerHTML = '该文档已加密';
+                                }
+                            });
+                        }
+                        // 监控导出预览被加载
+                        if (node.nodeType === 1 && node.matches('h1') && node.closest('.b3-typography')) {
+                            whenElementExist(()=>node.matches('h1[id]')).then(async ()=>{
+                                if(!pass && encryptedDocIds.includes(node.getAttribute('id'))) {
+                                    const typography = node.closest('.b3-typography');
+                                    // 遍历并删除所有其他子节点
+                                    while (typography.lastElementChild !== node) {
+                                        typography.removeChild(typography.lastElementChild);
+                                    }
+                                    typography.insertAdjacentHTML('beforeend', '<p>该文档已加密</p>');
+                                    // 隐藏导航栏复制按钮
+                                    const previewAction = typography.closest('.protyle-preview')?.querySelector('.protyle-preview__action');
+                                    if(previewAction) previewAction.style.display = 'none';
+                                } else {
+                                    // 恢复导航栏复制按钮
+                                    const previewAction = node.closest('.b3-typography')?.closest('.protyle-preview')?.querySelector('.protyle-preview__action');
+                                    if(previewAction) previewAction.style.display = '';
+                                }
+                            });
                         }
                     });
                 }
