@@ -1,6 +1,6 @@
 // 给文档树文档添加颜色和置顶
 // see https://ld246.com/article/1741359650489
-// version 0.0.5
+// version 0.0.5.1
 // 0.0.3 兼容手机版
 // 0.0.4 修复右键时可能出现的与上一个未关闭的菜单冲突问题
 // 0.0.5 修改默认配色方案，增加tree_colors_user_config.json用户配色方案文件
@@ -16,6 +16,7 @@
     const isEnableColor = true;
 
     // 预设颜色列表，格式 {"主题":{"明暗风格":{"编码":{style:"颜色值", "description":"颜色描述"}}}}，编码值必须唯一，编码修改则原来设置的颜色将失效
+    // "---1": {}, 代表分割线，后面的序号必须递增
     // 第一次运行后，会把该默认配置保存到 /data/storage/tree_colors_user_config.json 中，以后配置颜色只需要修改该文件即可，这样不受代码片段升级的影响
     // 也可以把 tree_colors_user_config.json 发出来与大家分享您的创意
     // 该配色灵感来自 @Floria233 大佬提供的配色方案
@@ -23,26 +24,58 @@
     // （切换主题或亮色暗色风格时自动会切换配色方案）
     // 为了让目录树的颜色更突出，默认加了加粗显示（font-weight:bold样式），如果你不需要去掉这个样式即可
     let colors = {
+        // 默认配色方案
         "default": {
             "light": {
-                "now": { "style": "color:#1D4ED8;font-weight:bold;", "description": "NOW" },
-                "important": { "style": "color:#B91C1C;font-weight:bold;", "description": "重要" },
-                "completed": { "style": "color:#15803D;font-weight:bold;", "description": "完成" },
-                "todo": { "style": "color:#D97706;font-weight:bold;", "description": "TODO" },
-                "pass": { "style": "color:#8E8E8E;font-weight:bold;", "description": "PASS" },
-                "like": { "style": "color:#9333EA;font-weight:bold;", "description": "喜欢" },
-                "special": { "style": "color:#D946EF;font-weight:bold;", "description": "特别" }
+                "level-1": {"style": "color:#D32F2F;font-weight:bold;", "description": "最重要"},
+                "level-2": {"style": "color:#FF5722;font-weight:bold;", "description": "较重要"},
+                "level-3": {"style": "color:#FF9800;font-weight:bold;", "description": "重要"},
+                "level-4": {"style": "color:#1976D2;font-weight:bold;", "description": "一般"},
+                "level-5": {"style": "color:#4CAF50;font-weight:bold;", "description": "不重要"},
+                "level-6": {"style": "color:#8BC34A;font-weight:bold;", "description": "较不重要"},
+                "level-7": {"style": "color:#9E9E9E;font-weight:bold;", "description": "最不重要"},
+                "---1": {}, // 代表分割线，后面的序号必须递增
+                "now": {"style": "color:#1D4ED8;font-weight:bold;", "description": "NOW"},
+                "important": {"style": "color:#B91C1C;font-weight:bold;", "description": "重要"},
+                "completed": {"style": "color:#15803D;font-weight:bold;", "description": "完成"},
+                "todo": {"style": "color:#D97706;font-weight:bold;", "description": "TODO"},
+                "pass": {"style": "color:#8E8E8E;font-weight:bold;", "description": "PASS"},
+                "like": {"style": "color:#9333EA;font-weight:bold;", "description": "喜欢"},
+                "special": {"style": "color:#D946EF;font-weight:bold;", "description": "特别"},
+                "---2": {}, // 代表分割线，后面的序号必须递增
+                "draft": {"style": "color:#FF9800;font-weight:bold;", "description": "草稿"},
+                "being_edited": {"style": "color:#9C27B0;font-weight:bold;", "description": "修改中"},
+                "scheduled": {"style": "color:#2196F3;font-weight:bold;", "description": "待发布"},
+                "published": {"style": "color:#4CAF50;font-weight:bold;", "description": "已发布"},
+                "archived": {"style": "color:#9E9E9E;font-weight:bold;", "description": "存档"},
+                "deleted": {"style": "color:#f6b6b2;font-weight:bold;text-decoration:line-through;", "description": "已删除"}
             },
             "dark": {
-                "now": { "style": "color:#42A5F5;font-weight:bold;", "description": "NOW" },
-                "important": { "style": "color:#FF5252;font-weight:bold;", "description": "重要" },
-                "completed": { "style": "color:#66BB6A;font-weight:bold;", "description": "完成" },
-                "todo": { "style": "color:#FFB300;font-weight:bold;", "description": "TODO" },
-                "pass": { "style": "color:#8E8E8E;font-weight:bold;", "description": "PASS" },
-                "like": { "style": "color:#E040FB;font-weight:bold;", "description": "喜欢" },
-                "special": { "style": "color:#CE93D8;font-weight:bold;", "description": "特别" }
+                "level-1": {"style": "color:#FF4444;font-weight:bold;", "description": "最重要"},
+                "level-2": {"style": "color:#FF6F61;font-weight:bold;", "description": "较重要"},
+                "level-3": {"style": "color:#FFB300;font-weight:bold;", "description": "重要"},
+                "level-4": {"style": "color:#42A5F5;font-weight:bold;", "description": "一般"},
+                "level-5": {"style": "color:#66BB6A;font-weight:bold;", "description": "不重要"},
+                "level-6": {"style": "color:#689F38;font-weight:bold;", "description": "较不重要"},
+                "level-7": {"style": "color:#757575;font-weight:bold;", "description": "最不重要"},
+                "---1": {}, // 代表分割线，后面的序号必须递增
+                "now": {"style": "color:#42A5F5;font-weight:bold;", "description": "NOW"},
+                "important": {"style": "color:#FF5252;font-weight:bold;", "description": "重要"},
+                "completed": {"style": "color:#66BB6A;font-weight:bold;", "description": "完成"},
+                "todo": {"style": "color:#FFB300;font-weight:bold;", "description": "TODO"},
+                "pass": {"style": "color:#8E8E8E;font-weight:bold;", "description": "PASS"},
+                "like": {"style": "color:#E040FB;font-weight:bold;", "description": "喜欢"},
+                "special": {"style": "color:#CE93D8;font-weight:bold;", "description": "特别"},
+                "---2": {}, // 代表分割线，后面的序号必须递增
+                "draft": {"style": "color:#FFB300;font-weight:bold;", "description": "草稿"},
+                "being_edited": {"style": "color:#AB47BC;font-weight:bold;", "description": "修改中"},
+                "scheduled": {"style": "color:#29B6F6;font-weight:bold;", "description": "待发布"},
+                "published": {"style": "color:#66BB6A;font-weight:bold;", "description": "已发布"},
+                "archived": {"style": "color:#B0BEC5;font-weight:bold;", "description": "存档"},
+                "deleted": {"style": "color:#c07070;font-weight:bold;text-decoration:line-through;", "description": "已删除"}
             }
-        }
+        },
+        // 其他主题配色方案
     };
 
     /////// main //////////////////////
@@ -137,7 +170,8 @@
         const userThemeColors = colorConfig[theme] ? (colorConfig[theme][mode] || {}) : {};
         const userColors = {...userDefaultColors, ...userThemeColors};
         // 合并用户配置和默认配置
-        colors = {...defaultColors, ...userColors};
+        //colors = {...defaultColors, ...userColors};
+        colors = !isEmptyObject(userColors) ? userColors : defaultColors;
     }
 
     function genTopmostMenu(beforeBtn, currLi) {
@@ -181,9 +215,13 @@
         // 遍历生成子菜单
         for (const code in colors) {
             const item = colors[code];
-            subMenus += `<button class="b3-menu__item"><span class="b3-menu__label" data-code="${code}" style="${item.style}">${item.description}</span></button>`;
+            if(code.startsWith('---')){
+                subMenus += `<button data-id="separator_${code.replace('---', '').trim()}" id="sy_file_sp_color_top" class="b3-menu__separator"></button>`;
+            } else {
+                subMenus += `<button class="b3-menu__item"><span class="b3-menu__label" data-code="${code}" style="${item.style}">${item.description}</span></button>`;
+            }
         }
-        
+
         // 显示子菜单
         colorMenu.querySelector(".b3-menu__submenu .b3-menu__items").innerHTML = subMenus;
         // 子菜单点击事件
