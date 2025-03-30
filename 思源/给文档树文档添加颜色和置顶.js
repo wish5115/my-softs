@@ -1,10 +1,10 @@
 // 给文档树文档添加颜色和置顶
 // see https://ld246.com/article/1741359650489
-// version 0.0.5.1
+// version 0.0.6
 // 0.0.3 兼容手机版
 // 0.0.4 修复右键时可能出现的与上一个未关闭的菜单冲突问题
 // 0.0.5 修改默认配色方案，增加tree_colors_user_config.json用户配色方案文件
-// 0.0.5.1 增加默认颜色；当有了用户配置后，默认配置不再生效
+// 0.0.6 增加用户配色方案；改进当存在用户配置文件时默认配置不再生效；增加置顶到顶层功能
 // 存储文件及使用说明
 // 1. 修改/data/storage/tree_colors_user_config.json文件即可修改默认配色方案（第一次运行后生成）
 // 2. 取消全部置顶只需删除/data/storage/tree_topmost.json文件即可（第一次置顶时生成）
@@ -15,6 +15,9 @@
 
     // 是否开启颜色功能，true开启，false不开启
     const isEnableColor = true;
+
+    // 是否开启顶层置顶功能，true开启，false不开启
+    const isEnableTopmostLevel1 = true;
 
     // 预设颜色列表，格式 {"主题":{"明暗风格":{"编码":{style:"颜色值", "description":"颜色描述"}}}}，编码值必须唯一，编码修改则原来设置的颜色将失效
     // "---1": {}, 代表分割线，后面的序号必须递增
@@ -81,6 +84,9 @@
 
     /////// main //////////////////////
 
+    // keydown 和 keyup 是为了防止重复触发
+    let keydown, keyup;
+
     // 保存原始颜色配置
     const originColors = JSON.parse(JSON.stringify(colors));
     
@@ -88,6 +94,11 @@
     let topmostData = await getFile('/data/storage/tree_topmost.json') || '{}';
     topmostData = JSON.parse(topmostData);
     if(topmostData.code && topmostData.code !== 0) topmostData = {};
+
+    // 获取置顶顶层数据，格式 {"box"{"docId":{"order":"","path":""}}}
+    let topmostLevel1Data = await getFile('/data/storage/tree_topmost_level1.json') || '{}';
+    topmostLevel1Data = JSON.parse(topmostLevel1Data);
+    if(topmostLevel1Data.code && topmostLevel1Data.code !== 0) topmostLevel1Data = {};
 
     // 获取颜色数据，格式 {"docId":"code"}，code来自colors变量编码
     let colorData = await getFile('/data/storage/tree_colors.json') || '{}';
@@ -116,7 +127,9 @@
             const currLi = event.target.closest('li.b3-list-item:not([data-type="navigation-root"])');
             if(!currLi) return;
             // 关闭上次的菜单，防止与上一个未关闭的菜单冲突
-            closeMenu();
+            const menuItems = document.querySelector('#commonMenu .b3-menu__items');
+            if(menuItems) menuItems.innerHTML = '';
+            // 等待菜单加载完毕
             whenElementExist('button[data-id="rename"]').then(renameBtn => {
                 if(document.querySelector('#sy_file_sp_color_top')) return;
                 genTopmostMenu(renameBtn, currLi);
@@ -156,7 +169,33 @@
         genStyle();
     });
 
+    // 监听笔记本被展开
+    if(isEnableTopmostLevel1) {
+        whenElementExist('[data-url] > ul').then(() => {
+            const uls = document.querySelectorAll('[data-url] > ul');
+            uls.forEach((ul) => {
+                genTopmostLevel1List(ul, ul.closest('[data-url]')?.dataset?.url);
+            });
+        });
+        observeElement('[data-url] > ul', (ul) => {
+            genTopmostLevel1List(ul, ul.closest('[data-url]')?.dataset?.url);
+        });
+    }
+
     /////// functions //////////////////////
+
+    function genTopmostLevel1List(ul, box) {
+        const docs = topmostLevel1Data[box];
+        if(!docs) return;
+        Object.entries(docs).forEach(async ([id, doc]) => {
+            const item = await getTreeDocById(id, box, doc.path);
+            const li = genFileHTML(item);
+            ul.insertAdjacentHTML('afterbegin', li);
+            const liEl = ul.querySelector(`[data-node-id="${id}"]`);
+            liEl.style.order = doc.order;
+            liEl.style.display = 'flex';
+        });
+    }
 
     function genColors() {
         // 获取主题和明暗风格
@@ -177,13 +216,23 @@
 
     function genTopmostMenu(beforeBtn, currLi) {
         if(!isEnableTopmost) return;
-        const menuText = topmostData[currLi.dataset.nodeId] ? '取消置顶' : '置顶';
+        const box = currLi.closest('[data-url]')?.dataset?.url;
+        const menuText = topmostData[currLi.dataset.nodeId] || (topmostLevel1Data[box] && topmostLevel1Data[box][currLi.dataset.nodeId]) ? '取消置顶' : '置顶';
         const html = `<button data-id="topmost" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTop"></use></svg><span class="b3-menu__label">${menuText}</span></button>`;
         beforeBtn.insertAdjacentHTML('beforebegin', html);
-        beforeBtn.parentElement.querySelector('button[data-id="topmost"]').onclick = () => {
+        const topmostBtn = beforeBtn.parentElement.querySelector('button[data-id="topmost"]');
+        topmostBtn.onclick = (event) => {
+            // 检查是否按下了 Shift 键
+            if(isEnableTopmostLevel1) {
+                const shiftKey = event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
+                if(shiftKey || (topmostLevel1Data[box] && topmostLevel1Data[box][currLi.dataset.nodeId])) {
+                    topToLevel1(currLi);
+                    return;
+                }
+            }
             // 保存置顶数据
             if(topmostData[currLi.dataset.nodeId]) {
-                // 删除置顶
+                // 取消置顶
                 delete topmostData[currLi.dataset.nodeId];
             } else {
                 // 置顶
@@ -194,6 +243,57 @@
             genStyle();
             closeMenu();
         };
+        if(isEnableTopmostLevel1) {
+            keydown = (event) => {
+                const shiftKey = event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
+                if(shiftKey) {
+                    const label = topmostBtn.querySelector('.b3-menu__label');
+                    if(label.textContent === '置顶') label.textContent = '置顶到顶层';
+                }
+            };
+            keyup = (event) => {
+                const label = topmostBtn.querySelector('.b3-menu__label');
+                if(label.textContent === '置顶到顶层') label.textContent = '置顶';
+            };
+            document.addEventListener('keydown', keydown);
+            document.addEventListener('keyup', keyup);
+        }
+    }
+
+    // 置顶到顶层
+    function topToLevel1(currLi) {
+        const box = currLi.closest('[data-url]');
+        const nodeId = currLi.dataset.nodeId;
+        const boxId = box?.dataset?.url;
+        if(topmostLevel1Data[boxId] && topmostLevel1Data[boxId][nodeId]) {
+            // 取消置顶
+            currLi.remove();
+            // 删除数据
+            delete topmostLevel1Data[boxId][nodeId];
+            putFile('/data/storage/tree_topmost_level1.json', JSON.stringify(topmostLevel1Data));
+        } else {
+            // 置顶
+            // 复制文档到顶级目录
+            const order = getOrder();
+            const topLi = currLi.cloneNode(true);
+            topLi.style.order = order;
+            topLi.style.display = 'flex';
+            topLi.querySelector('.b3-list-item__toggle').style.paddingLeft = isVersionGreaterThan(siyuan.config.system.kernelVersion,'3.1.10')?'18px':'22px';
+            box.children[1].insertBefore(topLi, box.children[1].firstChild);
+            // 保存置顶顶级文档数据
+            if(!topmostLevel1Data[boxId]) topmostLevel1Data[boxId] = {};
+            if(!topmostLevel1Data[boxId][nodeId]) topmostLevel1Data[boxId][nodeId] = {};
+            topmostLevel1Data[boxId][nodeId]['order'] = order;
+            topmostLevel1Data[boxId][nodeId]['path'] = currLi.dataset.path;
+            putFile('/data/storage/tree_topmost_level1.json', JSON.stringify(topmostLevel1Data));
+            // 保存maxOrder
+            putFile('/data/storage/tree_topmost.json', JSON.stringify(topmostData));
+            currLi.classList.remove('b3-list-item--focus');
+        }
+        // 更新置顶样式
+        genStyle();
+        // 关闭菜单
+        closeMenu();
     }
 
     function genColorMenus(beforeBtn, currLi) {
@@ -281,6 +381,24 @@
             }
         }
         
+        // 生成顶层置顶样式
+        let topmostLevel1Style = '';
+        if (isEnableTopmostLevel1) {
+            for(const box in topmostLevel1Data){
+                const docs = topmostLevel1Data[box];
+                if(!docs) continue;
+                const ids = Object.keys(docs);
+                if(ids.length === 0) continue;
+                ids.forEach(id => {
+                    topmostLevel1Style += `
+                        :is(.sy__file, #sidebar .b3-list--mobile) li[data-node-id="${id}"] {
+                            display: none;
+                        }
+                    `;
+                });
+            }
+        }
+
         const css = `
             /* file tree support order */
             :is(.sy__file, #sidebar .b3-list--mobile) ul {
@@ -291,6 +409,8 @@
             ${colorStyle}
             /* topmost */
             ${topmostStyle}
+            /* topmost level1 */
+            ${topmostLevel1Style}
         `;
         const id = 'sy_file_doc_top_color_style';
         // 检查是否已经存在具有相同 id 的 <style> 元素
@@ -307,13 +427,19 @@
         }
     }
 
-    function whenElementExist(selector, node) {
-        return new Promise(resolve => {
+    function whenElementExist(selector, node, timeout = 5000) {
+        return new Promise((resolve, reject) => {
+            let isResolved = false;
             const check = () => {
                 const el = typeof selector==='function'?selector():(node||document).querySelector(selector);
-                if (el) resolve(el); else requestAnimationFrame(check);
+                if (el) {isResolved = true; resolve(el);} else if(!isResolved) requestAnimationFrame(check);
             };
             check();
+            setTimeout(() => {
+                if (!isResolved) {
+                    reject(new Error(`Timeout: Element not found for selector "${selector}" within ${timeout}ms`));
+                }
+            }, timeout);
         });
     }
 
@@ -353,13 +479,15 @@
     }
 
     function closeMenu() {
-       document.body.click();
+        document.body.click();
+        if(keydown) { document.removeEventListener('keydown', keydown); keydown = null;}
+        if(keyup) { document.removeEventListener('keyup', keyup); keyup = null;}
     }
     
     function getOrder() {
         if(topmostData['maxIndex']) return --topmostData['maxIndex'];
         topmostData['maxIndex'] = -1;
-       return topmostData['maxIndex']; 
+       return topmostData['maxIndex'];
     }
 
     function isMobile() {
@@ -428,5 +556,196 @@
 
         // 开始观察目标元素
         observer.observe(targetElement, config);
+    }
+
+    /**
+     * 监控指定选择器的元素是否被添加到 DOM 中
+     * @param {string} selector - CSS 选择器
+     * @param {Function} callback - 当匹配元素被添加时触发的回调函数
+     */
+    function observeElement(selector, callback) {
+        // 创建一个 MutationObserver 实例
+        const observer = new MutationObserver((mutationsList) => {
+            mutationsList.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    // 检查新增的节点是否匹配选择器
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE && node.matches(selector)) {
+                            callback(node);
+                        }
+                    });
+                }
+            });
+        });
+
+        // 配置观察选项
+        const config = {
+            childList: true, // 观察子节点的添加或删除
+            subtree: true,   // 观察整个子树
+        };
+
+        // 开始观察 body 元素
+        observer.observe(document.body, config);
+
+        // 返回取消观察的方法
+        return () => observer.disconnect();
+    }
+
+    // 请求api
+    async function fetchSyncPost(url, data, returnType = 'json') {
+        const init = {
+            method: "POST",
+        };
+        if (data) {
+            if (data instanceof FormData) {
+                init.body = data;
+            } else {
+                init.body = JSON.stringify(data);
+            }
+        }
+        try {
+            const res = await fetch(url, init);
+            const res2 = returnType === 'json' ? await res.json() : await res.text();
+            return res2;
+        } catch(e) {
+            console.log(e);
+            return returnType === 'json' ? {code:e.code||1, msg: e.message||"", data: null} : "";
+        }
+    }
+
+    /////////// 生成文档树 li ////////////////////////
+    async function getTreeDocById(id, box, path) {
+        if(!box || path) {
+            const doc = await fetchSyncPost('/api/filetree/getDoc', {id:id});
+            box = doc?.data?.box;
+            path = doc?.data?.path;
+            if(!box || !path) return;
+        }
+        if(path.toLocaleLowerCase().endsWith('.sy')) {
+            const pathArr = path.split('/');
+            pathArr.pop();
+            path = pathArr.join('/');
+            path = path === '' ? '/' : path;
+        }
+        let list = await fetchSyncPost('/api/filetree/listDocsByPath', {notebook:box, path:path});
+        list = list.data?.files?.filter(item=>item.id === id) || [];
+        return list[0];
+    }
+    // see https://github.com/siyuan-note/siyuan/blob/1317020c1791edf440da7f836d366567e03dd843/app/src/layout/dock/Files.ts#L1224
+    function genFileHTML(item) {
+        let countHTML = "";
+        if (item.count && item.count > 0) {
+            countHTML = `<span class="popover__block counter b3-tooltips b3-tooltips__nw" aria-label="${window.siyuan.languages.ref}">${item.count}</span>`;
+        }
+        const ariaLabel = genDocAriaLabel(item, escapeAriaLabel);
+        const paddingLeft = isVersionGreaterThan(siyuan.config.system.kernelVersion,'3.1.10')?18:22; //(item.path.split("/").length - 1) * 18;
+        return `<li data-node-id="${item.id}" data-name="${Lute.EscapeHTMLStr(item.name)}" draggable="true" data-count="${item.subFileCount}" 
+    data-type="navigation-file" 
+    style="--file-toggle-width:${paddingLeft + (isVersionGreaterThan(siyuan.config.system.kernelVersion,'3.1.10')?18:22)}px" 
+    class="b3-list-item b3-list-item--hide-action" data-path="${item.path}">
+    <span style="padding-left: ${paddingLeft}px" class="b3-list-item__toggle b3-list-item__toggle--hl${item.subFileCount === 0 ? " fn__hidden" : ""}">
+        <svg class="b3-list-item__arrow"><use xlink:href="#iconRight"></use></svg>
+    </span>
+    <span class="b3-list-item__icon b3-tooltips b3-tooltips__n popover__block" data-id="${item.id}" aria-label="${window.siyuan.languages.changeIcon}">${unicode2Emoji(item.icon || (item.subFileCount === 0 ? (window.siyuan.storage['local-images']?.file||'1f4c4') : (window.siyuan.storage['local-images']?.folder||'1f4d1')))}</span>
+    <span class="b3-list-item__text ariaLabel" data-position="parentE"
+    aria-label="${ariaLabel}">${getDisplayName(item.name, true, true)}</span>
+    <span data-type="more-file" class="b3-list-item__action b3-tooltips b3-tooltips__nw" aria-label="${window.siyuan.languages.more}">
+        <svg><use xlink:href="#iconMore"></use></svg>
+    </span>
+    <span data-type="new" class="b3-list-item__action b3-tooltips b3-tooltips__nw${window.siyuan.config.readonly ? " fn__none" : ""}" aria-label="${window.siyuan.languages.newSubDoc}">
+        <svg><use xlink:href="#iconAdd"></use></svg>
+    </span>
+    ${countHTML}
+    </li>`;
+    }
+
+    function genDocAriaLabel(item, escapeMethod) {
+    return `${escapeMethod(getDisplayName(item.name, true, true))} <small class='ft__on-surface'>${item.hSize}</small>${item.bookmark ? "<br>" + window.siyuan.languages.bookmark + " " + escapeMethod(item.bookmark) : ""}${item.name1 ? "<br>" + window.siyuan.languages.name + " " + escapeMethod(item.name1) : ""}${item.alias ? "<br>" + window.siyuan.languages.alias + " " + escapeMethod(item.alias) : ""}${item.memo ? "<br>" + window.siyuan.languages.memo + " " + escapeMethod(item.memo) : ""}${item.subFileCount !== 0 ? window.siyuan.languages.includeSubFile.replace("x", item.subFileCount) : ""}<br>${window.siyuan.languages.modifiedAt} ${item.hMtime}<br>${window.siyuan.languages.createdAt} ${item.hCtime}`;
+    }
+
+    function escapeAriaLabel(html) {
+        if (!html) {
+            return html;
+        }
+        return html.replace(/"/g, "&quot;").replace(/'/g, "&apos;")
+            .replace(/</g, "&amp;lt;").replace(/&lt;/g, "&amp;lt;");
+    }
+
+    function getDisplayName(filePath, basename = true, removeSY = false) {
+        let name = filePath;
+        if (basename) {
+            name = pathPosix().basename(filePath);
+        }
+        if (removeSY && name.endsWith(".sy")) {
+            name = name.substr(0, name.length - 3);
+        }
+        return name;
+    }
+
+    function pathPosix() {
+        if (require && require('path').posix) {
+            return require('path').posix;
+        }
+        return path;
+    }
+
+    // unicode转emoji
+    // 使用示例：unicode2Emoji('1f4c4');
+    // see https://ld246.com/article/1726920727424
+    function unicode2Emoji(unicode, className = "", needSpan = false, lazy = false) {
+        if (!unicode) {
+            return "";
+        }
+        let emoji = "";
+        if (unicode.indexOf(".") > -1) {
+            emoji = `<img class="${className}" ${lazy ? "data-" : ""}src="/emojis/${unicode}"/>`;
+        } else {
+            try {
+                unicode.split("-").forEach(item => {
+                    if (item.length < 5) {
+                        emoji += String.fromCodePoint(parseInt("0" + item, 16));
+                    } else {
+                        emoji += String.fromCodePoint(parseInt(item, 16));
+                    }
+                });
+                if (needSpan) {
+                    emoji = `<span class="${className}">${emoji}</span>`;
+                }
+            } catch (e) {
+                // 自定义表情搜索报错 https://github.com/siyuan-note/siyuan/issues/5883
+                // 这里忽略错误不做处理
+            }
+        }
+        return emoji;
+    }
+
+    /**
+     * 比较两个版本号，判断 versionA 是否大于 versionB
+     * @param {string} versionA - 第一个版本号
+     * @param {string} versionB - 第二个版本号
+     * @returns {boolean} - 如果 versionA > versionB，则返回 true；否则返回 false
+     */
+    function isVersionGreaterThan(versionA, versionB) {
+        // 将版本号按 '.' 分割成数组
+        const partsA = versionA.split('.').map(Number);
+        const partsB = versionB.split('.').map(Number);
+
+        // 获取两个版本号的最大长度
+        const maxLength = Math.max(partsA.length, partsB.length);
+
+        // 逐段比较版本号
+        for (let i = 0; i < maxLength; i++) {
+            const numA = partsA[i] || 0; // 如果某一段不存在，默认为 0
+            const numB = partsB[i] || 0;
+
+            if (numA > numB) {
+                return true; // versionA 大于 versionB
+            } else if (numA < numB) {
+                return false; // versionA 小于 versionB
+            }
+        }
+
+        // 如果所有段都相等，则返回 false
+        return false;
     }
 })();
