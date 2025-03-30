@@ -172,12 +172,14 @@
     // 监听笔记本被展开
     if(isEnableTopmostLevel1) {
         whenElementExist('[data-url] > ul').then(() => {
+            console.log('监听到笔记本被展开');
             const uls = document.querySelectorAll('[data-url] > ul');
             uls.forEach((ul) => {
                 genTopmostLevel1List(ul, ul.closest('[data-url]')?.dataset?.url);
             });
         });
         observeElement('[data-url] > ul', (ul) => {
+            console.log('监听到笔记本被展开2');
             genTopmostLevel1List(ul, ul.closest('[data-url]')?.dataset?.url);
         });
     }
@@ -674,7 +676,7 @@
     function getDisplayName(filePath, basename = true, removeSY = false) {
         let name = filePath;
         if (basename) {
-            name = pathPosix().basename(filePath);
+            name = getBasename(filePath); //pathPosix().basename(filePath);
         }
         if (removeSY && name.endsWith(".sy")) {
             name = name.substr(0, name.length - 3);
@@ -683,10 +685,23 @@
     }
 
     function pathPosix() {
-        if (require && require('path').posix) {
+        if(typeof require === 'undefined') return null;
+        if (typeof require !== 'undefined' && require('path').posix) {
             return require('path').posix;
         }
-        return path;
+        return require('path');
+    }
+
+    function getBasename(filePath, ext = '') {
+        // 1. 提取路径的最后一部分（文件名）
+        let base = filePath.replace(/\\/g, '/').split('/').pop(); // 处理 POSIX 和 Windows 路径
+    
+        // 2. 如果提供了扩展名参数，则去掉对应的扩展名
+        if (ext && base.endsWith(ext)) {
+            base = base.slice(0, base.length - ext.length);
+        }
+    
+        return base;
     }
 
     // unicode转emoji
