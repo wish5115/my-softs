@@ -191,7 +191,7 @@
         if(!docs) return;
         Object.entries(docs).forEach(async ([id, doc]) => {
             const item = await getTreeDocById(id, box, doc.path);
-            const li = genFileHTML(item);
+            const li = isMobile() ? genMobileFileHTML(item) : genFileHTML(item);
             ul.insertAdjacentHTML('afterbegin', li);
             const liEl = ul.querySelector(`[data-node-id="${id}"]`);
             liEl.style.order = doc.order;
@@ -615,6 +615,10 @@
         }
     }
 
+    function isMobile() {
+        return !!document.getElementById("sidebar");
+    }
+
     /////////// 生成文档树 li ////////////////////////
     async function getTreeDocById(id, box, path) {
         if(!box || path) {
@@ -661,8 +665,31 @@
     </li>`;
     }
 
+    // see https://github.com/siyuan-note/siyuan/blob/1317020c1791edf440da7f836d366567e03dd843/app/src/mobile/dock/MobileFiles.ts#L725
+    function genMobileFileHTML(item) {
+        let countHTML = "";
+        if (item.count && item.count > 0) {
+            countHTML = `<span class="counter">${item.count}</span>`;
+        }
+        return `<li data-node-id="${item.id}" data-name="${Lute.EscapeHTMLStr(item.name)}" data-type="navigation-file" 
+class="b3-list-item" data-path="${item.path}">
+    <span style="padding-left: ${isVersionGreaterThan(siyuan.config.system.kernelVersion,'3.1.10')?24:20/*(item.path.split("/").length - 1) * 20*/}px" class="b3-list-item__toggle${item.subFileCount === 0 ? " fn__hidden" : ""}">
+        <svg class="b3-list-item__arrow"><use xlink:href="#iconRight"></use></svg>
+    </span>
+    <span class="b3-list-item__icon">${unicode2Emoji(item.icon || (item.subFileCount === 0 ? (window.siyuan.storage['local-images']?.file||'1f4c4') : (window.siyuan.storage['local-images']?.folder||'1f4d1')))}</span>
+    <span class="b3-list-item__text">${getDisplayName(item.name, true, true)}</span>
+    <span data-type="more-file" class="b3-list-item__action b3-tooltips b3-tooltips__nw" aria-label="${window.siyuan.languages.more}">
+        <svg><use xlink:href="#iconMore"></use></svg>
+    </span>
+    <span data-type="new" class="b3-list-item__action b3-tooltips b3-tooltips__nw${window.siyuan.config.readonly ? " fn__none" : ""}" aria-label="${window.siyuan.languages.newSubDoc}">
+        <svg><use xlink:href="#iconAdd"></use></svg>
+    </span>
+    ${countHTML}
+</li>`;
+    };
+
     function genDocAriaLabel(item, escapeMethod) {
-    return `${escapeMethod(getDisplayName(item.name, true, true))} <small class='ft__on-surface'>${item.hSize}</small>${item.bookmark ? "<br>" + window.siyuan.languages.bookmark + " " + escapeMethod(item.bookmark) : ""}${item.name1 ? "<br>" + window.siyuan.languages.name + " " + escapeMethod(item.name1) : ""}${item.alias ? "<br>" + window.siyuan.languages.alias + " " + escapeMethod(item.alias) : ""}${item.memo ? "<br>" + window.siyuan.languages.memo + " " + escapeMethod(item.memo) : ""}${item.subFileCount !== 0 ? window.siyuan.languages.includeSubFile.replace("x", item.subFileCount) : ""}<br>${window.siyuan.languages.modifiedAt} ${item.hMtime}<br>${window.siyuan.languages.createdAt} ${item.hCtime}`;
+        return `${escapeMethod(getDisplayName(item.name, true, true))} <small class='ft__on-surface'>${item.hSize}</small>${item.bookmark ? "<br>" + window.siyuan.languages.bookmark + " " + escapeMethod(item.bookmark) : ""}${item.name1 ? "<br>" + window.siyuan.languages.name + " " + escapeMethod(item.name1) : ""}${item.alias ? "<br>" + window.siyuan.languages.alias + " " + escapeMethod(item.alias) : ""}${item.memo ? "<br>" + window.siyuan.languages.memo + " " + escapeMethod(item.memo) : ""}${item.subFileCount !== 0 ? window.siyuan.languages.includeSubFile.replace("x", item.subFileCount) : ""}<br>${window.siyuan.languages.modifiedAt} ${item.hMtime}<br>${window.siyuan.languages.createdAt} ${item.hCtime}`;
     }
 
     function escapeAriaLabel(html) {
