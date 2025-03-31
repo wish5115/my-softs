@@ -194,8 +194,9 @@
             const li = isMobile() ? genMobileFileHTML(item) : genFileHTML(item);
             ul.insertAdjacentHTML('afterbegin', li);
             const liEl = ul.querySelector(`[data-node-id="${id}"]`);
-            liEl.style.order = doc.order;
-            liEl.style.display = 'flex';
+            liEl.classList.add('topmost-level-1');
+            //liEl.style.order = doc.order;
+            //liEl.style.display = 'flex';
         });
     }
 
@@ -302,13 +303,19 @@
                 // 检查是否按下了 Shift 键
                 if(isEnableTopmostLevel1) {
                     const shiftKey = event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
-                    // 按shift或顶层文档取消置顶
-                    if(shiftKey || (topmostLevel1Data[box] && topmostLevel1Data[box][currLi.dataset.nodeId])) {
-                        // 当文档本身就是顶级文档时，直接置顶
+                    // 按shift顶层置顶
+                    if(shiftKey) {
+                        // 当前文档不是顶级文档时，置顶到顶层
                         if(!currLi.matches('[data-url] > ul > li')) {
                             topToLevel1(currLi);
                             return;
                         }
+                    }
+                    // 顶层文档取消置顶
+                    else if(topmostLevel1Data[box] && topmostLevel1Data[box][currLi.dataset.nodeId]) {
+                        // 当文档本身就是顶级文档时，直接置顶
+                        topToLevel1(currLi);
+                        return;
                     }
                 }
                 // 置顶处理函数
@@ -348,8 +355,9 @@
             // 复制文档到顶级目录
             const order = getOrder();
             const topLi = currLi.cloneNode(true);
-            topLi.style.order = order;
-            topLi.style.display = 'flex';
+            topLi.classList.add('topmost-level-1');
+            //topLi.style.order = order;
+            //topLi.style.display = 'flex';
             topLi.querySelector('.b3-list-item__toggle').style.paddingLeft = isVersionGreaterThan(siyuan.config.system.kernelVersion,'3.1.10')?'18px':'22px';
             box.children[1].insertBefore(topLi, box.children[1].firstChild);
             // 保存置顶顶级文档数据
@@ -433,6 +441,9 @@
                         :is(.sy__file, #sidebar .b3-list--mobile) li[data-node-id="${docId}"] {
                             order: ${order||0};
                         }
+                        :is(.sy__file, #sidebar .b3-list--mobile) li[data-node-id="${docId}"] + ul {
+                            order: ${order||0};
+                        }
                     `;
                 }
             }
@@ -462,8 +473,20 @@
                 const ids = Object.keys(docs);
                 if(ids.length === 0) continue;
                 ids.forEach(id => {
+                    const order = docs[id]['order']||0;
                     topmostLevel1Style += `
+                        :is(.sy__file, #sidebar .b3-list--mobile) li[data-node-id="${id}"].topmost-level-1 {
+                            order: ${order||0};
+                            display: flex;
+                        }
+                        :is(.sy__file, #sidebar .b3-list--mobile) li[data-node-id="${id}"].topmost-level-1 + ul {
+                            order: ${order||0};
+                            display: flex;
+                        }
                         :is(.sy__file, #sidebar .b3-list--mobile) li[data-node-id="${id}"] {
+                            display: none;
+                        }
+                        :is(.sy__file, #sidebar .b3-list--mobile) li[data-node-id="${id}"] + ul {
                             display: none;
                         }
                     `;
@@ -685,8 +708,12 @@
         }
     }
 
-    function isMobile() {
-        return !!document.getElementById("sidebar");
+    // 发送消息
+    function showMessage(message, isError = false, delay = 7000) {
+        return fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
+            "method": "POST",
+            "body": JSON.stringify({"msg": message, "timeout": delay})
+        });
     }
 
     /////////// 生成文档树 li ////////////////////////
