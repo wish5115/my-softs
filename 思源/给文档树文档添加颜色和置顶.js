@@ -217,9 +217,19 @@
         genStyle();
     }
 
+    let boxTimer, boxes = [];
     function genTopmostLevel1List(ul, box) {
+        // 不存在的笔记直接跳过
         const docs = topmostLevel1Data[box];
         if(!docs) return;
+        // 防止重复执行
+        if(boxes.includes(box)) return;
+        boxes.push(box);
+        if(boxTimer) clearTimeout(boxTimer);
+        boxTimer = setTimeout(() => {
+            boxes = [];
+        }, 1000);
+        // 生成指定的文档列表
         Object.entries(docs).forEach(async ([id, doc]) => {
             const oldLi = ul.querySelector(`[data-node-id="${id}"].topmost-level-1`);
             if(oldLi) return;
