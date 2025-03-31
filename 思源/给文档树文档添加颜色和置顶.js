@@ -172,24 +172,57 @@
     // 监听笔记本被展开
     if(isEnableTopmostLevel1) {
         whenElementExist('[data-url] > ul').then(() => {
-            console.log('监听到笔记本被展开');
             const uls = document.querySelectorAll('[data-url] > ul');
             uls.forEach((ul) => {
                 genTopmostLevel1List(ul, ul.closest('[data-url]')?.dataset?.url);
             });
         });
         observeElement('[data-url] > ul', (ul) => {
-            console.log('监听到笔记本被展开2');
             genTopmostLevel1List(ul, ul.closest('[data-url]')?.dataset?.url);
         });
     }
 
+    // 同步完成时加载
+    setTimeout(() => {
+        // 监听同步完成
+        siyuan.ws.ws.addEventListener('message', (event) => {
+            const msg = JSON.parse(event.data);
+            if(msg.cmd === 'syncing' && msg.msg !== siyuan.languages._kernel[81]) {
+                const uls = document.querySelectorAll('[data-url] > ul');
+                if(uls.length === 0) return;
+                uls.forEach((ul) => {
+                    reloadTopmostTreeList(ul, ul.closest('[data-url]')?.dataset?.url);
+                });
+            }
+        });
+    }, 5000);
+
     /////// functions //////////////////////
+
+    // 重新生成置顶数据
+    async function reloadTopmostTreeList(ul, box) {
+        // 重新加载顶层置顶数据
+        topmostLevel1Data = await getFile('/data/storage/tree_topmost_level1.json') || '{}';
+        topmostLevel1Data = JSON.parse(topmostLevel1Data);
+        if(topmostLevel1Data.code && topmostLevel1Data.code !== 0) topmostLevel1Data = {};
+        // 重新生成顶层置顶数据
+        genTopmostLevel1List(ul, box);
+
+        // 重新获取置顶数据
+        topmostData = await getFile('/data/storage/tree_topmost.json') || '{}';
+        topmostData = JSON.parse(topmostData);
+        if(topmostData.code && topmostData.code !== 0) topmostData = {};
+
+        // 更新样式
+        genStyle();
+    }
 
     function genTopmostLevel1List(ul, box) {
         const docs = topmostLevel1Data[box];
         if(!docs) return;
         Object.entries(docs).forEach(async ([id, doc]) => {
+            const oldLi = ul.querySelector(`[data-node-id="${id}"].topmost-level-1`);
+            if(oldLi) return;
             const item = await getTreeDocById(id, box, doc.path);
             const li = isMobile() ? genMobileFileHTML(item) : genFileHTML(item);
             ul.insertAdjacentHTML('afterbegin', li);
