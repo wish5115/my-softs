@@ -223,15 +223,9 @@
         const html = `<button data-id="topmost" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTop"></use></svg><span class="b3-menu__label">${menuText}</span></button>`;
         beforeBtn.insertAdjacentHTML('beforebegin', html);
         const topmostBtn = beforeBtn.parentElement.querySelector('button[data-id="topmost"]');
-        topmostBtn.onclick = (event) => {
-            // 检查是否按下了 Shift 键
-            if(isEnableTopmostLevel1) {
-                const shiftKey = event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
-                if(shiftKey || (topmostLevel1Data[box] && topmostLevel1Data[box][currLi.dataset.nodeId])) {
-                    topToLevel1(currLi);
-                    return;
-                }
-            }
+
+        // 置顶处理函数
+        const topmostHandle = () => {
             // 保存置顶数据
             if(topmostData[currLi.dataset.nodeId]) {
                 // 取消置顶
@@ -245,24 +239,100 @@
             genStyle();
             closeMenu();
         };
-        if(isEnableTopmostLevel1) {
-            keydown = (event) => {
-                const shiftKey = event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
-                if(shiftKey) {
-                    const label = topmostBtn.querySelector('.b3-menu__label');
-                    if(label.textContent === '置顶') label.textContent = '置顶到顶层';
+
+        // 手机端置顶事件
+        if(isEnableTopmostLevel1 && isMobile()) {
+            let pressTimer; // 定时器
+            let isLongPress = false; // 标记是否触发了长按
+            const longPressDuration = 500; // 长按的触发时间（毫秒）
+
+            // 触摸开始事件
+            topmostBtn.addEventListener('touchstart', (event) => {
+                event.preventDefault(); // 防止默认行为（如滚动）
+
+                // 初始化标记变量
+                isLongPress = false;
+
+                // 设置定时器，用于检测长按
+                pressTimer = setTimeout(() => {
+                    isLongPress = true; // 标记为长按
+
+                    /////// 长按事件 start ///////
+                    // 当前文档不是顶级文档时，置顶到顶层
+                    if(!currLi.matches('[data-url] > ul > li')) {
+                        topToLevel1(currLi);
+                    } else {
+                        // 当前文档是顶级文档时，直接置顶
+                        topmostHandle();
+                    }
+                    /////// 长按事件 end ///////
+
+                }, longPressDuration);
+            });
+
+            // 触摸结束事件
+            topmostBtn.addEventListener('touchend', () => {
+                clearTimeout(pressTimer); // 清除定时器
+
+                if (!isLongPress) {
+
+                    /////// 点击事件 start ///////
+                    // 如果文档是顶层文档，取消顶层置顶
+                    if(topmostLevel1Data[box] && topmostLevel1Data[box][currLi.dataset.nodeId]){
+                        topToLevel1(currLi);
+                    } else {
+                        // 如果文档不是顶层文档，取消置顶
+                        topmostHandle();
+                    }
+                    /////// 点击事件 end ///////
+
                 }
+
+                // 重置标记变量
+                isLongPress = false;
+            });
+
+            // 触摸移动事件
+            topmostBtn.addEventListener('touchmove', () => {
+                clearTimeout(pressTimer); // 用户移动手指，取消长按
+            });
+        } else {
+            // pc端置顶事件
+            topmostBtn.onclick = (event) => {
+                // 检查是否按下了 Shift 键
+                if(isEnableTopmostLevel1) {
+                    const shiftKey = event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
+                    // 按shift或顶层文档取消置顶
+                    if(shiftKey || (topmostLevel1Data[box] && topmostLevel1Data[box][currLi.dataset.nodeId])) {
+                        // 当文档本身就是顶级文档时，直接置顶
+                        if(!currLi.matches('[data-url] > ul > li')) {
+                            topToLevel1(currLi);
+                            return;
+                        }
+                    }
+                }
+                // 置顶处理函数
+                topmostHandle();
             };
-            keyup = (event) => {
-                const label = topmostBtn.querySelector('.b3-menu__label');
-                if(label.textContent === '置顶到顶层') label.textContent = '置顶';
-            };
-            document.addEventListener('keydown', keydown);
-            document.addEventListener('keyup', keyup);
+            if(isEnableTopmostLevel1) {
+                keydown = (event) => {
+                    const shiftKey = event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
+                    if(shiftKey) {
+                        const label = topmostBtn.querySelector('.b3-menu__label');
+                        if(label.textContent === '置顶') label.textContent = '置顶到顶层';
+                    }
+                };
+                keyup = (event) => {
+                    const label = topmostBtn.querySelector('.b3-menu__label');
+                    if(label.textContent === '置顶到顶层') label.textContent = '置顶';
+                };
+                document.addEventListener('keydown', keydown);
+                document.addEventListener('keyup', keyup);
+            }
         }
     }
 
-    // 置顶到顶层
+    // 置顶到顶层处理函数
     function topToLevel1(currLi) {
         const box = currLi.closest('[data-url]');
         const nodeId = currLi.dataset.nodeId;
