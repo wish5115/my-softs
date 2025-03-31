@@ -202,6 +202,11 @@
                 topmostData = JSON.parse(topmostData);
                 if(topmostData.code && topmostData.code !== 0) topmostData = {};
 
+                // 重新获取颜色数据
+                colorData = await getFile('/data/storage/tree_colors.json') || '{}';
+                colorData = JSON.parse(colorData);
+                if(colorData.code && colorData.code !== 0) colorData = {};
+
                 // 重新生成顶层置顶数据
                 uls.forEach((ul) => {
                     genTopmostLevel1List(ul, ul.closest('[data-url]')?.dataset?.url);
