@@ -186,37 +186,34 @@
     // 同步完成时加载
     setTimeout(() => {
         // 监听同步完成
-        siyuan.ws.ws.addEventListener('message', (event) => {
+        siyuan.ws.ws.addEventListener('message', async (event) => {
             const msg = JSON.parse(event.data);
             if(msg.cmd === 'syncing' && msg.msg !== siyuan.languages._kernel[81]) {
                 const uls = document.querySelectorAll('[data-url] > ul');
                 if(uls.length === 0) return;
+
+                // 重新加载顶层置顶数据
+                topmostLevel1Data = await getFile('/data/storage/tree_topmost_level1.json') || '{}';
+                topmostLevel1Data = JSON.parse(topmostLevel1Data);
+                if(topmostLevel1Data.code && topmostLevel1Data.code !== 0) topmostLevel1Data = {};
+
+                // 重新获取置顶数据
+                topmostData = await getFile('/data/storage/tree_topmost.json') || '{}';
+                topmostData = JSON.parse(topmostData);
+                if(topmostData.code && topmostData.code !== 0) topmostData = {};
+
+                // 重新生成顶层置顶数据
                 uls.forEach((ul) => {
-                    reloadTopmostTreeList(ul, ul.closest('[data-url]')?.dataset?.url);
+                    genTopmostLevel1List(ul, ul.closest('[data-url]')?.dataset?.url);
                 });
+
+                // 更新样式
+                genStyle();
             }
         });
     }, 5000);
 
     /////// functions //////////////////////
-
-    // 重新生成置顶数据
-    async function reloadTopmostTreeList(ul, box) {
-        // 重新加载顶层置顶数据
-        topmostLevel1Data = await getFile('/data/storage/tree_topmost_level1.json') || '{}';
-        topmostLevel1Data = JSON.parse(topmostLevel1Data);
-        if(topmostLevel1Data.code && topmostLevel1Data.code !== 0) topmostLevel1Data = {};
-        // 重新生成顶层置顶数据
-        genTopmostLevel1List(ul, box);
-
-        // 重新获取置顶数据
-        topmostData = await getFile('/data/storage/tree_topmost.json') || '{}';
-        topmostData = JSON.parse(topmostData);
-        if(topmostData.code && topmostData.code !== 0) topmostData = {};
-
-        // 更新样式
-        genStyle();
-    }
 
     let boxTimer, boxes = [];
     function genTopmostLevel1List(ul, box) {
