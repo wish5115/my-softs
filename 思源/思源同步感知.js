@@ -59,6 +59,8 @@
         '/api/setting/setBazaar',
         '/api/setting/setKeymap',
         '/api/sync/setSyncProvider',
+        // 文件操作
+        '/api/file/putFile',
         // 资源操作
         //'/api/asset/removeUnusedAsset',
         // 文件回滚操作（非快照回滚）
