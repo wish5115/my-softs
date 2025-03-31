@@ -555,7 +555,7 @@
         }
     }
 
-    function whenElementExist(selector, node, timeout = 5000) {
+    function whenElementExist(selector, node, timeout = 3000) {
         return new Promise((resolve, reject) => {
             let isResolved = false;
             const check = () => {
