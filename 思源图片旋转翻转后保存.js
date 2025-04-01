@@ -184,7 +184,7 @@
     };
   }
   function reloadImages(filePath, delay) {
-      const imgs = document.querySelectorAll('.protyle-wysiwyg [data-type="img"] img[src*="'+filePath.path+'"]');
+      const imgs = document.querySelectorAll('.protyle-wysiwyg [data-type="img"] img[src*="'+filePath.path.replace(/^\//, '')+'"]');
       if(imgs.length > 0) {
           setTimeout(()=>{
               imgs.forEach(async img => {
@@ -192,8 +192,9 @@
                   if(filePath.protocol === 'file:'){
                       src = img.src;
                   } else {
-                      src = filePath.path + filePath.search;
+                      src = filePath.path.replace(/^\//, '') + filePath.search;
                   }
+                  src = src.replace(/t=\d+/ig, '').replace('&+', '&').replace(/[&?]+$/, '');
                   src = src + (src.indexOf('?')===-1?'?':'&') + 't=' + new Date().getTime();
                   img.src = src;
                   img.dataset.src = src;
