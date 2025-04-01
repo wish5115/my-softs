@@ -1,6 +1,6 @@
 // 给文档树文档添加颜色和置顶
 // see https://ld246.com/article/1741359650489
-// version 0.0.7
+// version 0.0.7.1
 // 0.0.3 兼容手机版
 // 0.0.4 修复右键时可能出现的与上一个未关闭的菜单冲突问题
 // 0.0.5 修改默认配色方案，增加tree_colors_user_config.json用户配色方案文件
@@ -392,6 +392,9 @@
         const boxId = box?.dataset?.url;
         if(topmostLevel1Data[boxId] && topmostLevel1Data[boxId][nodeId]) {
             // 取消置顶
+            if(currLi.nextElementSibling?.matches('ul')){
+                currLi.nextElementSibling.remove();
+            }
             currLi.remove();
             // 删除数据
             delete topmostLevel1Data[boxId][nodeId];
@@ -400,12 +403,12 @@
             // 置顶
             // 复制文档到顶级目录
             const order = getOrder();
-            const topLi = currLi.cloneNode(true);
-            topLi.classList.add('topmost-level-1');
+            //const topLi = currLi.cloneNode(true);
+            //topLi.classList.add('topmost-level-1');
             //topLi.style.order = order;
             //topLi.style.display = 'flex';
-            topLi.querySelector('.b3-list-item__toggle').style.paddingLeft = isVersionGreaterThan(siyuan.config.system.kernelVersion,'3.1.10')?'18px':'22px';
-            box.children[1].insertBefore(topLi, box.children[1].firstChild);
+            //topLi.querySelector('.b3-list-item__toggle').style.paddingLeft = isVersionGreaterThan(siyuan.config.system.kernelVersion,'3.1.10')?'18px':'22px';
+            //box.children[1].insertBefore(topLi, box.children[1].firstChild);
             // 保存置顶顶级文档数据
             if(!topmostLevel1Data[boxId]) topmostLevel1Data[boxId] = {};
             if(!topmostLevel1Data[boxId][nodeId]) topmostLevel1Data[boxId][nodeId] = {};
@@ -415,6 +418,9 @@
             // 保存maxOrder
             putFile('/data/storage/tree_topmost.json', JSON.stringify(topmostData));
             currLi.classList.remove('b3-list-item--focus');
+
+            // 生成顶层置顶列表项
+            genTopmostLevel1List(box.children[1], boxId);
         }
         // 更新置顶样式
         genStyle();
