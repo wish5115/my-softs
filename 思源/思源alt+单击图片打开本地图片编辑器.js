@@ -8,7 +8,7 @@
     const delayTimeAfterCloseEditor = 100;
     
     // windows 下调用的编辑器APP，默认 mspaint
-    // 注意：Windows下的路径分隔符\要用\\表示，比如 C:\\\path\\some.exe
+    // 注意：Windows下的路径分隔符\要用\\表示，比如 C:\\path\\some.exe
     const windowsApp = 'mspaint';
     
     // Mac下调用的编辑器APP，默认 Preview
