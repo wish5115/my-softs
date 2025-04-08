@@ -1,11 +1,12 @@
 // 给文档树文档添加颜色和置顶
 // see https://ld246.com/article/1741359650489
-// version 0.0.7.1
+// version 0.0.8
 // 0.0.3 兼容手机版
 // 0.0.4 修复右键时可能出现的与上一个未关闭的菜单冲突问题
 // 0.0.5 修改默认配色方案，增加tree_colors_user_config.json用户配色方案文件
 // 0.0.6 增加用户配色方案；改进当存在用户配置文件时默认配置不再生效；增加置顶到顶层功能
 // 0.0.7 新增防止重复执行和多端同步时自动更新置顶的文档
+// 0.0.8 增加记住顶层置顶文件夹展开状态；修复顶层文件夹置顶定位不到问题；增加置顶取消置顶时自动定位到目标文档；优化交互体验细节
 // 存储文件及使用说明
 // 1. 修改/data/storage/tree_colors_user_config.json文件即可修改默认配色方案（第一次运行后生成）
 // 2. 取消全部置顶只需删除/data/storage/tree_topmost.json文件即可（第一次置顶时生成）
@@ -128,8 +129,9 @@
             const currLi = event.target.closest('li.b3-list-item:not([data-type="navigation-root"])');
             if(!currLi) return;
             // 关闭上次的菜单，防止与上一个未关闭的菜单冲突
-            const menuItems = document.querySelector('#commonMenu .b3-menu__items');
-            if(menuItems) menuItems.innerHTML = '';
+            window.siyuan.menus.menu.remove();
+            // const menuItems = document.querySelector('#commonMenu .b3-menu__items');
+            // if(menuItems) menuItems.innerHTML = '';
             // 等待菜单加载完毕
             whenElementExist('button[data-id="rename"]').then(renameBtn => {
                 if(document.querySelector('#sy_file_sp_color_top')) return;
@@ -172,15 +174,85 @@
 
     // 监听笔记本被展开
     if(isEnableTopmostLevel1) {
+        // 加载时
         whenElementExist('[data-url] > ul').then(() => {
             const uls = document.querySelectorAll('[data-url] > ul');
             uls.forEach((ul) => {
-                genTopmostLevel1List(ul, ul.closest('[data-url]')?.dataset?.url);
+                const boxId = ul.closest('[data-url]')?.dataset?.url;
+                genTopmostLevel1List(ul, boxId, (liEl) => {
+                    // 保持文件夹展开
+                    const nodeId = liEl.dataset.nodeId;
+                    const toggle = liEl.querySelector('.b3-list-item__toggle');
+                    if(toggle && !toggle.classList.contains('fn__hidden')){
+                        let paths = window.siyuan?.storage['local-filespaths']?.find(item=>item.notebookId===boxId)?.openPaths?.filter(item=>item.includes(nodeId));
+                        paths = paths.map(item => item.split(nodeId)[1]?'/'+nodeId+item.split(nodeId)[1]:item);
+                        expandFolderByPaths(paths, ul);
+                    };
+                });
+            });
+        }).catch(e=>{});
+        // 被点击
+        observeElement('[data-url] > ul', async (ul) => {
+            const boxId = ul.closest('[data-url]')?.dataset?.url;
+            genTopmostLevel1List(ul, boxId, (liEl) => {
+                // 保持文件夹展开
+                const nodeId = liEl.dataset.nodeId;
+                const toggle = liEl.querySelector('.b3-list-item__toggle');
+                if(toggle && !toggle.classList.contains('fn__hidden')){
+                    let paths = window.siyuan?.storage['local-filespaths']?.find(item=>item.notebookId===boxId)?.openPaths?.filter(item=>item.includes(nodeId));
+                    paths = paths.map(item => item.split(nodeId)[1]?'/'+nodeId+item.split(nodeId)[1]:item);
+                    expandFolderByPaths(paths, ul);
+                };
             });
         });
-        observeElement('[data-url] > ul', (ul) => {
-            genTopmostLevel1List(ul, ul.closest('[data-url]')?.dataset?.url);
-        });
+        // 被定位
+        whenElementExist(treeSelector + ' [data-type="focus"]').then((focus) => {
+            focus.addEventListener('click', async (event) => {
+                // 获取当前文档信息
+                const protyle = getProtyle();
+                const nodeId = protyle?.element?.querySelector('.protyle-title')?.dataset?.nodeId;
+                if(!nodeId) return;
+                const boxId = protyle?.notebookId;
+                let path = await fetchSyncPost('/api/filetree/getPathByID', {id: nodeId});
+                path = path?.data?.path || path?.data;
+                if(!path) return;
+                // 判断是否顶级指定文档的文档
+                const parts = path.split('/');
+                const folderIds = parts.slice(1, -1);
+                let topmostDocId = '';
+                for(const folderId of folderIds) {
+                    const topmostLevel1Ids = Object.keys(topmostLevel1Data[boxId]||[]);
+                    if(topmostLevel1Ids?.includes(folderId)) {
+                        topmostDocId = folderId;
+                        break;
+                    }
+                }
+                if(!topmostDocId) return;
+                // 等待列表加载
+                try {
+                    await whenElementExist(()=>document.querySelector(`.topmost-level-1[data-node-id="${topmostDocId}"]`), null, 5000);
+                } catch(e) {
+                    return;
+                }
+                // 先展开笔记本
+                // const boxLi = document.querySelector(`[data-url="${boxId}"] [data-path="/"]`);
+                // const boxToggle = boxLi.querySelector(`.b3-list-item__toggle`);
+                // const isBoxOpen = boxToggle?.querySelector('.b3-list-item__arrow--open');
+                // if(!isBoxOpen) boxToggle.click();
+                //等待列表展开
+                // try {
+                //     await whenElementExist(()=>boxLi?.nextElementSibling && boxLi?.nextElementSibling?.matches('ul'));
+                // } catch(e) {
+                //     return;
+                // }
+                // 展开顶层置顶文件夹并定位
+                let paths = [path];
+                paths = paths.map(item => item.split(topmostDocId)[1]?'/'+topmostDocId+item.split(topmostDocId)[1]:item);
+                expandFolderByPaths(paths, document, () => {
+                    (siyuan?.mobile?.docks?.file||siyuan?.mobile?.files||siyuan.layout.leftDock.data.file).selectItem(boxId, path);
+                });
+            });
+        }).catch(e=>{});
     }
 
     // 同步完成时加载
@@ -208,9 +280,21 @@
                 if(colorData.code && colorData.code !== 0) colorData = {};
 
                 // 重新生成顶层置顶数据
-                uls.forEach((ul) => {
-                    genTopmostLevel1List(ul, ul.closest('[data-url]')?.dataset?.url);
-                });
+                if(isEnableTopmostLevel1) {
+                    uls.forEach((ul) => {
+                        const boxId = ul.closest('[data-url]')?.dataset?.url;
+                        genTopmostLevel1List(ul, boxId, (liEl) => {
+                            // 保持文件夹展开
+                            const nodeId = liEl.dataset.nodeId;
+                            const toggle = liEl.querySelector('.b3-list-item__toggle');
+                            if(toggle && !toggle.classList.contains('fn__hidden')){
+                                let paths = window.siyuan?.storage['local-filespaths']?.find(item=>item.notebookId===boxId)?.openPaths?.filter(item=>item.includes(nodeId));
+                                paths = paths.map(item => item.split(nodeId)[1]?'/'+nodeId+item.split(nodeId)[1]:item);
+                                expandFolderByPaths(paths, ul);
+                            };
+                        });
+                    });
+                }
 
                 // 更新样式
                 genStyle();
@@ -221,7 +305,7 @@
     /////// functions //////////////////////
 
     let boxTimer, boxes = [];
-    function genTopmostLevel1List(ul, box) {
+    function genTopmostLevel1List(ul, box, callback) {
         // 不存在的笔记直接跳过
         const docs = topmostLevel1Data[box];
         if(!docs) return;
@@ -243,6 +327,7 @@
             liEl.classList.add('topmost-level-1');
             //liEl.style.order = doc.order;
             //liEl.style.display = 'flex';
+            if(callback) callback(liEl);
         });
     }
 
@@ -273,8 +358,9 @@
 
         // 置顶处理函数
         const topmostHandle = () => {
+            const isToTopmost = !topmostData[currLi.dataset.nodeId];
             // 保存置顶数据
-            if(topmostData[currLi.dataset.nodeId]) {
+            if(!isToTopmost) {
                 // 取消置顶
                 delete topmostData[currLi.dataset.nodeId];
             } else {
@@ -285,6 +371,8 @@
             // 更新置顶样式
             genStyle();
             closeMenu();
+            // 在文档树中定位
+            (siyuan?.mobile?.docks?.file||siyuan?.mobile?.files||siyuan.layout.leftDock.data.file).selectItem(box, currLi.dataset.path);
         };
 
         // 手机端置顶事件
@@ -390,7 +478,9 @@
         const box = currLi.closest('[data-url]');
         const nodeId = currLi.dataset.nodeId;
         const boxId = box?.dataset?.url;
-        if(topmostLevel1Data[boxId] && topmostLevel1Data[boxId][nodeId]) {
+        const path = currLi.dataset.path;
+        const isToTopmost = !(topmostLevel1Data[boxId] && topmostLevel1Data[boxId][nodeId]);
+        if(!isToTopmost) {
             // 取消置顶
             if(currLi.nextElementSibling?.matches('ul')){
                 currLi.nextElementSibling.remove();
@@ -399,6 +489,36 @@
             // 删除数据
             delete topmostLevel1Data[boxId][nodeId];
             putFile('/data/storage/tree_topmost_level1.json', JSON.stringify(topmostLevel1Data));
+
+            // 恢复文件夹折叠按钮
+            const oldLi = box.querySelector(`[data-node-id="${nodeId}"]`);
+            const ul = oldLi?.closest('ul');
+            if(ul.previousElementSibling && ul.previousElementSibling.matches('li[data-type="navigation-file"]')) {
+                const foldArrow = ul.previousElementSibling.querySelector('.b3-list-item__toggle');
+                if(foldArrow.classList.contains('fn__hidden')) foldArrow.classList.remove('fn__hidden');
+            }
+            // 获取当前文件夹展开状态
+            const paths = window.siyuan?.storage['local-filespaths']?.find(item=>item.notebookId===boxId)?.openPaths?.filter(item=>item.includes(nodeId));
+            // 先折叠子文档
+            let isFolder = false;
+            const toggle = oldLi.querySelector('.b3-list-item__toggle');
+            if(toggle && !toggle.classList.contains('fn__hidden')){
+                isFolder = true;
+                const arrow = toggle.querySelector('.b3-list-item__arrow');
+                if (arrow && arrow.classList.contains('b3-list-item__arrow--open')) {
+                    toggle.click();
+                }
+            }
+
+            // 更新置顶样式
+            genStyle();
+            // 关闭菜单
+            closeMenu();
+            // 在文档树中定位
+            (siyuan?.mobile?.docks?.file||siyuan?.mobile?.files||siyuan.layout.leftDock.data.file).selectItem(boxId, path);
+
+            // 保持文件夹展开
+            if(isFolder) expandFolderByPaths(paths, box);
         } else {
             // 置顶
             // 复制文档到顶级目录
@@ -420,12 +540,31 @@
             currLi.classList.remove('b3-list-item--focus');
 
             // 生成顶层置顶列表项
-            genTopmostLevel1List(box.children[1], boxId);
+            genTopmostLevel1List(box.children[1], boxId, (liEl) => {
+                // 保持文件夹展开
+                const toggle = liEl.querySelector('.b3-list-item__toggle');
+                if(toggle && !toggle.classList.contains('fn__hidden')){
+                    let paths = window.siyuan?.storage['local-filespaths']?.find(item=>item.notebookId===boxId)?.openPaths?.filter(item=>item.includes(nodeId));
+                    paths = paths.map(item => item.split(nodeId)[1]?'/'+nodeId+item.split(nodeId)[1]:item);
+                    expandFolderByPaths(paths, box);
+                };
+
+                // 更新置顶样式
+                genStyle();
+                // 关闭菜单
+                closeMenu();
+                // 在文档树中定位
+                (siyuan?.mobile?.docks?.file||siyuan?.mobile?.files||siyuan.layout.leftDock.data.file).selectItem(boxId, path);
+            });
+
+            // 仅有一个子文档时，去掉文件夹折叠按钮
+            const ul = currLi.closest('ul');
+            if(ul && ul.children.length === 1){
+                if(ul.previousElementSibling && ul.previousElementSibling.matches('li[data-type="navigation-file"]')) {
+                    ul.previousElementSibling.querySelector('.b3-list-item__toggle').classList.add('fn__hidden');
+                }
+            }
         }
-        // 更新置顶样式
-        genStyle();
-        // 关闭菜单
-        closeMenu();
     }
 
     function genColorMenus(beforeBtn, currLi) {
@@ -574,7 +713,7 @@
         }
     }
 
-    function whenElementExist(selector, node, timeout = 3000) {
+    function whenElementExist(selector, node, timeout = 5000) {
         return new Promise((resolve, reject) => {
             let isResolved = false;
             const check = () => {
@@ -626,7 +765,8 @@
     }
 
     function closeMenu() {
-        document.body.click();
+        //document.body.click();
+        window.siyuan.menus.menu.remove();
         if(keydown) { document.removeEventListener('keydown', keydown); keydown = null;}
         if(keyup) { document.removeEventListener('keyup', keyup); keyup = null;}
     }
@@ -938,5 +1078,53 @@ class="b3-list-item" data-path="${item.path}">
 
         // 如果所有段都相等，则返回 false
         return false;
+    }
+
+    function getProtyle() {
+        try {
+            if(document.getElementById("sidebar")) return siyuan.mobile.editor.protyle;
+            const currDoc = siyuan?.layout?.centerLayout?.children.map(item=>item.children.find(item=>item.headElement?.classList.contains('item--focus') && (item.panelElement.closest('.layout__wnd--active')||item.panelElement.closest('[data-type="wnd"]')))).find(item=>item);
+            return currDoc?.model.editor.protyle;
+        } catch(e) {
+            console.error(e);
+            return null;
+        }
+    }
+
+    // 根据paths展开文件夹
+    function expandFolderByPaths(paths, box, callback) {
+        // 遍历 paths 并展开对应的文件夹
+        paths.forEach(async path => {
+            // 将路径按 / 分割，获取每个层级的 node-id
+            const parts = path.split('/');
+            const folderIds = parts.slice(1, -1); // 最后一个是文件，不需要展开
+
+            // 逐层查找并展开文件夹
+            for(const nodeId of folderIds){
+                // 查找对应的 DOM 节点
+                const selector = `[data-node-id="${nodeId}"]`;
+                let listItem = (box || document).querySelector(selector);
+                if(!listItem) return;
+
+                // 找到展开按钮
+                const toggle = listItem.querySelector('.b3-list-item__toggle');
+
+                // 如果元素有子元素且未展开，则点击展开
+                if (toggle && !toggle.classList.contains('fn__hidden')) {
+                    // 模拟点击展开
+                    const arrow = toggle.querySelector('.b3-list-item__arrow');
+                    if (arrow && !arrow.classList.contains('b3-list-item__arrow--open')) {
+                        toggle.click();
+                        //等待列表展开
+                        try {
+                            await whenElementExist(()=>listItem?.nextElementSibling && listItem?.nextElementSibling?.matches('ul'), box);
+                        } catch(e) {
+                            return;
+                        }
+                    }
+                }
+            }
+            if(callback) callback();
+        });
     }
 })();
