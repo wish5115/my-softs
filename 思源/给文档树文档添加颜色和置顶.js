@@ -1,12 +1,13 @@
 // 给文档树文档添加颜色和置顶
 // see https://ld246.com/article/1741359650489
-// version 0.0.8
+// version 0.0.8.1
 // 0.0.3 兼容手机版
 // 0.0.4 修复右键时可能出现的与上一个未关闭的菜单冲突问题
 // 0.0.5 修改默认配色方案，增加tree_colors_user_config.json用户配色方案文件
 // 0.0.6 增加用户配色方案；改进当存在用户配置文件时默认配置不再生效；增加置顶到顶层功能
 // 0.0.7 新增防止重复执行和多端同步时自动更新置顶的文档
-// 0.0.8 增加记住顶层置顶文件夹展开状态；修复顶层文件夹置顶定位不到问题；增加置顶/取消置顶时自动定位到目标文档；修复文档全部折叠后顶层置顶恢复后需要刷新才能显示的问题；优化交互体验细节
+// 0.0.8 增加记住顶层置顶文件夹展开状态；修复顶层文件夹置顶定位不到问题；增加置顶取消置顶时自动定位到目标文档；修复文档全部折叠后顶层置顶恢复后需要刷新才能显示的问题；优化交互体验细节
+// 0.0.8.1 增加同步时自动同步已取消的指定
 // 存储文件及使用说明
 // 1. 修改/data/storage/tree_colors_user_config.json文件即可修改默认配色方案（第一次运行后生成）
 // 2. 取消全部置顶只需删除/data/storage/tree_topmost.json文件即可（第一次置顶时生成）
@@ -285,6 +286,7 @@
                 if(isEnableTopmostLevel1) {
                     uls.forEach((ul) => {
                         const boxId = ul.closest('[data-url]')?.dataset?.url;
+                        // 获取顶层置顶文档
                         genTopmostLevel1List(ul, boxId, (liEl) => {
                             // 保持文件夹展开
                             const nodeId = liEl.dataset.nodeId;
@@ -296,6 +298,10 @@
                             };
                         });
                         formatTopmostLevel1ParentToggleArrow(ul);
+                        // 同步时取消已取消的顶层置顶文档
+                        ul.querySelectorAll('.topmost-level-1').forEach(li => {
+                            if(li) cancelTopmostWhenSync(li);
+                        });
                     });
                 }
 
@@ -591,6 +597,38 @@
                 }
             }
         }
+    }
+
+    // 同步时取消已取消的顶层置顶文档
+    function cancelTopmostWhenSync(currLi) {
+        const box = currLi.closest('[data-url]');
+        const nodeId = currLi.dataset.nodeId;
+        const boxId = box?.dataset?.url;
+        // 取消置顶
+        if(currLi.nextElementSibling?.matches('ul')){
+            currLi.nextElementSibling.remove();
+        }
+        currLi.remove();
+
+        // 恢复文件夹折叠按钮
+        const oldLi = box.querySelector(`[data-node-id="${nodeId}"]`);
+        const ul = oldLi?.closest('ul');
+        if(ul?.previousElementSibling && ul?.previousElementSibling?.matches('li[data-type="navigation-file"]')) {
+            const foldArrow = ul.previousElementSibling.querySelector('.b3-list-item__toggle');
+            if(foldArrow.classList.contains('fn__hidden')) foldArrow.classList.remove('fn__hidden');
+        }
+        // 获取当前文件夹展开状态
+        const paths = window.siyuan?.storage['local-filespaths']?.find(item=>item.notebookId===boxId)?.openPaths?.filter(item=>item.includes(nodeId));
+        // 先折叠子文档
+        const toggle = oldLi?.querySelector('.b3-list-item__toggle');
+        if(toggle && !toggle?.classList?.contains('fn__hidden')){
+            const arrow = toggle.querySelector('.b3-list-item__arrow');
+            if (arrow && arrow.classList.contains('b3-list-item__arrow--open')) {
+                toggle.click();
+            }
+        }
+        // 保持文件夹展开
+        expandFolderByPaths(paths, box);
     }
 
     function genColorMenus(beforeBtn, currLi) {
