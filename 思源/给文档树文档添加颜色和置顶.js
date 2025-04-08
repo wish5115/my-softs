@@ -6,7 +6,7 @@
 // 0.0.5 修改默认配色方案，增加tree_colors_user_config.json用户配色方案文件
 // 0.0.6 增加用户配色方案；改进当存在用户配置文件时默认配置不再生效；增加置顶到顶层功能
 // 0.0.7 新增防止重复执行和多端同步时自动更新置顶的文档
-// 0.0.8 增加记住顶层置顶文件夹展开状态；修复顶层文件夹置顶定位不到问题；增加置顶取消置顶时自动定位到目标文档；优化交互体验细节
+// 0.0.8 增加记住顶层置顶文件夹展开状态；修复顶层文件夹置顶定位不到问题；增加置顶取消置顶时自动定位到目标文档；修复文档全部折叠后顶层置顶恢复后需要刷新才能显示的问题；优化交互体验细节
 // 存储文件及使用说明
 // 1. 修改/data/storage/tree_colors_user_config.json文件即可修改默认配色方案（第一次运行后生成）
 // 2. 取消全部置顶只需删除/data/storage/tree_topmost.json文件即可（第一次置顶时生成）
@@ -91,7 +91,7 @@
 
     // 保存原始颜色配置
     const originColors = JSON.parse(JSON.stringify(colors));
-    
+
     // 获取置顶数据，格式 {"docId":"order"}
     let topmostData = await getFile('/data/storage/tree_topmost.json') || '{}';
     topmostData = JSON.parse(topmostData);
@@ -115,10 +115,10 @@
         // 第一次运行保存默认配色方案
         putFile('/data/storage/tree_colors_user_config.json', JSON.stringify(colors, null, 4));
     }
-    
+
     // 生成颜色数据
     genColors();
-    
+
     // 生成样式
     genStyle();
 
@@ -189,6 +189,7 @@
                         expandFolderByPaths(paths, ul);
                     };
                 });
+                formatTopmostLevel1ParentToggleArrow(ul);
             });
         }).catch(e=>{});
         // 被点击
@@ -204,6 +205,7 @@
                     expandFolderByPaths(paths, ul);
                 };
             });
+            formatTopmostLevel1ParentToggleArrow(ul);
         });
         // 被定位
         whenElementExist(treeSelector + ' [data-type="focus"]').then((focus) => {
@@ -230,7 +232,7 @@
                 if(!topmostDocId) return;
                 // 等待列表加载
                 try {
-                    await whenElementExist(()=>document.querySelector(`.topmost-level-1[data-node-id="${topmostDocId}"]`), null, 5000);
+                    await whenElementExist(()=>document.querySelector(`.topmost-level-1[data-node-id="${topmostDocId}"]`));
                 } catch(e) {
                     return;
                 }
@@ -293,6 +295,7 @@
                                 expandFolderByPaths(paths, ul);
                             };
                         });
+                        formatTopmostLevel1ParentToggleArrow(ul);
                     });
                 }
 
@@ -304,7 +307,32 @@
 
     /////// functions //////////////////////
 
+    // 去掉顶层置顶文档的父级文件夹的展开箭头
+    async function formatTopmostLevel1ParentToggleArrow(ul) {
+        const boxId = ul.closest('[data-url]')?.dataset?.url;
+        const docs = topmostLevel1Data[boxId];
+        Object.entries(docs).forEach(async ([id, doc]) => {
+            const path = doc.path;
+            const parentId = path.split(id)[0].split('/').filter(item=>item).pop();
+            if(!parentId) return;
+            let parentLi = ul.querySelector(`[data-node-id="${parentId}"][data-count="1"]`);
+            if(!parentLi) {
+                try {
+                    parentLi = await whenElementExist(()=>ul.querySelector(`[data-node-id="${parentId}"][data-count="1"]`));
+                } catch(e) {
+                    return;
+                }
+            }
+            if(!parentLi) return;
+            const toggle = parentLi.querySelector(`.b3-list-item__toggle`);
+            if(toggle && !toggle.classList.contains('fn__hidden')){
+                toggle.classList.add('fn__hidden');
+            }
+        });
+    }
+
     let boxTimer, boxes = [];
+     // 生成顶层置顶文档的列表
     function genTopmostLevel1List(ul, box, callback) {
         // 不存在的笔记直接跳过
         const docs = topmostLevel1Data[box];
@@ -493,17 +521,15 @@
             // 恢复文件夹折叠按钮
             const oldLi = box.querySelector(`[data-node-id="${nodeId}"]`);
             const ul = oldLi?.closest('ul');
-            if(ul.previousElementSibling && ul.previousElementSibling.matches('li[data-type="navigation-file"]')) {
+            if(ul?.previousElementSibling && ul?.previousElementSibling?.matches('li[data-type="navigation-file"]')) {
                 const foldArrow = ul.previousElementSibling.querySelector('.b3-list-item__toggle');
                 if(foldArrow.classList.contains('fn__hidden')) foldArrow.classList.remove('fn__hidden');
             }
             // 获取当前文件夹展开状态
             const paths = window.siyuan?.storage['local-filespaths']?.find(item=>item.notebookId===boxId)?.openPaths?.filter(item=>item.includes(nodeId));
             // 先折叠子文档
-            let isFolder = false;
-            const toggle = oldLi.querySelector('.b3-list-item__toggle');
-            if(toggle && !toggle.classList.contains('fn__hidden')){
-                isFolder = true;
+            const toggle = oldLi?.querySelector('.b3-list-item__toggle');
+            if(toggle && !toggle?.classList?.contains('fn__hidden')){
                 const arrow = toggle.querySelector('.b3-list-item__arrow');
                 if (arrow && arrow.classList.contains('b3-list-item__arrow--open')) {
                     toggle.click();
@@ -518,7 +544,7 @@
             (siyuan?.mobile?.docks?.file||siyuan?.mobile?.files||siyuan.layout.leftDock.data.file).selectItem(boxId, path);
 
             // 保持文件夹展开
-            if(isFolder) expandFolderByPaths(paths, box);
+            expandFolderByPaths(paths, box);
         } else {
             // 置顶
             // 复制文档到顶级目录
@@ -572,7 +598,7 @@
         const html = `<button data-id="color" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTheme"></use></svg><span class="b3-menu__label">颜色</span><svg class="b3-menu__icon b3-menu__icon--small"><use xlink:href="#iconRight"></use></svg><div class="b3-menu__submenu"><div class="b3-menu__items"></div></div></button>`;
         beforeBtn.insertAdjacentHTML('beforebegin', html);
         const colorMenu = beforeBtn.parentElement.querySelector('button[data-id="color"]');
-        
+
         // 生成子菜单
         let subMenus = '';
         // 是否显示取消颜色
@@ -620,7 +646,7 @@
         const html = `<button data-id="separator_2" id="sy_file_sp_color_top" class="b3-menu__separator"></button>`;
         beforeBtn.insertAdjacentHTML('beforebegin', html);
     }
-    
+
     function genStyle() {
         // 生成置顶样式
         let topmostStyle = '';
@@ -639,7 +665,7 @@
                 }
             }
         }
-        
+
         // 生成颜色样式
         let colorStyle = '';
         if (isEnableColor) {
@@ -654,7 +680,7 @@
                 }
             }
         }
-        
+
         // 生成顶层置顶样式
         let topmostLevel1Style = '';
         if (isEnableTopmostLevel1) {
@@ -770,7 +796,7 @@
         if(keydown) { document.removeEventListener('keydown', keydown); keydown = null;}
         if(keyup) { document.removeEventListener('keyup', keyup); keyup = null;}
     }
-    
+
     function getOrder() {
         if(topmostData['maxIndex']) return --topmostData['maxIndex'];
         topmostData['maxIndex'] = -1;
@@ -784,7 +810,7 @@
     function isEmptyObject(obj) {
       return obj == null || Object.keys(obj).length === 0;
     }
-    
+
     function addSvgSymbol() {
         // 检查是否存在 id 为 "iconTop" 的 <symbol> 元素
         if (!document.querySelector('symbol#iconTop')) {
@@ -1011,12 +1037,12 @@ class="b3-list-item" data-path="${item.path}">
     function getBasename(filePath, ext = '') {
         // 1. 提取路径的最后一部分（文件名）
         let base = filePath.replace(/\\/g, '/').split('/').pop(); // 处理 POSIX 和 Windows 路径
-    
+
         // 2. 如果提供了扩展名参数，则去掉对应的扩展名
         if (ext && base.endsWith(ext)) {
             base = base.slice(0, base.length - ext.length);
         }
-    
+
         return base;
     }
 
@@ -1089,6 +1115,10 @@ class="b3-list-item" data-path="${item.path}">
             console.error(e);
             return null;
         }
+    }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     // 根据paths展开文件夹
