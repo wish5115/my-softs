@@ -318,7 +318,7 @@
     // 去掉顶层置顶文档的父级文件夹的展开箭头
     async function formatTopmostLevel1ParentToggleArrow(ul) {
         const boxId = ul.closest('[data-url]')?.dataset?.url;
-        const docs = topmostLevel1Data[boxId];
+        const docs = topmostLevel1Data[boxId]||{};
         const parentIdCount = {};
         Object.entries(docs).forEach(async ([id, doc]) => {
             const path = doc.path;
@@ -346,7 +346,7 @@
      // 生成顶层置顶文档的列表
     function genTopmostLevel1List(ul, box, callback) {
         // 不存在的笔记直接跳过
-        const docs = topmostLevel1Data[box];
+        const docs = topmostLevel1Data[box]||{};
         if(!docs) return;
         // 防止重复执行
         if(boxes.includes(box)) return;
@@ -599,7 +599,7 @@
             const parentLi = ul?.previousElementSibling;
             const parentId = parentLi?.dataset?.nodeId;
             let topmostChildren = 0;
-            Object.entries(topmostLevel1Data[boxId]).forEach(async ([id, doc]) => {
+            Object.entries(topmostLevel1Data[boxId]||{}).forEach(async ([id, doc]) => {
                 if(doc.path.includes(parentId)) topmostChildren++;
             });
             topmostChildren = topmostChildren || 1;
