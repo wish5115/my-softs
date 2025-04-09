@@ -1,6 +1,6 @@
 // 给文档树文档添加颜色和置顶
 // see https://ld246.com/article/1741359650489
-// version 0.0.8.1
+// version 0.0.8.2
 // 0.0.3 兼容手机版
 // 0.0.4 修复右键时可能出现的与上一个未关闭的菜单冲突问题
 // 0.0.5 修改默认配色方案，增加tree_colors_user_config.json用户配色方案文件
@@ -8,6 +8,7 @@
 // 0.0.7 新增防止重复执行和多端同步时自动更新置顶的文档
 // 0.0.8 增加记住顶层置顶文件夹展开状态；修复文件夹置顶到顶层后定位不到问题；增加置顶取消置顶时自动定位到目标文档；修复文档全部折叠后顶层置顶恢复后需要刷新才能显示的问题；优化交互体验细节
 // 0.0.8.1 修复已取消的顶层置顶无法实时同步问题
+// 0.0.8.2 修复文件夹中的文档全部顶层置顶后，文件夹的展开按钮显示隐藏问题
 // 存储文件及使用说明
 // 1. 修改/data/storage/tree_colors_user_config.json文件即可修改默认配色方案（第一次运行后生成）
 // 2. 取消全部置顶只需删除/data/storage/tree_topmost.json文件即可（第一次置顶时生成）
@@ -318,14 +319,17 @@
     async function formatTopmostLevel1ParentToggleArrow(ul) {
         const boxId = ul.closest('[data-url]')?.dataset?.url;
         const docs = topmostLevel1Data[boxId];
+        const parentIdCount = {};
         Object.entries(docs).forEach(async ([id, doc]) => {
             const path = doc.path;
             const parentId = path.split(id)[0].split('/').filter(item=>item).pop();
             if(!parentId) return;
-            let parentLi = ul.querySelector(`[data-node-id="${parentId}"][data-count="1"]`);
+            if(!parentIdCount[parentId]) parentIdCount[parentId] = 0;
+            parentIdCount[parentId]++;
+            let parentLi = ul.querySelector(`[data-node-id="${parentId}"][data-count="${parentIdCount[parentId]}"]`);
             if(!parentLi) {
                 try {
-                    parentLi = await whenElementExist(()=>ul.querySelector(`[data-node-id="${parentId}"][data-count="1"]`));
+                    parentLi = await whenElementExist(()=>ul.querySelector(`[data-node-id="${parentId}"][data-count="${parentIdCount[parentId]}"]`));
                 } catch(e) {
                     return;
                 }
@@ -590,11 +594,18 @@
                 (siyuan?.mobile?.docks?.file||siyuan?.mobile?.files||siyuan.layout.leftDock.data.file).selectItem(boxId, path);
             });
 
-            // 仅有一个子文档时，去掉文件夹折叠按钮
+            // 当文件夹的文档全部顶层置顶时，去掉文件夹折叠按钮
             const ul = currLi.closest('ul');
-            if(ul && ul.children.length === 1){
-                if(ul.previousElementSibling && ul.previousElementSibling.matches('li[data-type="navigation-file"]')) {
-                    ul.previousElementSibling.querySelector('.b3-list-item__toggle').classList.add('fn__hidden');
+            const parentLi = ul?.previousElementSibling;
+            const parentId = parentLi?.dataset?.nodeId;
+            let topmostChildren = 0;
+            Object.entries(topmostLevel1Data[boxId]).forEach(async ([id, doc]) => {
+                if(doc.path.includes(parentId)) topmostChildren++;
+            });
+            topmostChildren = topmostChildren || 1;
+            if(ul && parentLi && ul.children.length === topmostChildren){
+                if(parentLi && parentLi.matches('li[data-type="navigation-file"]')) {
+                    parentLi.querySelector('.b3-list-item__toggle').classList.add('fn__hidden');
                 }
             }
         }
