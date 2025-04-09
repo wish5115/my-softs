@@ -141,7 +141,7 @@
                 genTopmostMenu(renameBtn, currLi);
                 genColorMenus(renameBtn, currLi);
                 genSeparator(renameBtn);
-            });
+            }).catch(e=>{});
         };
         if(isMobile()) {
             // 监听手机版更多按钮被单击
