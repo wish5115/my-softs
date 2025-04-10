@@ -1,6 +1,9 @@
 // 带块id的剪切
 // see https://ld246.com/article/1744246860602
-// 支持手机版；不会出现重复 ID
+// 支持手机版
+// 不会出现重复 ID
+// version 0.0.2
+// 0.0.2 自动检查块是否已在目标中显示，如果未显示再调用protyle刷新，从而改善用户体验
 // 注意：只能在块菜单中操作（你的右键可能不是块菜单）
 // 缺点：不支持撤销（官方移动也不支持撤销）
 (()=>{
@@ -56,8 +59,8 @@
                         }
                         lastBlockId = id;
                     }
+                    reloadProtyle(selectedIds, currEditor);
                     selectedIds = [];
-                    reloadProtyle()
                 }
                 // 剪切
                 else {
@@ -138,8 +141,22 @@
         });
     }
 
-    function reloadProtyle() {
-        (siyuan?.mobile||getProtyle()?.model)?.editor?.reload();
+    function reloadProtyle(ids = [], node = null) {
+        node = node || document;
+        if(ids.length > 0) {
+            // 检查id的元素是否存在
+            let hasNotExistEl = false;
+            for(const id of ids){
+                const el = node.querySelector(`[data-node-id="${id}"]`);
+                if(!el) {
+                    hasNotExistEl = true;
+                    break;
+                }
+            }
+            if(hasNotExistEl) (siyuan?.mobile||getProtyle()?.model)?.editor?.reload();
+        } else {
+            (siyuan?.mobile||getProtyle()?.model)?.editor?.reload();
+        }
     }
 
     function getProtyle() {
