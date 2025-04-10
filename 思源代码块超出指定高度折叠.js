@@ -105,6 +105,8 @@
 		});
 	}
 
+    // 临时解决方案，主要解决用户自定义的dom被更新时变为html代码
+    // 不过最新方案，通过添加protyle-custom类可忽略用户自定义dom，该方案已不需要了
     let isFetchOverridden = false; // 标志变量，用于判断 fetch 是否已经被覆盖
 	async function listenCodeUpdate() {
         if (!isFetchOverridden) {
