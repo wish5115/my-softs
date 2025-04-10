@@ -51,7 +51,7 @@
                         });
                         if(!result || result.code !== 0) {
                             console.error(result);
-                            showMessage('粘贴失败', true);
+                            showMessage('剪切失败', true);
                             break;
                         }
                         lastBlockId = id;
