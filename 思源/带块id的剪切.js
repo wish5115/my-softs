@@ -20,8 +20,9 @@
             cut.insertAdjacentHTML('afterend', menuButtonHtml);
             const cutWithIdBtn = menuItems.querySelector('.cut-with-id');
             // Esc取消
+            let handleEscKey;
             if(isPaste) {
-                const handleEscKey = (event) => {
+                handleEscKey = (event) => {
                     // 检查是否按下了 Esc 键
                     if (event.key === 'Escape' || event.keyCode === 27) {
                         selectedIds = [];
@@ -36,6 +37,7 @@
                 window.siyuan.menus.menu.remove();
                 // 粘贴
                 if(isPaste){
+                    if(handleEscKey) document.removeEventListener('keydown', handleEscKey);
                     const currEditor = getProtyle()?.wysiwyg?.element;
                     const currBlock = currEditor?.querySelector('.protyle-wysiwyg--select');
                     const prevBlock = currBlock?.previousElementSibling;
