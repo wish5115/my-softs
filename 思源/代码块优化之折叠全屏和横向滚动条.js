@@ -1,7 +1,8 @@
 // 代码块添加折叠/展开/全屏/悬浮横向滚动条
 // see https://ld246.com/article/1744373698945
-// version 0.0.1
+// version 0.0.2
 // 0.0.1 支持代码块的折叠和展开，全屏和悬浮横向滚动条
+// 0.0.2 优化滚动条样式
 (() => {
     // 当代码块内容最大高度，注意：这里的高度是指.hljs元素的高度，默认是500px
     const codeMaxHeight = '500px';
@@ -39,11 +40,12 @@
           position: sticky;
           bottom: 0;
           width: 100%;
-          height: 10px;
-          background-color: #ddd;
+          height: 8px;
+          /*background-color: #ddd;*/
           cursor: pointer;
           border-radius: 5px;
           /*transition: opacity 0.3s ease;*/
+          z-index: ${++siyuan.zIndex||9999};
         }
         /* 滚动条滑块 */
         .scrollbar-thumb {
@@ -52,7 +54,8 @@
           left: 0;
           height: 100%;
           width: 20%; /* 初始滑块宽度 */
-          background-color: #666;
+          /*background-color: var(--b3-scroll-color);*/ /* light #C2C3C3 dark #4E4F58 */
+          box-shadow: inset 0 0 5px 5px var(--b3-scroll-color);
           border-radius: 5px;
           cursor: grab;
         }
