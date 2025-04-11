@@ -1,10 +1,13 @@
 // 代码块添加折叠/展开/全屏/悬浮横向滚动条
 // see https://ld246.com/article/1744373698945
-// version 0.0.2
+// 支持在块上添加auto-height自定义属性，使块不受最大高度限制
+// version 0.0.3
 // 0.0.1 支持代码块的折叠和展开，全屏和悬浮横向滚动条
 // 0.0.2 美化滚动条样式
+// 0.0.3 修复全屏后代码块显示不全问题
 (() => {
     // 当代码块内容最大高度，注意：这里的高度是指.hljs元素的高度，默认是500px
+    // 支持在块上添加auto-height自定义属性，使块不受最大高度限制
     const codeMaxHeight = '500px';
     
     // 是否显示全屏按钮 true 显示 false 不显示
@@ -28,7 +31,7 @@
         .b3-typography div.hljs, .protyle-wysiwyg div.hljs{
                 padding: 0.65em 1em 1.6em;
         }
-        .b3-typography div.protyle-action, .protyle-wysiwyg .code-block:not([custom-auto-height]) div.protyle-action {
+        .b3-typography div.protyle-action, .protyle-wysiwyg .code-block div.protyle-action {
             position: sticky;
         }
         /* 全屏背景色 */
@@ -148,14 +151,18 @@
                     requestFullScreen(code);
                     fullscreenStatus = 'iconFullscreenExit';
                     fullscreenAriaLabel = '退出全屏';
-                    hljs.style.maxHeight = '100vh';
+                    hljs.style.maxHeight = 'calc(100vh - 58px)';
                     expandBtn.style.display = 'none';
+                    if(scrollbarContainer) scrollbarContainer.classList.add('f__hidden');
                 } else {
                     exitFullScreen(code);
                     fullscreenStatus = 'iconFullscreen';
                     fullscreenAriaLabel = '全屏';
                     if (oldCodeMaxHeight !== undefined) hljs.style.maxHeight = oldCodeMaxHeight;
                     expandBtn.style.display = '';
+                    setTimeout(()=>{
+                        if(scrollbarContainer) scrollbarContainer.classList.add('f__hidden');
+                    }, 300);
                 }
                 const useEl = fullscreenBtn.querySelector('svg > use');
                 useEl.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#' + fullscreenStatus);
