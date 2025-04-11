@@ -14,7 +14,7 @@
     const isEnableScrollbar = true;
 
     // 不支持手机版（因为手机版不需要）
-    if(isMobile) return;
+    if(isMobile()) return;
     
     // 添加样式
     addStyle(`
