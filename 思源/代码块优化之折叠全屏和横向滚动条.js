@@ -1,10 +1,11 @@
 // 代码块添加折叠/展开/全屏/悬浮横向滚动条
 // see https://ld246.com/article/1744373698945
 // 支持在块上添加auto-height自定义属性，使块不受最大高度限制
-// version 0.0.3
+// version 0.0.4
 // 0.0.1 支持代码块的折叠和展开，全屏和悬浮横向滚动条
 // 0.0.2 美化滚动条样式
 // 0.0.3 修复全屏后代码块显示不全问题
+// 0.0.4 改进仅代码有滚动条且高度大于codeMaxHeight时才显示
 (() => {
     // 当代码块内容最大高度，注意：这里的高度是指.hljs元素的高度，默认是500px
     // 支持在块上添加auto-height自定义属性，使块不受最大高度限制
@@ -16,10 +17,10 @@
     // 是否显示模拟滚动条 true 显示 false 不显示
     // 该功能在代码块底部超出可视区域时自动在底部显示滚动条
     const isEnableScrollbar = true;
-
-    // 不支持手机版（因为手机版不需要）
-    if(isMobile()) return;
     
+    // 不支持手机版（因为手机版不需要）
+    if (isMobile()) return;
+
     // 添加样式
     addStyle(`
         .b3-typography div.hljs, .protyle-wysiwyg .code-block:not([custom-auto-height]) div.hljs {
@@ -48,7 +49,7 @@
           cursor: pointer;
           border-radius: 5px;
           /*transition: opacity 0.3s ease;*/
-          z-index: ${++siyuan.zIndex||9999};
+          z-index: ${++siyuan.zIndex || 9999};
         }
         /* 滚动条滑块 */
         .scrollbar-thumb {
@@ -92,6 +93,7 @@
                 }
                 // 加载时执行
                 addCodeExtends(protyle.querySelectorAll('.code-block:not(:has(.protyle-icon--expand))'), protyle);
+
                 // 滚动时执行
                 protyle.querySelector(".protyle-content").addEventListener('scroll', () => {
                     addCodeExtends(protyle.querySelectorAll('.code-block:not(:has(.protyle-icon--expand))'), protyle);
@@ -106,7 +108,7 @@
         if (codeBlocks.length === 0) return;
         if (runing) return;
         runing = true;
-        setTimeout(() => { runing = false; }, 300);
+        setTimeout(() => { runing = false; }, 500);
         codeBlocks.forEach(async code => {
             if (code.querySelector('.protyle-icon--expand')) return;
 
@@ -153,15 +155,15 @@
                     fullscreenAriaLabel = '退出全屏';
                     hljs.style.maxHeight = 'calc(100vh - 58px)';
                     expandBtn.style.display = 'none';
-                    if(scrollbarContainer) scrollbarContainer.classList.add('f__hidden');
+                    if (scrollbarContainer) scrollbarContainer.classList.add('f__hidden');
                 } else {
                     exitFullScreen(code);
                     fullscreenStatus = 'iconFullscreen';
                     fullscreenAriaLabel = '全屏';
                     if (oldCodeMaxHeight !== undefined) hljs.style.maxHeight = oldCodeMaxHeight;
                     expandBtn.style.display = '';
-                    setTimeout(()=>{
-                        if(scrollbarContainer) scrollbarContainer.classList.add('f__hidden');
+                    setTimeout(() => {
+                        if (scrollbarContainer) scrollbarContainer.classList.add('f__hidden');
                     }, 300);
                 }
                 const useEl = fullscreenBtn.querySelector('svg > use');
@@ -177,15 +179,25 @@
             const scrollbarContainer = code.querySelector('.scrollbar-container');
             const protyleContent = protyle.querySelector(".protyle-content");
 
-            protyleContent.addEventListener('scroll', () => {
-                // 判断是否仍然处于 sticky 状态
-                if (isElementBottomInViewport(code)) {
-                    // 如果元素底部超出了视口高度，说明已离开 sticky 状态
-                    scrollbarContainer.classList.add('f__hidden');
+            // 检查是否需要显示模拟滚动条
+            function checkScrollbarVisibility() {
+                const hasHorizontalScrollbar = hljs.scrollWidth > hljs.clientWidth; // 是否有横向滚动条
+                const isHeightExceeded = hljs.scrollHeight > parseHeightToPixels(codeMaxHeight); // 高度是否超过codeMaxHeight
+                const isSticky = !isElementBottomInViewport(code); // 是否处于 sticky 状态
+
+                if (hasHorizontalScrollbar && isHeightExceeded && isSticky) {
+                    scrollbarContainer.classList.remove('f__hidden'); // 显示模拟滚动条
                 } else {
-                    // 否则保持可见
-                    scrollbarContainer.classList.remove('f__hidden');
+                    scrollbarContainer.classList.add('f__hidden'); // 隐藏模拟滚动条
                 }
+            }
+
+            // 初始化滚动条状态
+            checkScrollbarVisibility();
+
+            // 监听 protyleContent 的滚动事件
+            protyleContent.addEventListener('scroll', () => {
+                checkScrollbarVisibility();
             });
 
             // 模拟滚动条滚动
@@ -198,7 +210,6 @@
                 const contentWidth = hljs.scrollWidth;
                 const viewportWidth = hljs.clientWidth;
                 let thumbWidth = (viewportWidth / contentWidth) * scrollbarContainer.offsetWidth;
-
                 // 边界值处理
                 thumbWidth = Math.max(thumbWidth, 10); // 最小宽度为10px
                 scrollbarThumb.style.width = `${thumbWidth}px`;
@@ -206,8 +217,7 @@
 
             // 同步滚动条位置
             function syncScrollbarPosition() {
-                const scrollPercentage =
-                    hljs.scrollLeft / (hljs.scrollWidth - hljs.clientWidth);
+                const scrollPercentage = hljs.scrollLeft / (hljs.scrollWidth - hljs.clientWidth);
                 const thumbMaxMove = scrollbarContainer.offsetWidth - scrollbarThumb.offsetWidth;
                 scrollbarThumb.style.left = `${scrollPercentage * thumbMaxMove}px`;
             }
@@ -226,14 +236,11 @@
                 isDragging = true;
                 startX = e.clientX;
                 thumbStartX = parseFloat(scrollbarThumb.style.left) || 0;
-
                 // 禁用文本选择
                 hljs.style.userSelect = "none";
-
                 // 绑定全局事件
                 document.addEventListener("mousemove", handleMouseMove);
                 document.addEventListener("mouseup", handleMouseUp);
-
                 // 阻止默认行为
                 e.preventDefault();
             });
@@ -243,25 +250,20 @@
                 const deltaX = e.clientX - startX;
                 const thumbMaxMove = scrollbarContainer.offsetWidth - scrollbarThumb.offsetWidth;
                 let newThumbPosition = thumbStartX + deltaX;
-
                 // 限制滑块范围
                 newThumbPosition = Math.max(0, Math.min(newThumbPosition, thumbMaxMove));
                 scrollbarThumb.style.left = `${newThumbPosition}px`;
-
                 // 同步 .code-block 的滚动位置
                 const scrollPercentage = newThumbPosition / thumbMaxMove;
                 hljs.scrollLeft = scrollPercentage * (hljs.scrollWidth - hljs.clientWidth);
-
                 // 阻止默认行为
                 e.preventDefault();
             }
 
             function handleMouseUp() {
                 isDragging = false;
-
                 // 恢复文本选择
                 hljs.style.userSelect = "";
-
                 // 移除全局事件
                 document.removeEventListener("mousemove", handleMouseMove);
                 document.removeEventListener("mouseup", handleMouseUp);
@@ -269,6 +271,7 @@
 
             // 监听窗口大小变化
             window.addEventListener("resize", () => {
+                checkScrollbarVisibility();
                 updateScrollbar();
                 syncScrollbarPosition();
             });
@@ -358,14 +361,62 @@
 
     function isElementBottomInViewport(el) {
         if (!el) return false; // 如果元素不存在，直接返回 false
-    
         const rect = el.getBoundingClientRect(); // 获取元素的边界信息
         const windowHeight = window.innerHeight || document.documentElement.clientHeight;
-    
         // 判断元素的底部是否在视口内
         return rect.bottom <= windowHeight;
     }
+
+    // 通过字符串解析实际高度，缓存对象 (作为函数属性)
+    function parseHeightToPixels(value) {
+      // 静态缓存对象 (函数属性)
+      if (!parseHeightToPixels.memo) {
+        parseHeightToPixels.memo = {};
+      }
     
+      // 1. 数字类型直接返回
+      if (typeof value === 'number') {
+        return value;
+      }
+    
+      // 2. 检查缓存
+      if (parseHeightToPixels.memo.hasOwnProperty(value)) {
+        return parseHeightToPixels.memo[value];
+      }
+    
+      // 3. 处理 px 单位或纯数字字符串
+      if (typeof value === 'string') {
+        // 3.1 纯数字字符串 (如 '500')
+        if (/^\d+\.?\d*$/.test(value)) {
+          const num = parseFloat(value);
+          parseHeightToPixels.memo[value] = num;
+          return num;
+        }
+    
+        // 3.2 px 单位字符串 (如 '500px' 或 '300.5px')
+        if (value.toLowerCase().endsWith('px')) {
+          const num = parseFloat(value);
+          parseHeightToPixels.memo[value] = num;
+          return num;
+        }
+      }
+    
+      // 4. 其他单位需要 DOM 计算
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.visibility = 'hidden';
+      tempDiv.style.height = value;
+      tempDiv.style.left = '-9999px';
+    
+      document.body.appendChild(tempDiv);
+      const heightInPixels = parseFloat(getComputedStyle(tempDiv).height);
+      document.body.removeChild(tempDiv);
+    
+      // 存入缓存
+      parseHeightToPixels.memo[value] = heightInPixels;
+      return heightInPixels;
+    }
+
     let statusMsg;
     function showStatusMsg(params, append = false) {
         if (!statusMsg) statusMsg = document.querySelector('#status .status__msg');
