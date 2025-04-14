@@ -3,6 +3,8 @@
 // 仅支持electron端，及Windows和Mac系统
 // 默认windows调用画图，Mac调用预览
 // see https://ld246.com/article/1733636224439
+// version 0.0.2
+// 0.0.2 发布服务和锁定状态不可修改
 (()=>{
     // 关闭图片编辑器后的延迟时间，单位毫秒，防止未保存完成
     const delayTimeAfterCloseEditor = 100;
@@ -21,6 +23,13 @@
     // 监听鼠标单击事件
     document.addEventListener('mousedown', function(event) {
         if(!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0 || event.target.tagName !== 'IMG' || !event.target.closest('.protyle')) return;
+        // 发布服务下不可修改
+        if(window.siyuan.config.readonly) return;
+        // 锁定状态下不可修改
+        const protyle = event.target.closest('.protyle');
+        const icon = protyle?.querySelector('button[data-type="readonly"] use')?.getAttributeNS('http://www.w3.org/1999/xlink', 'href');
+        if(icon === '#iconLock') return;
+        
         const src = event.target.src;
         const filePath = parseUrl(src);
         if(['http:', 'https:'].includes(filePath.protocol) && filePath.host !== location.host) {
