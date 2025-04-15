@@ -333,6 +333,15 @@
                     if (protyles.length > 0) {
                         callback(protyles);
                     }
+
+                    // 监听代码块node被创建
+                    const codeBlocks = Array.from(mutation.addedNodes).filter(node =>
+                        node.nodeType === Node.ELEMENT_NODE &&
+                        (node.matches('.code-block:not(:has(.protyle-icon--expand))'))
+                    );
+                    if (codeBlocks.length > 0) {
+                        addCodeExtends(codeBlocks, codeBlocks[0].closest('.protyle'));
+                    }
                 }
             });
         });
