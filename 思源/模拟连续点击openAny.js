@@ -1,5 +1,5 @@
 // 模拟连续点击 openAny
-// see 
+// see https://ld246.com/article/1744896396694
 // version 0.0.1
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 
