@@ -8,7 +8,7 @@
 // openAny.click('').clicks('','').clicks(['']).press('alt+p').pressByKeymap('config').sleep(100).invoke(({})=>{}).el('').input('').sendText('');
 // openAny.setKeymap('alt+z', (event)=>{}) // 注册快捷键
 // new OpenAny().click(''); // new 新实例方式调用，推荐
-// openAny.showMessage().click(''); // 开启出错是发送通知消息
+// openAny.showMessage().click(''); // 开启出错是发送通知消息，参数true显示消息，false不显示消息，默认true （但未调用此方法时，openAny默认是false）
 // openAny.resetChain().click(''); // 如果某些未知异常导致openAny假死状态时，可以通过resetChain复活，如果是new OpenAny().xxx();方式没有这个问题
 
 // 也可以多个分别分开调用，比如：
