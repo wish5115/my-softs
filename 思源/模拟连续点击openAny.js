@@ -935,6 +935,14 @@
     }
 
     // 弹出输入框（使用场景：比如快捷输入，问ai等）
+    // 使用示例
+    // const result = await showInputBox('默认内容');
+    // if (result !== null) {
+    //   console.log('用户输入:', result);
+    //   alert(`提交内容: ${result}`);
+    // } else {
+    //   console.log('用户取消了输入');
+    // }
     function showInputBox(defaultText = '') {
         return new Promise((resolve) => {
           // 创建模态框元素
