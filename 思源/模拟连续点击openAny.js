@@ -70,7 +70,7 @@
         keymaps=[];
         keymapBound = false;
         isShowMessage = false;
-        invokeParams = {
+        functions = {
             sleep,
             whenElementExist,
             showMessage,
@@ -278,8 +278,8 @@
         async invoke(callback) {
             this._chain = this._chain.then(async () => {
                 if(typeof callback !== 'function') this.throwError('元素 ' + callback + ' 不是有效的函数');
-                this.invokeParams.prev = this.prev
-                this.prev = await callback(this.invokeParams);
+                this.functions.prev = this.prev
+                this.prev = await callback(this.functions);
             });
             return this;
         }
@@ -291,7 +291,7 @@
             if(typeof fn !== 'function') {
                 this.throwError('参数fn不是有效的函数');
             }
-            this.invokeParams[fnName] = fn;
+            this.functions[fnName] = fn;
             return this;
         }
 
@@ -345,15 +345,15 @@
             });
             // 判断快捷键是否包含鼠标按键
             if(!this.keymapBound) {
-                (node||window).addEventListener('keydown', this.handleKeyDown.bind(this), options || true);
-                (node||window).addEventListener('mousedown', this.handleKeyDown.bind(this), options || true);
+                (node||window).addEventListener('keydown', this.handleKeyDown.bind(this, this.functions), options || true);
+                (node||window).addEventListener('mousedown', this.handleKeyDown.bind(this, this.functions), options || true);
             }
             this.keymapBound = true;
             return this;
         }
 
         // 处理键盘按下事件
-        handleKeyDown(event) {
+        handleKeyDown(functions, event) {
             // 获取当前按下的按键组合
             const pressedKeys = [];
             if (event.altKey) pressedKeys.push('alt');
@@ -379,7 +379,7 @@
             // 遍历快捷键映射表，查找匹配项
             for (const { keys, callback } of this.keymaps) {
                 if (keys.join('+') === pressedKeys.join('+')) {
-                    callback(event); // 调用回调函数
+                    callback(event, functions); // 调用回调函数
                 }
             }
         }
