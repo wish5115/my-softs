@@ -120,7 +120,7 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
                 this._chain = Promise.resolve();
             }
             // 吞掉旧链的拒绝状态
-            this._chain = this._chain.catch(() => {});
+            this._chain = this._chain.catch((e) => {setTimeout(()=>{throw e}, 0);});
             // 重置为全新的 Promise 链
             this._chain = Promise.resolve();
             this.prev = null;
