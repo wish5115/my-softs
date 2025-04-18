@@ -439,6 +439,7 @@
         return new Promise((resolve, reject) => {
             let isResolved = false;
             const check = () => {
+                if(typeof node === 'string') node = document.querySelector(node);
                 const el = typeof selector==='function'?selector():(node||document).querySelector(selector);
                 if (el) {isResolved = true; resolve(el);} else if(!isResolved) requestAnimationFrame(check);
             };
@@ -495,7 +496,7 @@
 
     function newSetStyle() {
         let styleElement = null; // 保存当前样式元素的引用
-        return (css) => {
+        return (css = '') => {
         // 如果已存在样式元素，先移除它
         if (styleElement) {
           styleElement.parentNode.removeChild(styleElement);
