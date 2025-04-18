@@ -88,6 +88,8 @@
             getCharsBeforeCursor,
             showInputBox,
             showOptionsMenu,
+            queryEl: this.queryEl,
+            queryElAll: this.queryElAll,
         };
 
         constructor(params) {
@@ -214,6 +216,23 @@
                 await this.#getElement(selector);
                 return this.prev;
             });
+        }
+
+        queryEl(selector) {
+            if(selector?.nodeType === 1) return selector;
+            if(typeof selector === 'string') {
+                selector = selector.trim();
+                return document.querySelector(selector);
+            }
+            this.throwError('请传入一个有效的dom元素或选择符');
+        }
+
+        queryElAll(selector) {
+            if(typeof selector === 'string') {
+                selector = selector.trim();
+                return document.querySelectorAll(selector);
+            }
+            this.throwError('请传入一个有效的dom选择符');
         }
 
         sendText(text='', selector) {
