@@ -62,6 +62,21 @@
 // 转移快捷键（注册快捷键）
 // openAny.setKeymap('alt+z', (event)=>{event.preventDefault();openAny.press('alt+p')})
 
+// 常用函数说明
+/*
+click 第二个参数可传入父选择符或元素对象时，表示第一个选择符在父元素内查询
+clicks 第二个参数传入选择符或元素对象时，第一个参数必须用数组表示
+press 第二个参数传入选择符或元素对象时，表示在哪个元素上触发事件
+invoke 返回值在this.prev中，函数参数用{}括起来，比如：invoke({sleep})
+el 获取元素，传给this.prev，第二个参数可传入父选择符或元素对象时，表示第一个选择符在父元素内查询
+getEl 可以不传参数获取上一个选择符，如果传参数则获取参数对应的dom元素
+queryEl 同querySelector
+queryElAll 同querySelectorAll
+sendText 第二个参数可传选择符或元素对象
+addFunction 扩展函数，添加函数到this.functions，同时会出现在invoke和setKeymap事件回调中
+setKeymap 回调函数的第一个参数是event,第二个参数是this.functions。同invoke一样，参数用{}包裹
+*/
+
 (()=>{
 
     class OpenAny {
@@ -184,7 +199,7 @@
             return this;
         }
 
-        async #getElement(selector) {
+        async #getElement(selector, parentElement) {
             if(typeof selector === 'undefined' || !selector) {
                 this.throwError('元素selector不能为空');
             } else if(selector?.nodeType ===1) {
@@ -194,59 +209,65 @@
                 // 如果是选择符
                 selector = selector.trim();
                 try {
-                    this.prev = await whenElementExist(selector);
+                    this.prev = await whenElementExist(selector, parentElement);
                 } catch (e) {
                     this.throwError('元素 ' + selector + ' 等待超时，' + e.message);
                 }
             }
         }
 
-        el(selector) {
+        el(selector, parentElement) {
 			if(!selector) this.throwError('选择符不能为空');
 			this.prevSelecor = selector;
             this._chain = this._chain.then(async () => {
-                await this.#getElement(selector);
+                await this.#getElement(selector, parentElement);
             });
             return this;
         }
 
-        getEl(selector) {
+        getEl(selector, parentElement) {
 			return this._chain = this._chain.then(async () => {
                 if(!selector) selector = this.prevSelecor;
-                await this.#getElement(selector);
+                await this.#getElement(selector, parentElement);
                 return this.prev;
             });
         }
 
-        queryEl(selector) {
+        queryEl(selector, parentElement) {
             if(selector?.nodeType === 1) return selector;
             if(typeof selector === 'string') {
                 selector = selector.trim();
-                return document.querySelector(selector);
+                if(typeof parentElement === 'string') {
+                    parentElement = document.querySelector(parentElement);
+                }
+                return (parentElement||document).querySelector(selector);
             }
             this.throwError('请传入一个有效的dom元素或选择符');
         }
 
-        queryElAll(selector) {
+        queryElAll(selector, parentElement) {
             if(typeof selector === 'string') {
                 selector = selector.trim();
-                return document.querySelectorAll(selector);
+                if(typeof parentElement === 'string') {
+                    parentElement = document.querySelector(parentElement);
+                }
+                return (parentElement||document).querySelectorAll(selector);
             }
             this.throwError('请传入一个有效的dom选择符');
         }
 
-        sendText(text='', selector) {
+        sendText(text='', selector, parentElement) {
             this._chain = this._chain.then(async () => {
-                if(selector) await this.#getElement(selector);
+                if(selector) await this.#getElement(selector, parentElement);
                 if(this.prev?.nodeType !== 1) this.throwError('元素 ' + this.prev + ' 不是有效的元素');
                 sendTextToEditable(this.prev, text);
             });
             return this;
         }
 
-        clear(selector) {
+        clear(selector, parentElement) {
             this._chain = this._chain.then(async () => {
-                if(selector) await this.#getElement(selector);
+                if(selector) await this.#getElement(selector, parentElement);
                 if(this.prev?.nodeType !== 1) this.throwError('元素 ' + this.prev + ' 不是有效的元素');
                 selectAll(this.prev);
                 sendTextToEditable(this.prev, '');
@@ -254,9 +275,9 @@
             return this;
         }
 
-        input(text='', selector) {
+        input(text='', selector, parentElement) {
             this._chain = this._chain.then(async () => {
-                if(selector) await this.#getElement(selector);
+                if(selector) await this.#getElement(selector, parentElement);
                 if(this.prev?.nodeType !== 1) this.throwError('元素 ' + this.prev + ' 不是有效的元素');
                 this.prev.value = text;
                 // 触发 input 事件
@@ -266,9 +287,9 @@
             return this;
         }
 
-        selectAll(selector) {
+        selectAll(selector, parentElement) {
             this._chain = this._chain.then(async () => {
-                if(selector) await this.#getElement(selector);
+                if(selector) await this.#getElement(selector, parentElement);
                 if(this.prev?.nodeType !== 1) this.throwError('元素 ' + this.prev + ' 不是有效的元素');
                 selectAll(this.prev);
             });
