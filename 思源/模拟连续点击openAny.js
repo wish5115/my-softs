@@ -1,6 +1,7 @@
 // 模拟连续点击 openAny
 // see https://ld246.com/article/1744896396694
-// version 0.0.1
+// version 0.0.2
+// 0.0.2 增加toolbar出现事件；选项菜单；输入框；改进事件传递机制，默认捕获阶段触发；增加鼠标事件；增加newSetStyle函数
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 
 // 调用方式：
@@ -69,7 +70,26 @@
         keymaps=[];
         keymapBound = false;
         isShowMessage = false;
-        
+        invokeParams = {
+            sleep,
+            whenElementExist,
+            showMessage,
+            showErrorMessage,
+            querySql,
+            fetchSyncPost,
+            fetchSyncGet,
+            requestApi,
+            getProtyle,
+            getCurrentDocId,
+            getCurrentNotebookId,
+            newSetStyle,
+            onProtyleLoad,
+            onToolbarShow,
+            getCharsBeforeCursor,
+            showInputBox,
+            showOptionsMenu,
+        };
+
         constructor(params) {
             this.params = params;
             this._chain = Promise.resolve(); // 先初始化 _chain
@@ -239,22 +259,20 @@
         async invoke(callback) {
             this._chain = this._chain.then(async () => {
                 if(typeof callback !== 'function') this.throwError('元素 ' + callback + ' 不是有效的函数');
-                this.prev = await callback({
-                    prev: this.prev,
-                    sleep,
-                    whenElementExist,
-                    showMessage,
-                    showErrorMessage,
-                    querySql,
-                    fetchSyncPost,
-                    fetchSyncGet,
-                    requestApi,
-                    getProtyle,
-                    getCurrentDocId,
-                    getCurrentNotebookId,
-                    onProtyleLoad,
-                });
+                this.invokeParams.prev = this.prev
+                this.prev = await callback(this.invokeParams);
             });
+            return this;
+        }
+
+        addFunction(fnName, fn) {
+            if(typeof fnName === 'undefined' || !fnName) {
+                this.throwError('参数fnName不能为空');
+            }
+            if(typeof fn !== 'function') {
+                this.throwError('参数fn不是有效的函数');
+            }
+            this.invokeParams[fnName] = fn;
             return this;
         }
 
@@ -292,7 +310,7 @@
             return this;
         }
 
-        setKeymap(keys, callback) {
+        setKeymap(keys, callback, node, options) {
             if(typeof keys === 'undefined' || !keys) {
                 this.throwError('参数keys不能为空');
             }
@@ -306,7 +324,11 @@
                 keys: keyCombination,
                 callback
             });
-            if(!this.keymapBound) window.addEventListener('keydown', this.handleKeyDown.bind(this));
+            // 判断快捷键是否包含鼠标按键
+            if(!this.keymapBound) {
+                (node||window).addEventListener('keydown', this.handleKeyDown.bind(this), options || true);
+                (node||window).addEventListener('mousedown', this.handleKeyDown.bind(this), options || true);
+            }
             this.keymapBound = true;
             return this;
         }
@@ -319,9 +341,20 @@
             if (event.ctrlKey) pressedKeys.push('ctrl');
             if (event.shiftKey) pressedKeys.push('shift');
             if (event.metaKey) pressedKeys.push('meta');
-            const key = getKeyByCode(event.code);
-            pressedKeys.push(key.toLowerCase()); // 添加普通键
-            //pressedKeys.push(event.key.toLowerCase()); // 添加普通键
+
+            if(typeof event.button !== 'undefined') {
+                // 添加鼠标按键
+                switch (event.button) {
+                    case 0: pressedKeys.push('mouseleft'); break; // 左键
+                    case 1: pressedKeys.push('mousemiddle'); break; // 中键
+                    case 2: pressedKeys.push('mouseright'); break; // 右键
+                }
+            } else {
+                const key = getKeyByCode(event.code);
+                pressedKeys.push(key.toLowerCase()); // 添加普通键
+                //pressedKeys.push(event.key.toLowerCase()); // 添加普通键
+            }
+
             pressedKeys.sort(); // 排序以确保顺序一致
         
             // 遍历快捷键映射表，查找匹配项
@@ -458,6 +491,20 @@
     }
     function getCurrentNotebookId() {
         return getProtyle()?.notebookId;
+    }
+
+    function newSetStyle() {
+        let styleElement = null; // 保存当前样式元素的引用
+        return (css) => {
+        // 如果已存在样式元素，先移除它
+        if (styleElement) {
+          styleElement.parentNode.removeChild(styleElement);
+        }
+        // 创建新的样式元素
+        styleElement = document.createElement('style');
+        styleElement.textContent = css;
+        document.head.appendChild(styleElement);
+      };
     }
 
     function dispatchKeyEvent(functionName) {
@@ -808,5 +855,287 @@
             } 
         }
         return '';
+    }
+
+    ////////////// 扩展功能 ///////////////////////////////
+    // 返回光标前n个字符（使用场景：比如文字补全）
+    function getCharsBeforeCursor(count) {
+        const selection = window.getSelection();
+        if (!selection.rangeCount || selection.anchorNode.nodeType !== Node.TEXT_NODE) {
+            return null; // 没有选中或不在文本节点内
+        }
+        const range = selection.getRangeAt(0);
+        const textNode = selection.anchorNode;
+        const cursorPosition = range.startOffset;
+        // 如果光标在最前面，则无法获取字符
+        if (cursorPosition === 0) {
+            return null; // 或返回空字符串 ""
+        }
+        // 获取光标前的所有内容
+        const textContent = textNode.textContent;
+        // 计算起始位置（确保不会超出文本范围）
+        const start = Math.max(0, cursorPosition - count);
+        // 截取从 start 到 cursorPosition 的字符
+        const charsBeforeCursor = textContent.substring(start, cursorPosition);
+        return charsBeforeCursor;
+    }
+    // 当toolbar出现事件
+    // onToolbarShow((selection, toolbar, protyle) => {
+    //     console.log(selection, toolbar, protyle);
+    // });
+    function onToolbarShow(callback) {
+        let isMouseupListenerActive = false; // 标志变量，用于跟踪是否已经绑定了 mouseup 事件
+        const mouseupHandler = (event) => {
+            // 获取当前选中的文本
+            const selection = window.getSelection().toString().trim();
+            if (!selection) {
+                // 如果没有选中文本，重置标志变量并移除监听器
+                isMouseupListenerActive = false;
+                document.removeEventListener('mouseup', mouseupHandler);
+                return;
+            }
+
+            // 查找最近的 .protyle 元素
+            const protyle = event.target.closest('.protyle');
+            if (!protyle) {
+                // 如果没有找到 .protyle 元素，重置标志变量并移除监听器
+                isMouseupListenerActive = false;
+                document.removeEventListener('mouseup', mouseupHandler);
+                return;
+            }
+
+            // 查找工具栏元素
+            const toolbar = protyle.querySelector('.protyle-toolbar');
+            if (!toolbar) {
+                // 如果没有找到工具栏元素，重置标志变量并移除监听器
+                isMouseupListenerActive = false;
+                document.removeEventListener('mouseup', mouseupHandler);
+                return;
+            }
+
+            // 执行回调函数
+            if (typeof callback === 'function') {
+                callback(selection, toolbar, protyle);
+            }
+
+            // 移除 mouseup 事件监听器，并重置标志变量
+            isMouseupListenerActive = false;
+            document.removeEventListener('mouseup', mouseupHandler);
+        };
+        document.addEventListener('selectionchange', () => {
+            // 如果已经有 mouseup 监听器，直接返回，避免重复绑定
+            if (isMouseupListenerActive) return;
+            // 标记为已绑定 mouseup 监听器
+            isMouseupListenerActive = true;
+
+            // 绑定 mouseup 事件监听器
+            document.addEventListener('mouseup', mouseupHandler);
+        });
+    }
+
+    // 弹出输入框（使用场景：比如快捷输入，问ai等）
+    function showInputBox(defaultText = '') {
+        return new Promise((resolve) => {
+          // 创建模态框元素
+          const mask = document.createElement('div');
+          const content = document.createElement('div');
+          const input = document.createElement('input');
+          //const submitBtn = document.createElement('button');
+          input.className = 'b3-text-field fn__block';
+          input.placeholder = '回车提交，Esc取消';
+          //submitBtn.className = 'b3-button fn__size200 b3-button--outline';
+          // 添加基础样式
+          Object.assign(mask.style, {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: (++siyuan.zIndex) || 999
+          });
+          Object.assign(content.style, {
+            background: 'var(--b3-theme-background)',
+            padding: '20px',
+            borderRadius: '5px',
+            minWidth: '300px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.33)',
+            border: '1px solid #555'
+          });
+          Object.assign(input.style, {
+            flex: '1',
+            padding: '8px',
+            fontSize: '16px',
+            marginRight: '10px',
+            width: '500px'
+          });
+        //   Object.assign(submitBtn.style, {
+        //     padding: '8px 16px',
+        //     background: '#007bff',
+        //     color: 'white',
+        //     border: 'none',
+        //     borderRadius: '4px',
+        //     cursor: 'pointer'
+        //   });
+          // 设置元素属性
+          input.type = 'text';
+          input.value = defaultText;
+          //submitBtn.textContent = '提交';
+          // 组装DOM结构
+          content.appendChild(input);
+          //content.appendChild(submitBtn);
+          mask.appendChild(content);
+          document.body.appendChild(mask);
+          // 自动聚焦输入框
+          input.focus();
+          // 事件处理函数
+          const handleConfirm = () => {
+            const value = input.value.trim();
+            cleanup();
+            resolve(value);
+          };
+          const handleCancel = () => {
+            cleanup();
+            resolve(null);
+          };
+          const handleKeyDown = (e) => {
+            if (e.key === 'Enter') handleConfirm();
+            if (e.key === 'Escape') handleCancel();
+          };
+          const cleanup = () => {
+            document.body.removeChild(mask);
+            input.removeEventListener('keydown', handleKeyDown);
+            //submitBtn.removeEventListener('click', handleConfirm);
+            mask.removeEventListener('click', handleMaskClick);
+          };
+          const handleMaskClick = (e) => {
+            if (e.target === mask) handleCancel();
+          };
+          // 绑定事件监听器
+          input.addEventListener('keydown', handleKeyDown);
+          //submitBtn.addEventListener('click', handleConfirm);
+          mask.addEventListener('click', handleMaskClick);
+        });
+    }
+
+    // 弹出选项菜单（使用场景：比如跳转搜索引擎或ai）
+    // 使用示例：调用异步选项菜单
+    // async function demo() {
+    //     const options = [
+    //       { label: '选项 1', value: 'value1' },
+    //       { label: '选项 2', value: 'value2' },
+    //       { label: '选项 3', value: 'value3' }
+    //     ];
+    //     const selectedValue = await showOptionsMenu(options);
+    //     if (selectedValue === null) {
+    //       console.log('用户取消了选择');
+    //     } else {
+    //       console.log(`用户选择了：${selectedValue}`);
+    //     }
+    // }
+    const setMenuStyle = newSetStyle();
+    setMenuStyle(`
+        /* 遮罩层样式 */
+       .open-any-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+        z-index: 999;
+       }
+
+       /* 菜单容器样式 */
+       .open-any-menu {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        max-width: 600px;
+        min-width: 300px;
+        overflow-y: auto;
+        max-height: 800px;
+       }
+
+       /* 菜单项样式 */
+       .open-any-menu-item {
+        padding: 10px;
+        margin: 5px 0;
+        color: #222;
+        background-color: #f0f0f0;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+       }
+
+       .open-any-menu-item:hover {
+        background-color: #d1e7fd;
+       }
+   `);
+   document.body.insertAdjacentHTML('beforeend', `
+    <div class="open-any-overlay" id="open-any-overlay">
+        <div class="open-any-menu" id="open-any-menu">
+        </div>
+    </div>
+    `);
+    const overlay = document.getElementById('open-any-overlay');
+    const menu = document.getElementById('open-any-menu');
+    const openButton = document.getElementById('open-any-button');
+    /**
+     * 显示选项菜单并返回用户选择的结果
+     * @param {Array<{label: string, value: any}>} options - 选项列表
+     * @returns {Promise<any>} 用户选择的值
+     */
+    function showOptionsMenu(options) {
+        return new Promise((resolve) => {
+          // 清空菜单内容
+          menu.innerHTML = '';
+  
+          // 动态添加选项到菜单
+          options.forEach((option) => {
+            const menuItem = document.createElement('div');
+            menuItem.className = 'open-any-menu-item';
+            menuItem.textContent = option.label;
+            menuItem.addEventListener('click', () => {
+              resolve(option.value); // 返回用户选择的值
+              closeMenu();
+            });
+            menu.appendChild(menuItem);
+          });
+  
+          // 打开菜单
+          overlay.style.display = 'flex';
+  
+          // 监听键盘事件
+          const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+              resolve(null); // 如果按下 Esc 键，返回 null
+              closeMenu();
+            }
+          };
+          document.addEventListener('keydown', handleKeyDown);
+  
+          // 关闭菜单时清理事件监听器
+          function closeMenu() {
+            overlay.style.display = 'none';
+            document.removeEventListener('keydown', handleKeyDown);
+          }
+  
+          // 点击遮罩层外部关闭菜单
+          overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+              resolve(null); // 返回 null
+              closeMenu();
+            }
+          });
+        });
     }
 })();
