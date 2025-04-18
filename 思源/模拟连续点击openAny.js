@@ -279,7 +279,11 @@
             this._chain = this._chain.then(async () => {
                 if(typeof callback !== 'function') this.throwError('元素 ' + callback + ' 不是有效的函数');
                 this.functions.prev = this.prev
-                this.prev = await callback(this.functions);
+                try {
+                    this.prev = await callback(this.functions);
+                } catch (e) {
+                    this.throwError('执行函数时出错：' + e.message);
+                }
             });
             return this;
         }
@@ -379,7 +383,11 @@
             // 遍历快捷键映射表，查找匹配项
             for (const { keys, callback } of this.keymaps) {
                 if (keys.join('+') === pressedKeys.join('+')) {
-                    callback(event, functions); // 调用回调函数
+                    try {
+                        callback(event, functions); // 调用回调函数
+                    } catch (e) {
+                        this.throwError('执行函数时出错：' + e.message);
+                    }
                 }
             }
         }
@@ -463,11 +471,13 @@
                 if (el) {isResolved = true; resolve(el);} else if(!isResolved) requestAnimationFrame(check);
             };
             check();
-            setTimeout(() => {
-                if (!isResolved) {
-                    reject(new Error(`Timeout: Element not found for selector "${selector}" within ${timeout}ms`));
-                }
-            }, timeout);
+            if(timeout > 0) {
+                setTimeout(() => {
+                    if (!isResolved) {
+                        reject(new Error(`Timeout: Element not found for selector "${selector}" within ${timeout}ms`));
+                    }
+                }, timeout);
+            }
         });
     }
     function showMessage(message, delay = 7000, isError = false) {
