@@ -1,13 +1,15 @@
 // 模拟连续点击 openAny
 // see https://ld246.com/article/1744896396694
-// version 0.0.2
+// version 0.0.3
 // 0.0.2 增加toolbar出现事件；选项菜单；输入框；改进事件传递机制，默认捕获阶段触发；增加鼠标事件；增加newSetStyle函数
+// 0.0.3 改进promise执行链，更加健壮和可调试性，增加catch方法
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 
 // 调用方式：
 // 注意：选择符不一定要全局唯一，只要能达到目的且不会产生歧义及副作用即可
 // openAny.click('').clicks('','').clicks(['']).press('alt+p').pressByKeymap('config').sleep(100).invoke(({})=>{}).el('').input('').sendText('');
 // openAny.setKeymap('alt+z', (event)=>{}) // 注册快捷键
+// openAny.invoke(({sleep, ...args})=>{}) // 通过函数执行某些操作，返回值放在openAny.prev中，通过await openAny.getPrev()可以获取或者在下一个链中获取
 // new OpenAny().click(''); // new 新实例方式调用，推荐
 // openAny.showMessage().click(''); // 开启出错是发送通知消息，参数true显示消息，false不显示消息，默认true （但未调用此方法时，openAny默认是false）
 // openAny.resetChain().click(''); // 如果某些未知异常导致openAny假死状态时，可以通过resetChain复活，如果是new OpenAny().xxx();方式没有这个问题
@@ -18,7 +20,7 @@
    await openAny.click('');
    await openAny.press('');
 
-   // 注意，分开调用必须用await，否则不能保证执行顺序。
+   // 注意，分开调用时，如果没用await中间混入了其他代码可能导致执行顺序混乱，但openAny的执行顺序还是调用的顺序，建议混用时使用await以保证代码清晰度。
 */
 // 或用try...catch捕获错误，比如：
 /*
@@ -31,6 +33,9 @@
     }
 
     // 注意，这里必须加await，否则捕获不到异常，只能在控制台打印
+
+    或者
+    openAny.click('').click('').catch((e)=>{console.error("捕获错误:", e);});
 */
 
 // 注册快捷键
@@ -120,10 +125,33 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
                 this._chain = Promise.resolve();
             }
             // 吞掉旧链的拒绝状态
-            this._chain = this._chain.catch((e) => {setTimeout(()=>{throw e}, 0);});
+            this._chain = this._chain.catch((e) => {
+                if(typeof this._errorCallback === 'function') {
+                    // 如果提供了错误回调函数，则调用之
+                    this._errorCallback(e);
+                    // 回调后清除错误回调函数
+                    this._errorCallback = null;
+                } else {
+                    // 如果未提供错误回调函数，则延迟抛出，确保重置链已经执行完毕
+                   setTimeout(()=>{throw e;}, 0);
+                }
+            });
             // 重置为全新的 Promise 链
             this._chain = Promise.resolve();
             this.prev = null;
+            this._errorCallback = null;
+            return this;
+        }
+
+        catch(callback) {
+            if(typeof callback === 'function') {
+                // 当使用catch函数时，注册errorCallback函数供发生错误时回调
+                this._errorCallback = callback;
+            }
+            this._chain = this._chain.then(async () => {
+                // 每次 catch() 后重置为错误回调函数为 null，避免影响下一次调用
+                this._errorCallback = null;
+            });
             return this;
         }
 
@@ -411,6 +439,12 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
                     }
                 }
             }
+        }
+
+        getPrev() {
+            return this._chain = this._chain.then(async () => {
+                return this.prev;
+            });
         }
     
         // 实现 then 方法以便 await 整个链
