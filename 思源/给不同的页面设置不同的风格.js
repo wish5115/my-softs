@@ -5,7 +5,7 @@
     // 添加风格
     const styles = {
         "📋": {tips:'正常', style:``},
-        "🛢️": {tips:'数据库', style:`width: 100%!important;padding-left:20px!important;padding-right:20px!important;.av{font-size: 16px;}`},
+        "🛢️": {tips:'数据库', style:`width: 100%!important;margin:0 auto;padding-left:20px!important;padding-right:20px!important;.av{font-size: 16px;}`},
         "🖍️": {tips:'编辑', style:`font-size: 24px!important;.av{font-size: 16px;}`},
         "👁️": {tips:'阅读', style:`font-size: 12px!important;.av{font-size: 16px;}`},
     };
