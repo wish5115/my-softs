@@ -1,12 +1,13 @@
 // 给不同的页面设置不同的风格（暂不支持持久，即文档关闭或页面刷新后复原）
+// 兼容编辑器宽度插件和思源自适应宽度
 // see https://ld246.com/article/1744597829665
 (()=>{
     // 添加风格
     const styles = {
         "📋": {tips:'正常', style:``},
-        "🛢️": {tips:'数据库', style:`width: 100%;padding: 16px 20px 64px !important;`},
-        "🖍️": {tips:'编辑', style:`font-size: 24px!important;`},
-        "👁️": {tips:'阅读', style:`font-size: 12px!important;`},
+        "🛢️": {tips:'数据库', style:`width: 100%!important;padding-left:20px!important;padding-right:20px!important;.av{font-size: 16px;}`},
+        "🖍️": {tips:'编辑', style:`font-size: 24px!important;.av{font-size: 16px;}`},
+        "👁️": {tips:'阅读', style:`font-size: 12px!important;.av{font-size: 16px;}`},
     };
 
     // 鼠标悬停是否显示提示信息，true显示，false不显示
@@ -44,7 +45,8 @@
         if(!protyleId) {
             showMessage('请先选择要设置的编辑器！', true);
         }
-        style = `.protyle[data-id="${protyleId}"] .protyle-wysiwyg{${style}}`;
+        // #layouts div.layout__center div.protyle-content:not([data-fullwidth="true"]) div.protyle-wysiwyg
+        style = `#layouts div.layout__center .protyle[data-id="${protyleId}"] div.protyle-content div.protyle-wysiwyg{${style}}`;
         setStyle(style, protyleId);
     }
 
