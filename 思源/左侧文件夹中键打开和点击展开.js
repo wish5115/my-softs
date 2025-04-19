@@ -3,11 +3,12 @@
 // 触屏版 长按打开 点击展开
 // see https://ld246.com/article/1736401552973
 (()=>{
-    // 是否更改空文件夹图标 true更改 false不更改
-    const isUpdateFolderIconWhenItEmpty = false;
 
     // 打开文件夹的方式 midclick 中键 dblclick 双击
     const openFolderBy = 'midclick';
+
+    // 是否更改空文件夹图标 true更改 false不更改
+    const isUpdateFolderIconWhenItEmpty = false;
     
     // 空文件夹图标代码，可选项 📂 1f4c2  📁 1f4c1
     const emptyFolderIconCode = '1f4c2';
