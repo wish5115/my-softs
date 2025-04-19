@@ -139,7 +139,6 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             // 重置为全新的 Promise 链
             this._chain = Promise.resolve();
             this.prev = null;
-            this._errorCallback = null;
             return this;
         }
 
