@@ -188,7 +188,7 @@
                     const response = await originalFetch(url, ...args);
                     // const requestEnd = new Date().getTime();
                     // console.log(`Request to ${url} took ${requestEnd - requestStart}ms`);
-                    if (syncActions.some(item => url.endsWith(item))) {
+                    if (syncActions.some(item => url.toString().endsWith(item))) {
                         // 开始同步，未开启同步则不同步，使用官方同步则不同步(provider==0为官方同步)
                         if (siyuan.config.sync.enabled && siyuan.config.sync.provider !== 0) {
                             let users;
