@@ -3,13 +3,13 @@
 // 触屏版 长按打开 点击展开
 // see https://ld246.com/article/1736401552973
 (()=>{
-    // 是否更改空文件夹图标
+    // 是否更改空文件夹图标 true更改 false不更改
     const isUpdateFolderIconWhenItEmpty = false;
 
     // 打开文件夹的方式 midclick 中键 dblclick 双击
-    const openFolderBy = 'midclick';
+    const openFolderBy = 'dblclick';
     
-    // 空文件夹图标代码 📂 1f4c2  📁 1f4c1
+    // 空文件夹图标代码，可选项 📂 1f4c2  📁 1f4c1
     const emptyFolderIconCode = '1f4c2';
 
     // 思源默认图标，首先读取用户自定义的默认图标，没有用官方默认图标，也可在这里写死
