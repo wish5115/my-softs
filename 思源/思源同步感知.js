@@ -201,7 +201,7 @@
                                 // 当多个客户端端时执行
                                 if(users.code === 200 && users.content?.amount > 1){
                                     //console.log('users: ', users);
-                                    if (url.endsWith('/api/sync/performSync')) {
+                                    if (url.toString().endsWith('/api/sync/performSync')) {
                                         // 同步感知，手动同步后通知远程客户端同步
                                         delaySendMessage();
                                     } else {
@@ -211,7 +211,7 @@
                                 }
                             } else {
                                 // 获取客户端异常时执行
-                                if (url.endsWith('/api/sync/performSync')) {
+                                if (url.toString().endsWith('/api/sync/performSync')) {
                                     // 同步感知，手动同步后通知远程客户端同步
                                     delaySendMessage();
                                 } else {
