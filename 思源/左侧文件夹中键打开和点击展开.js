@@ -7,7 +7,7 @@
     const isUpdateFolderIconWhenItEmpty = false;
 
     // 打开文件夹的方式 midclick 中键 dblclick 双击
-    const openFolderBy = 'dblclick';
+    const openFolderBy = 'midclick';
     
     // 空文件夹图标代码，可选项 📂 1f4c2  📁 1f4c1
     const emptyFolderIconCode = '1f4c2';
