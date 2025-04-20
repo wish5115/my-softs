@@ -48,7 +48,7 @@
         const width = extractWidth(style);
         // #layouts div.layout__center div.protyle-content:not([data-fullwidth="true"]) div.protyle-wysiwyg
         style = `#layouts div.layout__center .protyle[data-id="${protyleId}"] div.protyle-content div.protyle-wysiwyg{${style}}`;
-        if(width) style += `#layouts div.layout__center .protyle[data-id="${protyleId}"] div.protyle-content:not([data-fullwidth="true"]) div.protyle-title{margin-left: max(calc(max(calc((100% - ${width}) / 2), 16px) + 0px), 16px) !important;margin-right: max(calc(max(calc((100% - ${width}) / 2), 16px) - 0px), 16px);}`;
+        if(width) style += `#layouts div.layout__center .protyle[data-id="${protyleId}"] div.protyle-content div.protyle-title{margin-left: max(calc(max(calc((100% - ${width}) / 2), 16px) + 0px), 16px) !important;margin-right: max(calc(max(calc((100% - ${width}) / 2), 16px) - 0px), 16px)!important;}`;
         setStyle(style, protyleId);
     }
 
