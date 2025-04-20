@@ -1,5 +1,5 @@
 // 给不同的页面设置不同的风格（暂不支持持久，即文档关闭或页面刷新后复原）
-// 兼容编辑器宽度插件和思源自适应宽度
+// 兼容编辑器宽度插件和思源自适应宽度，兼容标题宽度
 // see https://ld246.com/article/1744597829665
 (()=>{
     // 添加风格
@@ -53,13 +53,13 @@
     }
 
     function extractWidth(styleCode) {
-        // 1. 过滤掉所有类选择器规则（如 .av{...}）
+        // 1. 过滤所有类选择器规则（包括嵌套）
         const cleanedCode = styleCode.replace(/\.\w+\s*{[^}]*}/g, '');
-        // 2. 匹配 width 属性值（允许属性名和值之间有空格）
-        const regex = /width\s*:\s*([^;]+)/i;
+        // 2. 精确匹配width属性值（兼容空格和特殊符号）
+        const regex = /width\s*:\s*([^;}]+)/i;
         const match = cleanedCode.match(regex);
-        // 3. 返回匹配结果（若存在则去除首尾空格）
-        return match ? match[1].replace(/!important/ig, '').trim() : null;
+        // 3. 仅移除尾部可能残留的 `}` 符号
+        return match ? match[1].trim().replace(/}$/, '').replace(/!important/ig, '').trim() : null;
     }
 
     function setStyle(css, protyleId) {
