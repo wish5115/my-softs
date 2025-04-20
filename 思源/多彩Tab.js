@@ -1,5 +1,6 @@
 // 多彩Tab
 // 每次打开tab时随机生成
+// see https://ld246.com/article/1745131935346
 (()=>{
     // 添加tab样式，可根据自己需要添加或修改样式
     const tabStyles = [
@@ -36,14 +37,28 @@
         if(!style) return;
         tab.style = style;
     }
-
+    
+    let lastSelected = null; // 记录上一次选择的样式
     function getRandomStyle(defaultStyle = '') {
         const validStyles = tabStyles.filter(style => style.trim() !== '');
+        // 如果没有有效样式，返回默认样式
         if (validStyles.length === 0) {
-            return defaultStyle; // 返回默认颜色
+            return defaultStyle;
         }
-        const randomIndex = Math.floor(Math.random() * validStyles.length);
-        return validStyles[randomIndex];
+        // 如果只有一个有效样式，直接返回它
+        if (validStyles.length === 1) {
+            lastSelected = validStyles[0];
+            return validStyles[0];
+        }
+        let randomIndex, selectedStyle;
+        // 确保生成的样式与上一次不同
+        do {
+            randomIndex = Math.floor(Math.random() * validStyles.length);
+            selectedStyle = validStyles[randomIndex];
+        } while (selectedStyle === lastSelected);
+        // 更新 lastSelected 并返回结果
+        lastSelected = selectedStyle;
+        return selectedStyle;
     }
 
     /**
