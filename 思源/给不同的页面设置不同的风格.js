@@ -45,9 +45,21 @@
         if(!protyleId) {
             showMessage('请先选择要设置的编辑器！', true);
         }
+        const width = extractWidth(style);
         // #layouts div.layout__center div.protyle-content:not([data-fullwidth="true"]) div.protyle-wysiwyg
         style = `#layouts div.layout__center .protyle[data-id="${protyleId}"] div.protyle-content div.protyle-wysiwyg{${style}}`;
+        if(width) style += `#layouts div.layout__center .protyle[data-id="${protyleId}"] div.protyle-content:not([data-fullwidth="true"]) div.protyle-title{margin-left: max(calc(max(calc((100% - ${width}) / 2), 16px) + 0px), 16px) !important;margin-right: max(calc(max(calc((100% - ${width}) / 2), 16px) - 0px), 16px);}`;
         setStyle(style, protyleId);
+    }
+
+    function extractWidth(styleCode) {
+        // 1. 过滤掉所有类选择器规则（如 .av{...}）
+        const cleanedCode = styleCode.replace(/\.\w+\s*{[^}]*}/g, '');
+        // 2. 匹配 width 属性值（允许属性名和值之间有空格）
+        const regex = /width\s*:\s*([^;]+)/i;
+        const match = cleanedCode.match(regex);
+        // 3. 返回匹配结果（若存在则去除首尾空格）
+        return match ? match[1].replace(/!important/ig, '').trim() : null;
     }
 
     function setStyle(css, protyleId) {
