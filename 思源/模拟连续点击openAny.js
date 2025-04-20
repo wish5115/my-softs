@@ -1109,7 +1109,7 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             background: 'var(--b3-theme-background)',
             padding: '20px',
             borderRadius: '5px',
-            minWidth: 'min(100%, 300px)',
+            minWidth: 'min(100%, 500px)',
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.33)',
             border: '1px solid #555'
           });
