@@ -1,9 +1,10 @@
 // 模拟连续点击 openAny
+// 支持多个选择符的链式点击或文本输入或模拟按键等
 // see https://ld246.com/article/1744896396694
-// version 0.0.3
+// version 0.0.3.1
 // 0.0.2 增加toolbar出现事件；选项菜单；输入框；改进事件传递机制，默认捕获阶段触发；增加鼠标事件；增加newSetStyle函数
 // 0.0.3 改进promise执行链，更加健壮和可调试性，增加catch方法
-// 支持多个选择符的链式点击或文本输入或模拟按键等
+// 0.0.3.1 改进输入框和选项菜单样式和支持手机版
 
 // 调用方式：
 // 注意：选择符不一定要全局唯一，只要能达到目的且不会产生歧义及副作用即可
@@ -110,17 +111,19 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             showOptionsMenu,
             queryEl: this.queryEl,
             queryElAll: this.queryElAll,
+            selectText,
         };
 
         constructor(params) {
             this.params = params;
+            this.fn = this.functions;
             this._chain = Promise.resolve(); // 先初始化 _chain
             this.resetChain(); // 再重置链（确保安全）
         }
 
         // 重置链但保留其他状态（同时处理未捕获的拒绝）
         resetChain() {
-             // 确保 _chain 是 Promise 对象
+            // 确保 _chain 是 Promise 对象
             if (!(this._chain instanceof Promise)) {
                 this._chain = Promise.resolve();
             }
@@ -132,8 +135,11 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
                     // 回调后清除错误回调函数
                     this._errorCallback = null;
                 } else {
-                    // 如果未提供错误回调函数，则延迟抛出，确保重置链已经执行完毕
-                   setTimeout(()=>{throw e;}, 0);
+                    // todo 区分await，当await情况这里不通知和打印（目前无法区分await和不用await情况）
+                    // 是否发送错误通知
+                    if(this.isShowMessage) showErrorMessage(e?.message || '未知错误');
+                    // 如果未提供错误回调函数，则打印异常方便调试
+                    console.error(e);
                 }
             });
             // 重置为全新的 Promise 链
@@ -158,7 +164,6 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
         throwError(e) {
             const error = typeof e === 'string' ? new Error(e) : e;
             this.resetChain(); // 调用重置方法（已包含链清理逻辑）
-            if(this.isShowMessage) showErrorMessage(e?.message || e);
             throw error; // 抛出错误，由外部捕获
         }
         
@@ -288,6 +293,14 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
                 if(selector) await this.#getElement(selector, parentElement);
                 if(this.prev?.nodeType !== 1) this.throwError('元素 ' + this.prev + ' 不是有效的元素');
                 sendTextToEditable(this.prev, text);
+            });
+            return this;
+        }
+
+        selectText(text='', selector, parentElement) {
+            this._chain = this._chain.then(async () => {
+                const selector = selector || (this.prev.nodeType === 1 ? this.prev : undefined);
+                selectText(text, selector||this.prev, parentElement);
             });
             return this;
         }
@@ -477,6 +490,46 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
         (element || document.getElementsByTagName("body")[0]).dispatchEvent(keyUpEvent);
     }
     
+    function selectText(targetText, container, parentElement) {
+        if(typeof parentElement === 'string') parentElement = document.querySelector(parentElement);
+        if(typeof container === 'string') container = (parentElement||document).querySelector(container);
+        const allText = container.textContent;
+        const startGlobalIndex = allText.indexOf(targetText);
+        if (startGlobalIndex === -1) return;
+      
+        let currentIndex = 0;
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+      
+        let startNode, startOffset, endNode, endOffset;
+        let node;
+      
+        while ((node = walker.nextNode())) {
+          const nodeLength = node.nodeValue.length;
+          // 判断起始位置是否在此节点
+          if (currentIndex <= startGlobalIndex && currentIndex + nodeLength > startGlobalIndex) {
+            startNode = node;
+            startOffset = startGlobalIndex - currentIndex;
+          }
+          // 判断结束位置是否在此节点
+          const endGlobalIndex = startGlobalIndex + targetText.length;
+          if (currentIndex <= endGlobalIndex && currentIndex + nodeLength >= endGlobalIndex) {
+            endNode = node;
+            endOffset = endGlobalIndex - currentIndex;
+            break;
+          }
+          currentIndex += nodeLength;
+        }
+      
+        if (startNode && endNode) {
+          const range = document.createRange();
+          range.setStart(startNode, startOffset);
+          range.setEnd(endNode, endOffset);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+    }
+
     function selectAll(element) {
         element.focus();
         document.execCommand('selectAll', false, null);
@@ -1026,15 +1079,18 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
     // } else {
     //   console.log('用户取消了输入');
     // }
-    function showInputBox(defaultText = '') {
+    function showInputBox(defaultText = '', title = '', placeholder = '') {
         return new Promise((resolve) => {
           // 创建模态框元素
           const mask = document.createElement('div');
           const content = document.createElement('div');
+          const titleEl = document.createElement('p');
+          titleEl.textContent = title;
+          titleEl.style.marginBottom = '10px';
           const input = document.createElement('input');
           //const submitBtn = document.createElement('button');
           input.className = 'b3-text-field fn__block';
-          input.placeholder = '回车提交，Esc取消';
+          input.placeholder = placeholder || '回车提交，Esc或点击空白处取消';
           //submitBtn.className = 'b3-button fn__size200 b3-button--outline';
           // 添加基础样式
           Object.assign(mask.style, {
@@ -1053,7 +1109,7 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             background: 'var(--b3-theme-background)',
             padding: '20px',
             borderRadius: '5px',
-            minWidth: '300px',
+            minWidth: 'min(100%, 300px)',
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.33)',
             border: '1px solid #555'
           });
@@ -1062,7 +1118,7 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             padding: '8px',
             fontSize: '16px',
             marginRight: '10px',
-            width: '500px'
+            width: '100%'
           });
         //   Object.assign(submitBtn.style, {
         //     padding: '8px 16px',
@@ -1077,6 +1133,7 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
           input.value = defaultText;
           //submitBtn.textContent = '提交';
           // 组装DOM结构
+          if(title) content.appendChild(titleEl);
           content.appendChild(input);
           //content.appendChild(submitBtn);
           mask.appendChild(content);
@@ -1132,64 +1189,73 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
     setMenuStyle(`
         /* 遮罩层样式 */
        .open-any-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        justify-content: center;
-        align-items: center;
-        z-index: 999;
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: ${(++siyuan.zIndex) || 999};
        }
 
        /* 菜单容器样式 */
-       .open-any-menu {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        text-align: center;
-        max-width: 600px;
-        min-width: 300px;
-        overflow-y: auto;
-        max-height: 800px;
+        .open-any-menu {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 600px;
+            min-width: 300px;
+            overflow-y: auto;
+            max-height: 800px;
        }
 
        /* 菜单项样式 */
-       .open-any-menu-item {
-        padding: 10px;
-        margin: 5px 0;
-        color: #222;
-        background-color: #f0f0f0;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.3s;
+        .open-any-menu-item {
+            padding: 10px;
+            margin: 5px 0;
+            color: #222;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
        }
 
        .open-any-menu-item:hover {
-        background-color: #d1e7fd;
+            background-color: #d1e7fd;
        }
+        .open-any-menu-title{
+            margin-bottom: 10px;
+            color: #222;
+        }
    `);
-   document.body.insertAdjacentHTML('beforeend', `
-    <div class="open-any-overlay" id="open-any-overlay">
-        <div class="open-any-menu" id="open-any-menu">
-        </div>
-    </div>
-    `);
-    const overlay = document.getElementById('open-any-overlay');
-    const menu = document.getElementById('open-any-menu');
-    const openButton = document.getElementById('open-any-button');
     /**
      * 显示选项菜单并返回用户选择的结果
      * @param {Array<{label: string, value: any}>} options - 选项列表
      * @returns {Promise<any>} 用户选择的值
      */
-    function showOptionsMenu(options) {
+    function showOptionsMenu(options, title = '') {
         return new Promise((resolve) => {
+            // 创建 overlay 元素
+            const overlay = document.createElement('div');
+            overlay.className = 'open-any-overlay';
+
+            // 创建 menu 元素
+            const menu = document.createElement('div');
+            menu.className = 'open-any-menu';
+
+            // 将 menu 添加到 overlay 中
+            overlay.appendChild(menu);
+
+            // 将 overlay 添加到 body 的末尾
+            document.body.appendChild(overlay);
+
           // 清空菜单内容
-          menu.innerHTML = '';
+          menu.innerHTML = `<p class="open-any-menu-title">${title}</p>`;
   
           // 动态添加选项到菜单
           options.forEach((option) => {
