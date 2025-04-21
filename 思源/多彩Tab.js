@@ -1,6 +1,8 @@
 // 多彩Tab
 // 每次打开tab时随机生成
 // see https://ld246.com/article/1745131935346
+// version 0.0.2
+// 0.0.2 改进样式生成方式，支持对子元素样式的控制
 (()=>{
     // 添加tab样式，可根据自己需要添加或修改样式
     const tabStyles = [
@@ -17,6 +19,10 @@
         'background-color:var(--b3-font-background11)',
         'background-color:var(--b3-font-background12)',
     ];
+
+    // 是否使用内联样式 yes使用，no使用外部样式
+    // 内联样式无法控制tab子元素样式，如果你需要控制tab子元素样式，则填no
+    const useInlineStyle = 'no';
     
     // 手机版返回
     if(isMobile()) return;
@@ -35,7 +41,24 @@
     function setTabBackground(tab) {
         const style = getRandomStyle();
         if(!style) return;
-        tab.style = style;
+        generateTabStyle(tab, style);
+    }
+
+    function generateTabStyle(tab, style) {
+        if(useInlineStyle === 'yes'){
+            tab.style = style;
+        } else {
+            addStyle(`.layout-tab-bar .item[data-id="${tab.dataset.id}"]{${style}}`);
+        }
+    }
+
+    function addStyle(css) {
+        // 创建一个新的style元素
+        const style = document.createElement('style');
+        // 设置CSS规则
+        style.innerHTML = css;
+        // 将style元素添加到<head>中
+        document.head.appendChild(style);
     }
     
     let lastSelected = null; // 记录上一次选择的样式
