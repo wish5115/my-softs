@@ -1,15 +1,17 @@
 // 模拟连续点击 openAny
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 // see https://ld246.com/article/1744896396694
-// version 0.0.3.1
+// version 0.0.4
 // 0.0.2 增加toolbar出现事件；选项菜单；输入框；改进事件传递机制，默认捕获阶段触发；增加鼠标事件；增加newSetStyle函数
 // 0.0.3 改进promise执行链，更加健壮和可调试性，增加catch方法
 // 0.0.3.1 改进输入框和选项菜单样式和支持手机版
+// 0.0.3.2 优化细节，修复bug
+// 0.0.4 支持模拟鼠标操作，比如 ctrl+mouseleft, ctrl+mouseright，打开本地文件，交互对话框等；setKeymap更改为addKeymap；新增removeKeymap;
 
 // 调用方式：
 // 注意：选择符不一定要全局唯一，只要能达到目的且不会产生歧义及副作用即可
 // openAny.click('').clicks('','').clicks(['']).press('alt+p').pressByKeymap('config').sleep(100).invoke(({})=>{}).el('').input('').sendText('');
-// openAny.setKeymap('alt+z', (event)=>{}) // 注册快捷键
+// openAny.addKeymap('alt+z', (event)=>{}) // 注册快捷键
 // openAny.invoke(({sleep, ...args})=>{}) // 通过函数执行某些操作，返回值放在openAny.prev中，通过await openAny.getPrev()可以获取或者在下一个链中获取
 // new OpenAny().click(''); // new 新实例方式调用，推荐
 // openAny.showMessage().click(''); // 开启出错是发送通知消息，参数true显示消息，false不显示消息，默认true （但未调用此方法时，openAny默认是false）
@@ -40,7 +42,7 @@
 */
 
 // 注册快捷键
-// openAny.setKeymap('alt+z', (event)=>{event.preventDefault();openAny.press('alt+p')})
+// openAny.addKeymap('alt+z', (event)=>{event.preventDefault();openAny.press('alt+p')})
 
 // 举例说明
 // 打开设置
@@ -55,18 +57,20 @@
 // 打开代码片段窗口
 // openAny.clicks('#barWorkspace', '[data-id="config"]', '[data-name="appearance"]', '#codeSnippet', '[data-key="dialog-setting"] svg.b3-dialog__close');
 // alt+z 实现文本标记和加粗
-// openAny.setKeymap('alt+z', (event)=>{event.preventDefault();openAny.clicks('[data-type="strong"]', '[data-type="mark"]')});
+// openAny.addKeymap('alt+z', (event)=>{event.preventDefault();openAny.clicks('[data-type="strong"]', '[data-type="mark"]')});
 // alt+z 给文字添加颜色和背景色
-// openAny.setKeymap('alt+z', (event)=>{event.preventDefault();openAny.press('meta+alt+x', document.activeElement).clicks('.protyle-util [style="color:var(--b3-font-color9)"]', '.protyle-util [style="background-color:var(--b3-font-background6)"]').invoke(()=>document.querySelector('.protyle-util:not(.fn__none)').classList.add('fn__none'))});
+// openAny.addKeymap('alt+z', (event)=>{event.preventDefault();openAny.press('meta+alt+x', document.activeElement).clicks('.protyle-util [style="color:var(--b3-font-color9)"]', '.protyle-util [style="background-color:var(--b3-font-background6)"]').invoke(()=>document.querySelector('.protyle-util:not(.fn__none)').classList.add('fn__none'))});
+// 触发选中文本，并给文本加粗
+// openAny.selectText('some text', document.activeElement).press('meta+b', document.activeElement);
 /* 快速切换预览模式和编辑模式
-    openAny.setKeymap('alt+meta+0', (event)=>{
+    openAny.addKeymap('alt+meta+0', (event)=>{
         event.preventDefault();
         const isPreview = document.querySelector('.protyle-preview:not(.fn__none) .protyle-preview__action');
         if(!isPreview) openAny.press('alt+meta+9'); else openAny.press('alt+meta+7');
     });
 */
 // 转移快捷键（注册快捷键）
-// openAny.setKeymap('alt+z', (event)=>{event.preventDefault();openAny.press('alt+p')})
+// openAny.addKeymap('alt+z', (event)=>{event.preventDefault();openAny.press('alt+p')})
 
 // 常用函数说明
 /*
@@ -79,21 +83,24 @@ getEl 可以不传参数获取上一个选择符，如果传参数则获取参�
 queryEl 同querySelector
 queryElAll 同querySelectorAll
 sendText 第二个参数可传选择符或元素对象
-addFunction 扩展函数，添加函数到this.functions，同时会出现在invoke和setKeymap事件回调中
-setKeymap 回调函数的第一个参数是event,第二个参数是this.functions。同invoke一样，参数用{}包裹
+addFunction 扩展函数，添加函数到this.functions，同时会出现在invoke和addKeymap事件回调中
+addKeymap 回调函数的第一个参数是event,第二个参数是this.functions。同invoke一样，参数用{}包裹
 */
 
 (()=>{
-
     class OpenAny {
         prev = null;
 		prevSelecor = '';
         keymaps=[];
-        keymapBound = false;
+        keymapKeydownBound = false;
+        keymapMousedownBound = false;
+        keymapMouseOverBound = false;
         isShowMessage = false;
+        timeout = 5000;
         functions = {
             sleep,
             whenElementExist,
+            whenElementRemoved,
             showMessage,
             showErrorMessage,
             querySql,
@@ -109,14 +116,32 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             getCharsBeforeCursor,
             showInputBox,
             showOptionsMenu,
+            showBasicDialog,
+            showDialog,
+            destroyDialog,
+            showFileInFolder,
+            openFile,
+            runCmd,
+            getEl,
             queryEl: this.queryEl,
             queryElAll: this.queryElAll,
             selectText,
+            getSelectedText,
+            isMac,
+            isWindows,
+            isBrowser,
+            isMobile,
+            isElectron,
+            isReadOnly,
+            getProtyleEl,
+            getEditor,
         };
 
         constructor(params) {
             this.params = params;
             this.fn = this.functions;
+            this._invokeReturn = null;
+            this._cmdReturn = null;
             this._chain = Promise.resolve(); // 先初始化 _chain
             this.resetChain(); // 再重置链（确保安全）
         }
@@ -171,9 +196,14 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             this.isShowMessage = isShowMessage;
             return this;
         }
+        
+        setTimeout(timeout) {
+            this.timeout = timeout;
+            return this;
+        }
 
         // 模拟点击
-        click(selector, parentElement) {
+        click(selector, parentElement, timeout) {
             // 将操作加入内部 Promise 链
             this._chain = this._chain.then(async () => {
                 if(typeof selector === 'undefined') {
@@ -185,7 +215,7 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
                     // 如果是选择符
                     selector = selector.trim();
                     try {
-                        this.prev = await whenElementExist(selector, parentElement);
+                        this.prev = await whenElementExist(selector, parentElement, timeout || this.timeout);
                     } catch (e) {
 						this.throwError('元素 ' + selector + ' 等待超时，' + e.message);
                     }
@@ -209,13 +239,14 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             // 将参数统一转换为数组
             const selectors = Array.isArray(args[0]) ? args[0] : args;
             // 当是数组参数时，第二个参数可传递父元素
-            let parentElement;
+            let parentElement, timeout;
             if(Array.isArray(args[0]) && args[1]){
                 parentElement = args[1];
+                if(args[2]) timeout = args[2];
             }
             // 遍历所有选择器并依次调用 click 方法
             for (const selector of selectors) {
-                this.click(selector, parentElement); // 调用 click 方法并添加到 promiseChain
+                this.click(selector, parentElement, timeout); // 调用 click 方法并添加到 promiseChain
             }
     
             return this; // 返回当前实例以支持链式调用
@@ -231,7 +262,7 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             return this;
         }
 
-        async #getElement(selector, parentElement) {
+        async #getElement(selector, parentElement, timeout) {
             if(typeof selector === 'undefined' || !selector) {
                 this.throwError('元素selector不能为空');
             } else if(selector?.nodeType ===1) {
@@ -241,26 +272,33 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
                 // 如果是选择符
                 selector = selector.trim();
                 try {
-                    this.prev = await whenElementExist(selector, parentElement);
+                    this.prev = await whenElementExist(selector, parentElement, timeout || this.timeout);
                 } catch (e) {
                     this.throwError('元素 ' + selector + ' 等待超时，' + e.message);
                 }
             }
         }
 
-        el(selector, parentElement) {
+        el(selector, parentElement, timeout) {
 			if(!selector) this.throwError('选择符不能为空');
 			this.prevSelecor = selector;
             this._chain = this._chain.then(async () => {
-                await this.#getElement(selector, parentElement);
+                await this.#getElement(selector, parentElement, timeout);
             });
             return this;
         }
 
-        getEl(selector, parentElement) {
+        whenExist(selector, parentElement, timeout) {
+            this._chain = this._chain.then(async () => {
+                await this.#getElement(selector, parentElement, timeout);
+            });
+            return this;
+        }
+
+        getEl(selector, parentElement, timeout) {
 			return this._chain = this._chain.then(async () => {
                 if(!selector) selector = this.prevSelecor;
-                await this.#getElement(selector, parentElement);
+                await this.#getElement(selector, parentElement, timeout);
                 return this.prev;
             });
         }
@@ -288,26 +326,27 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             this.throwError('请传入一个有效的dom选择符');
         }
 
-        sendText(text='', selector, parentElement) {
+        sendText(text='', selector, parentElement, timeout) {
             this._chain = this._chain.then(async () => {
-                if(selector) await this.#getElement(selector, parentElement);
+                if(selector) await this.#getElement(selector, parentElement, timeout);
                 if(this.prev?.nodeType !== 1) this.throwError('元素 ' + this.prev + ' 不是有效的元素');
                 sendTextToEditable(this.prev, text);
             });
             return this;
         }
 
-        selectText(text='', selector, parentElement) {
+        selectText(text='', selector, parentElement, timeout) {
             this._chain = this._chain.then(async () => {
-                const selector = selector || (this.prev.nodeType === 1 ? this.prev : undefined);
-                selectText(text, selector||this.prev, parentElement);
+                if(selector) await this.#getElement(selector, parentElement, timeout);
+                if(this.prev?.nodeType !== 1) this.throwError('元素 ' + this.prev + ' 不是有效的元素');
+                selectText(text, this.prev, parentElement);
             });
             return this;
         }
 
-        clear(selector, parentElement) {
+        clear(selector, parentElement, timeout) {
             this._chain = this._chain.then(async () => {
-                if(selector) await this.#getElement(selector, parentElement);
+                if(selector) await this.#getElement(selector, parentElement, timeout);
                 if(this.prev?.nodeType !== 1) this.throwError('元素 ' + this.prev + ' 不是有效的元素');
                 selectAll(this.prev);
                 sendTextToEditable(this.prev, '');
@@ -315,9 +354,9 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             return this;
         }
 
-        input(text='', selector, parentElement) {
+        input(text='', selector, parentElement, timeout) {
             this._chain = this._chain.then(async () => {
-                if(selector) await this.#getElement(selector, parentElement);
+                if(selector) await this.#getElement(selector, parentElement, timeout);
                 if(this.prev?.nodeType !== 1) this.throwError('元素 ' + this.prev + ' 不是有效的元素');
                 this.prev.value = text;
                 // 触发 input 事件
@@ -327,26 +366,46 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             return this;
         }
 
-        selectAll(selector, parentElement) {
+        focus(selector, parentElement, timeout) {
             this._chain = this._chain.then(async () => {
-                if(selector) await this.#getElement(selector, parentElement);
+                if(selector) await this.#getElement(selector, parentElement, timeout);
+                if(this.prev?.nodeType !== 1) this.throwError('元素 ' + this.prev + ' 不是有效的元素');
+                if(this.prev.focus) this.prev.focus();
+                try {
+                    const event = new Event('focus', { bubbles: true, cancelable: true });
+                    this.prev.dispatchEvent(event);
+                } catch(e) {}
+            });
+            return this;
+        }
+
+        selectAll(selector, parentElement, timeout) {
+            this._chain = this._chain.then(async () => {
+                if(selector) await this.#getElement(selector, parentElement, timeout);
                 if(this.prev?.nodeType !== 1) this.throwError('元素 ' + this.prev + ' 不是有效的元素');
                 selectAll(this.prev);
             });
             return this;
         }
 
-        async invoke(callback) {
+        // 注意，invoke内部不能在openAny上使用await，使用await时需要用new OpenAny代替，，因为await会与上层链相互等待造成死锁
+        invoke(callback) {
             this._chain = this._chain.then(async () => {
                 if(typeof callback !== 'function') this.throwError('元素 ' + callback + ' 不是有效的函数');
                 this.functions.prev = this.prev
                 try {
-                    this.prev = await callback(this.functions);
+                    this._invokeReturn = await callback.call(this, this.functions);
+                    this.prev = this._invokeReturn;
+                    //this.prev = await callback(this.functions);
                 } catch (e) {
                     this.throwError('执行函数时出错：' + e.message);
                 }
             });
             return this;
+        }
+
+        do(callback) {
+            return this.invoke(callback);
         }
 
         addFunction(fnName, fn) {
@@ -379,7 +438,7 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             }
             return this.pressByFnName(keymap);
         }
-        
+
         pressByFnName(fnName) {
             if(typeof fnName === 'undefined' || !fnName) {
                 this.throwError('参数fnName不能为空');
@@ -394,7 +453,15 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             return this;
         }
 
+        /**
+         * @deprecated 请使用 addKeymap 替代
+         */
         setKeymap(keys, callback, node, options) {
+            console.warn('setKeymap 已被弃用，请使用 addKeymap 替代');
+            return this.addKeymap(keys, callback, node, options);
+        }
+
+        addKeymap(keys, callback, node, options) {
             if(typeof keys === 'undefined' || !keys) {
                 this.throwError('参数keys不能为空');
             }
@@ -406,46 +473,91 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             // 将快捷键组合和回调函数存储到映射表中
             this.keymaps.push({
                 keys: keyCombination,
-                callback
+                callback,
+                node,
+                options
             });
             // 判断快捷键是否包含鼠标按键
-            if(!this.keymapBound) {
-                (node||window).addEventListener('keydown', this.handleKeyDown.bind(this, this.functions), options || true);
+            if(!this.keymapMousedownBound && keyCombination.some(key => ['mouseleft', 'mousemiddle', 'mouseright'].includes(key))) {
                 (node||window).addEventListener('mousedown', this.handleKeyDown.bind(this, this.functions), options || true);
+                this.keymapMousedownBound = true;
+            } else if(!this.keymapMouseOverBound && keyCombination.includes('mouseover')) {
+                (node||window).addEventListener('mouseover', this.handleKeyDown.bind(this, this.functions), options || true);
+                this.keymapMouseOverBound = true;
+            } else if(!this.keymapKeydownBound) {
+                (node||window).addEventListener('keydown', this.handleKeyDown.bind(this, this.functions), options || true);
+                this.keymapKeydownBound = true;
             }
-            this.keymapBound = true;
+            return this;
+        }
+
+        // 注意，这里未提供callback,node,option时，会删除同名的所有keys，尽量提供完整参数，防止误删除。
+        removeKeymap(keys, callback = null, node = null, options = null) {
+            if (typeof keys === 'undefined' || !keys) {
+                this.throwError('参数keys不能为空');
+            }
+        
+            // 解析快捷键字符串并排序
+            const keyCombination = keys.toLowerCase().split('+').map(item => item.trim()).sort();
+        
+            // 过滤掉匹配的快捷键
+            this.keymaps = this.keymaps.filter(keymap => {
+                // 匹配按键组合
+                const isKeysMatch = keymap.keys.join('+') === keyCombination.join('+');
+        
+                // 如果按键不匹配，直接保留
+                if (!isKeysMatch) return true;
+        
+                // 比较其他字段：callback, node, options
+                const isCallbackMatch = callback === null || keymap.callback.toString() === callback.toString();
+                const isNodeMatch = node === null || keymap.node === node;
+                const isOptionsMatch = options === null || options === keymap.options || JSON.stringify(keymap.options) === JSON.stringify(options);
+        
+                // 如果所有提供的条件都匹配，则移除此记录
+                return !(isCallbackMatch && isNodeMatch && isOptionsMatch);
+            });
+        
             return this;
         }
 
         // 处理键盘按下事件
         handleKeyDown(functions, event) {
-            // 获取当前按下的按键组合
             const pressedKeys = [];
+            // 收集修饰键（无论事件类型）
             if (event.altKey) pressedKeys.push('alt');
             if (event.ctrlKey) pressedKeys.push('ctrl');
             if (event.shiftKey) pressedKeys.push('shift');
             if (event.metaKey) pressedKeys.push('meta');
-
-            if(typeof event.button !== 'undefined') {
-                // 添加鼠标按键
-                switch (event.button) {
-                    case 0: pressedKeys.push('mouseleft'); break; // 左键
-                    case 1: pressedKeys.push('mousemiddle'); break; // 中键
-                    case 2: pressedKeys.push('mouseright'); break; // 右键
-                }
-            } else {
-                const key = getKeyByCode(event.code);
-                pressedKeys.push(key.toLowerCase()); // 添加普通键
-                //pressedKeys.push(event.key.toLowerCase()); // 添加普通键
-            }
-
-            pressedKeys.sort(); // 排序以确保顺序一致
         
-            // 遍历快捷键映射表，查找匹配项
+            // 根据事件类型处理主键
+            switch (event.type) {
+                case 'mousedown':
+                    // 处理鼠标按键（左键、中键、右键）
+                    switch (event.button) {
+                        case 0: pressedKeys.push('mouseleft'); break;
+                        case 1: pressedKeys.push('mousemiddle'); break;
+                        case 2: pressedKeys.push('mouseright'); break;
+                    }
+                    break;
+                case 'mouseover':
+                    // 添加 mouseover 作为触发条件
+                    pressedKeys.push('mouseover');
+                    break;
+                case 'keydown':
+                    // 处理键盘按键（通过 event.code 获取标准化键名）
+                    const key = getKeyByCode(event.code);
+                    if (key) pressedKeys.push(key.toLowerCase());
+                    break;
+            }
+        
+            pressedKeys.sort(); // 排序以确保组合顺序一致
+        
+            // 遍历映射表，匹配快捷键
             for (const { keys, callback } of this.keymaps) {
                 if (keys.join('+') === pressedKeys.join('+')) {
                     try {
-                        callback(event, functions); // 调用回调函数
+                        callback.call(this, event, functions);
+                        //callback(event, functions); // 调用回调函数
                     } catch (e) {
                         this.throwError('执行函数时出错：' + e.message);
                     }
@@ -453,12 +565,48 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             }
         }
 
+        openFile(path) {
+            this._chain = this._chain.then(async () => {
+                openFile(path);
+            });
+            return this;
+        }
+
+        showFileInFolder(path) {
+            this._chain = this._chain.then(async () => {
+                showFileInFolder(path);
+            });
+            return this;
+        }
+
+        runCmd(cmd) {
+            this._chain = this._chain.then(async () => {
+                runCmd(cmd, (result)=>{
+                    this._cmdReturn = result;
+                    this.prev = result;
+                });
+            });
+            return this;
+        }
+
         getPrev() {
             return this._chain = this._chain.then(async () => {
                 return this.prev;
             });
         }
-    
+
+        getInvokeReturn() {
+            return this._chain = this._chain.then(async () => {
+                return this._invokeReturn || null;
+            });
+        }
+
+        getCmdReturn() {
+            return this._chain = this._chain.then(async () => {
+                return this._cmdReturn || null;
+            });
+        }
+
         // 实现 then 方法以便 await 整个链
         then(resolve, reject) {
             return this._chain.then(resolve, reject);
@@ -468,9 +616,30 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
     window.openAny = new OpenAny({default: true});
     window.OpenAny = OpenAny;
 
+    async function getEl(selector, parentElement, timeout) {
+        if(typeof selector === 'undefined' || !selector) {
+            return null;
+        } else if(selector?.nodeType ===1) {
+            // 如果已经是dom元素
+            return selector;
+        } else {
+            // 如果是选择符
+            selector = selector.trim();
+            try {
+                return await whenElementExist(selector, parentElement, timeout || 5000);
+            } catch (e) {
+                return null;
+            }
+        }
+    }
+
     function press(keys = [], element) {
         if(typeof keys === 'string') keys = keys.split('+');
         keys = keys.map(item=>item.trim().toLowerCase());
+        if(keys.some(item=>['mouseclick', 'mouseleft','mouseright','mousemiddle','mousedblclick', 'mouseover'].includes(item.toLowerCase()))) {
+            pressWithMouse(keys, element);
+            return;
+        }
         const key = keys.find(item=>!['ctrl','alt','meta','shift'].includes(item));
         const code = getCodeByKey(key);
         let keyInit = {
@@ -488,6 +657,95 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
         (element || document.getElementsByTagName("body")[0]).dispatchEvent(keydownEvent);
         let keyUpEvent = new KeyboardEvent('keyup', keyInit);
         (element || document.getElementsByTagName("body")[0]).dispatchEvent(keyUpEvent);
+    }
+
+    function pressWithMouse(keys = [], element) {
+        if (typeof keys === 'string') keys = keys.split('+');
+        keys = keys.map(item => item.trim().toLowerCase());
+    
+        // 分离鼠标事件类型和修饰键
+        const mouseEvents = ['mouseleft', 'mouseclick', 'mouseright', 'mousemiddle', 'mousedblclick', 'mouseover'];
+        const hasMouseEvent = keys.some(k => mouseEvents.includes(k));
+        if (!hasMouseEvent) {
+            press(keys, element);
+            return;
+        }
+    
+        // 获取元素位置
+        if (typeof element === 'string') element = document.querySelector(element);
+        element = element || document.body;
+        const rect = element.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+    
+        // 事件配置
+        const initConfig = {
+            bubbles: true,
+            cancelable: true,
+            ctrlKey: keys.includes('ctrl'),
+            altKey: keys.includes('alt'),
+            metaKey: keys.includes('meta'),
+            shiftKey: keys.includes('shift'),
+            clientX: centerX,  // 自动居中
+            clientY: centerY,
+            view: window
+        };
+    
+        // 确定事件类型和按钮
+        let eventType = 'mousedown';
+        const buttonMap = {
+            mouseleft: { button: 0, buttons: 1 },
+            mouseclick: { button: 0, buttons: 1 }, // 新增别名
+            mouseright: { button: 2, buttons: 2 },
+            mousemiddle: { button: 1, buttons: 4 },
+            mousedblclick: { eventType: 'dblclick', detail: 2 },
+            mouseover: { eventType: 'mouseover', relatedTarget: null }
+        };
+    
+        // 处理多个鼠标事件（取第一个）
+        const mainEvent = keys.find(k => mouseEvents.includes(k));
+        Object.assign(initConfig, buttonMap[mainEvent]);
+    
+        // 派发事件序列
+        if (mainEvent === 'mousedblclick') {
+            // 双击需要两次点击事件
+            ['mousedown', 'mouseup', 'click'].forEach(type => {
+                element.dispatchEvent(new MouseEvent(type, initConfig));
+            });
+            const dblEvent = new MouseEvent('dblclick', { ...initConfig, detail: 2 });
+            element.dispatchEvent(dblEvent);
+        } else if (mainEvent === 'mouseover') {
+            // 添加移动事件更真实
+            element.dispatchEvent(new MouseEvent('mousemove', initConfig));
+            const overEvent = new MouseEvent('mouseover', {
+                ...initConfig,
+                relatedTarget: document.body // 可根据需求调整
+            });
+            element.dispatchEvent(overEvent);
+        } else {
+            // 常规点击流程
+            const types = ['mousedown', 'mouseup', 'click'];
+            if (mainEvent === 'mouseright') types.push('contextmenu');
+            types.forEach(type => {
+                element.dispatchEvent(new MouseEvent(type, initConfig));
+            });
+        }
+    }
+
+    function getProtyleEl() {
+        return document.querySelector('[data-type="wnd"].layout__wnd--active .protyle:not(.fn__none)')||document.querySelector('[data-type="wnd"] .protyle:not(.fn__none)');
+    }
+    function getEditor() {
+        return getProtyleEl()?.querySelector('.protyle-wysiwyg.protyle-wysiwyg--attr');
+    }
+
+    function getSelectedText(defaultText = '') {
+        const selection = window.getSelection();
+        if (selection.toString().trim() !== "") {
+            return selection.toString(); // 返回选中的文本
+        } else {
+            return defaultText||""; // 如果没有选中任何内容
+        }
     }
     
     function selectText(targetText, container, parentElement) {
@@ -566,10 +824,37 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
         element?.dispatchEvent(keyUpEvent);
     }
 
+    function isMac() {
+        return navigator.platform.indexOf("Mac") > -1;
+    }
+
+    function isWindows() {
+        return document.body.classList.contains("body--win32");
+    }
+
+    function isMobile() {
+        return !!document.getElementById("sidebar");
+    }
+    
+    function isElectron() {
+        return navigator.userAgent.includes('Electron');
+    }
+    
+    function isBrowser() {
+        return !navigator.userAgent.startsWith("SiYuan") ||
+            navigator.userAgent.indexOf("iPad") > -1 ||
+            (/Android/.test(navigator.userAgent) && !/(?:Mobile)/.test(navigator.userAgent));
+    }
+
+    function isReadOnly() {
+        return window.siyuan.config.readonly;
+    }
+
     function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
     function whenElementExist(selector, node, timeout = 5000) {
+        timeout = isNumber(timeout) ? parseInt(timeout) : 5000;
         return new Promise((resolve, reject) => {
             let isResolved = false;
             const check = () => {
@@ -586,6 +871,42 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
                 }, timeout);
             }
         });
+    }
+
+    function whenElementRemoved(selector, callback, node = document.body, once = true) {
+        // 创建一个 MutationObserver 实例
+        const observer = new MutationObserver((mutationsList) => {
+            mutationsList.forEach((mutation) => {
+                // 检查是否是子节点或后代节点被移除
+                if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
+                    mutation.removedNodes.forEach((removedNode) => {
+                        // 检查被移除的节点是否匹配 selector
+                        if (removedNode.nodeType === Node.ELEMENT_NODE && removedNode.matches(selector)) {
+                            if(typeof callback === 'function') callback(removedNode);
+                            if(once) observer.disconnect();
+                        }
+                    });
+                }
+            });
+        });
+        // 配置观察选项：监听子节点和后代节点的变化
+        const config = {
+            childList: true, // 监听子节点的变化
+            subtree: true,   // 扩展到所有后代节点
+        };
+        // 开始观察指定节点及其后代节点，默认为 <body>
+        observer.observe(node, config);
+        return () => {observer.disconnect()};
+    }
+
+    function isNumber(value, strict = false) {
+        if (strict) {
+            // 严格模式：必须是数字类型
+            return typeof value === 'number' && !isNaN(value) && isFinite(value);
+        } else {
+            // 宽松模式：允许字符串形式的数字
+            return !isNaN(parseFloat(value)) && isFinite(value);
+        }
     }
     function showMessage(message, delay = 7000, isError = false) {
         return fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
@@ -635,12 +956,14 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
         return (css = '') => {
         // 如果已存在样式元素，先移除它
         if (styleElement) {
-          styleElement.parentNode.removeChild(styleElement);
+            styleElement.parentNode.removeChild(styleElement);
         }
         // 创建新的样式元素
-        styleElement = document.createElement('style');
-        styleElement.textContent = css;
-        document.head.appendChild(styleElement);
+        if(css) {
+            styleElement = document.createElement('style');
+            styleElement.textContent = css;
+            document.head.appendChild(styleElement);
+        }
       };
     }
 
@@ -995,6 +1318,53 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
     }
 
     ////////////// 扩展功能 ///////////////////////////////
+    // 定位文件或文件夹
+    function showFileInFolder(filePath) {
+        require('electron').ipcRenderer.send("siyuan-open-folder", filePath);
+    }
+    // 运行本地文件
+    function runCmd(command, callback) {
+        const { exec } = require('child_process');
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`执行错误: ${error.message}`);
+                return;
+            }
+            if (stderr) {
+                console.error(`stderr: ${stderr}`);
+                return;
+            }
+            if (typeof callback === 'function') {
+                callback(stdout);
+            }
+        });
+    }
+    // 打开本地文件
+    // openFile('C:\\path\\to\\file.txt'); // Windows
+    // openFile('/Applications/Preview.app'); // macOS
+    // openFile('/path/to/file.pdf'); // Linux
+    function openFile(target) {
+        const { exec } = require('child_process');
+        if (process.platform === 'win32') {
+            // Windows
+            exec(`start "" "${target}"`, (error, stdout, stderr) => {
+                if (error) console.error(`执行错误: ${error.message}`);
+                if (stderr) console.error(`stderr: ${stderr}`);
+            });
+        } else if (process.platform === 'darwin') {
+            // macOS
+            exec(`open -a "${target}"`, (error, stdout, stderr) => {
+                if (error) console.error(`执行错误: ${error.message}`);
+                if (stderr) console.error(`stderr: ${stderr}`);
+            });
+        } else {
+            // Linux/其他
+            exec(`xdg-open "${target}"`, (error, stdout, stderr) => {
+                if (error) console.error(`执行错误: ${error.message}`);
+                if (stderr) console.error(`stderr: ${stderr}`);
+            });
+        }
+    }
     // 返回光标前n个字符（使用场景：比如文字补全）
     function getCharsBeforeCursor(count) {
         const selection = window.getSelection();
@@ -1072,14 +1442,14 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
 
     // 弹出输入框（使用场景：比如快捷输入，问ai等）
     // 使用示例
-    // const result = await showInputBox('默认内容');
+    // const result = await showInputBox(1, '默认内容');
     // if (result !== null) {
     //   console.log('用户输入:', result);
     //   alert(`提交内容: ${result}`);
     // } else {
     //   console.log('用户取消了输入');
     // }
-    function showInputBox(defaultText = '', title = '', placeholder = '') {
+    function showInputBox(defaultText = '', title = '', placeholder = '', lines = 1) {
         return new Promise((resolve) => {
           // 创建模态框元素
           const mask = document.createElement('div');
@@ -1087,10 +1457,13 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
           const titleEl = document.createElement('p');
           titleEl.textContent = title;
           titleEl.style.marginBottom = '10px';
-          const input = document.createElement('input');
+          const input = document.createElement(lines>1 ? 'textarea' : 'input');
           //const submitBtn = document.createElement('button');
           input.className = 'b3-text-field fn__block';
-          input.placeholder = placeholder || '回车提交，Esc或点击空白处取消';
+          const ln = lines > 1 ? "\n" : "，";
+          input.placeholder = placeholder || "回车提交{1}，Esc或点击空白处取消"+ln+"支持Markdown语法";
+          if(lines > 1) input.setAttribute('rows', lines);
+          input.placeholder = input.placeholder.replace('{1}', lines > 1 ? '，Shift+回车换行' : '');
           //submitBtn.className = 'b3-button fn__size200 b3-button--outline';
           // 添加基础样式
           Object.assign(mask.style, {
@@ -1099,7 +1472,7 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             left: '0',
             width: '100%',
             height: '100%',
-            background: 'rgba(0, 0, 0, 0.5)',
+            background: 'var(--b3-mask-background)', //rgba(0, 0, 0, 0.5)
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
@@ -1111,7 +1484,7 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             borderRadius: '5px',
             minWidth: 'min(100%, 500px)',
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.33)',
-            border: '1px solid #555'
+            border: siyuan.config.appearance.mode === 1 ? '1px solid #555' : 'none'
           });
           Object.assign(input.style, {
             flex: '1',
@@ -1129,7 +1502,7 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
         //     cursor: 'pointer'
         //   });
           // 设置元素属性
-          input.type = 'text';
+          if(lines === 1) input.type = 'text';
           input.value = defaultText;
           //submitBtn.textContent = '提交';
           // 组装DOM结构
@@ -1139,7 +1512,9 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
           mask.appendChild(content);
           document.body.appendChild(mask);
           // 自动聚焦输入框
-          input.focus();
+          setTimeout(() => {
+            input.focus();
+          }, 100);
           // 事件处理函数
           const handleConfirm = () => {
             const value = input.value.trim();
@@ -1151,7 +1526,7 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             resolve(null);
           };
           const handleKeyDown = (e) => {
-            if (e.key === 'Enter') handleConfirm();
+            if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey) handleConfirm();
             if (e.key === 'Escape') handleCancel();
           };
           const cleanup = () => {
@@ -1174,15 +1549,15 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
     // 使用示例：调用异步选项菜单
     // async function demo() {
     //     const options = [
-    //       { label: '选项 1', value: 'value1' },
-    //       { label: '选项 2', value: 'value2' },
-    //       { label: '选项 3', value: 'value3' }
+    //       { label: '选项 1', value: 'value1', key: 'a', pinyin: '', pinyinFirst: '', callback: () => {} },
+    //       { label: '选项 2', value: 'value2', key: 'b', pinyin: '', pinyinFirst: '', callback: () => {} },
+    //       { label: '选项 3', value: 'value3', key: 'c', pinyin: '', pinyinFirst: '', callback: () => {} }
     //     ];
-    //     const selectedValue = await showOptionsMenu(options);
-    //     if (selectedValue === null) {
+    //     const selectedOption = await showOptionsMenu(options);
+    //     if (selectedOption === null) {
     //       console.log('用户取消了选择');
     //     } else {
-    //       console.log(`用户选择了：${selectedValue}`);
+    //       console.log(`用户选择了：${selectedOption.value}`);
     //     }
     // }
     const setMenuStyle = newSetStyle();
@@ -1195,7 +1570,7 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: var(--b3-mask-background); /*rgba(0, 0, 0, 0.5);*/
             justify-content: center;
             align-items: center;
             z-index: ${(++siyuan.zIndex) || 999};
@@ -1203,15 +1578,32 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
 
        /* 菜单容器样式 */
         .open-any-menu {
+            /*position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);*/
             background: white;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             text-align: center;
-            max-width: 600px;
-            min-width: 300px;
+            max-width: min(600px, 100%);
+            min-width: min(300px, 100%);
             overflow-y: auto;
-            max-height: 800px;
+            max-height: min(800px, 100%);
+       }
+       [data-theme-mode="dark"] {
+            /* 整个滚动条 */
+            .open-any-menu::-webkit-scrollbar {
+                width: 8px; /* 滚动条宽度 */
+                height: 80px; /* 横向滚动条高度 */
+            }
+
+            /* 滚动条滑块 */
+            .open-any-menu::-webkit-scrollbar-thumb {
+                background: #CCCCCC; /* 滑块颜色 */
+                border-radius: 8px; /* 滑块圆角 */
+            }
        }
 
        /* 菜单项样式 */
@@ -1225,75 +1617,430 @@ setKeymap 回调函数的第一个参数是event,第二个参数是this.function
             transition: background-color 0.3s;
        }
 
-       .open-any-menu-item:hover {
+       .open-any-menu-item:hover{
+           background-color: #e0e0e0;
+       }
+       .open-any-menu-item.fn__selected {
             background-color: #d1e7fd;
        }
         .open-any-menu-title{
-            margin-bottom: 10px;
             color: #222;
+            position: sticky;
+            top: 0;
+            background-color: white;
+        }
+        .open-any-menu-title:has(> *) {
+            margin-bottom: 10px;
+            padding-top: 20px;
+        }
+        .open-any-menu:has(.open-any-menu-title > *) {
+            padding-top: 0;
+        }
+        .open-any-menu-item-key{margin-left: 2.5px;}
+        .open-any-menu-body.search-empty::before {
+            content: "没找到任何内容";
+            float: left;
+        }
+        .open-any-menu-search .open-any-menu-search-input{
+            color: #222;
+            background-color: white;
+            font-size: 16px;
+        }
+        .open-any-menu-search .b3-text-field:not(.b3-text-field--text):focus{
+            box-shadow: none;
+            /*box-shadow: inset 0 0 0 1px #3575f0, 0 0 0 3px rgba(53, 117, 240, .12);*/
+        }
+        .open-any-menu-search .b3-text-field:not(.b3-text-field--text):hover{
+            /*box-shadow: inset 0 0 0 .6px #222;*/
+            box-shadow: none;
         }
    `);
+   const setMenuItemStyle = newSetStyle();
     /**
      * 显示选项菜单并返回用户选择的结果
      * @param {Array<{label: string, value: any}>} options - 选项列表
      * @returns {Promise<any>} 用户选择的值
      */
-    function showOptionsMenu(options, title = '') {
+    function showOptionsMenu(options, config = {}, selectedIndex) {
         return new Promise((resolve) => {
             // 创建 overlay 元素
             const overlay = document.createElement('div');
             overlay.className = 'open-any-overlay';
-
+    
             // 创建 menu 元素
             const menu = document.createElement('div');
             menu.className = 'open-any-menu';
-
+    
+            const menuTitle = document.createElement('div');
+            menuTitle.className = 'open-any-menu-title';
+    
+            const menuBody = document.createElement('div');
+            menuBody.className = 'open-any-menu-body';
+    
+            // 将menuTitle 添加到 menu 中
+            menu.appendChild(menuTitle);
+    
+            // 将menuBody 添加到 menu 中
+            menu.appendChild(menuBody);
+    
             // 将 menu 添加到 overlay 中
             overlay.appendChild(menu);
-
+    
             // 将 overlay 添加到 body 的末尾
             document.body.appendChild(overlay);
+    
+            // 设置menuItem样式
+            if (config?.menuItemStyle) {
+                setMenuItemStyle(`.open-any-menu-item{${config.menuItemStyle}}`);
+            }
+    
+            // 设置menu宽度等
+            if (config?.width) menu.style.width = config.width;
+            if (config?.height) menu.style.height = config.height;
+            if (config?.maxWidth) menu.style.maxWidth = config.maxWidth;
+            if (config?.maxHeight) menu.style.maxHeight = config.maxHeight;
+            if (config?.minWidth) menu.style.minWidth = config.minWidth;
+            if (config?.minHeight) menu.style.minHeight = config.minHeight;
+    
+            // 清空菜单内容
+            let title = config?.title || '';
+            if (typeof config === 'string') title = config;
+            const titleHtml = title ? `<div class="open-any-menu-title-text">${title}</div>` : '';
+            const searchHtml = config?.search ? `
+                <div class="open-any-menu-search b3-form__icon">
+                    <svg class="b3-form__icon-icon"><use xlink:href="#iconSearch"></use></svg>
+                    <input type="text" style="width:100%" placeholder="${config?.searchPlaceholder||'搜索'}" class="open-any-menu-search-input b3-text-field b3-form__icon-input">
+                </div>` : '';
+            menuTitle.innerHTML = `${titleHtml}${searchHtml}`;
+    
+            const menuItems = [];
+            const keys = {};
+            let currentIndex, oldOption;
+    
+            // 计算选中项在可视区的显示位置
+            const updateSelection = (direction, margin = 25) => {
+                menuItems.forEach((item, index) => {
+                    item.classList.toggle('fn__selected', index === currentIndex);
+    
+                    if (index !== currentIndex) return;
+    
+                    // 首尾项处理
+                    if (currentIndex === 0) {
+                        return menu.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                    if (currentIndex === options.length - 1) {
+                        return menu.scrollTo({ top: menu.scrollHeight, behavior: 'smooth' });
+                    }
+    
+                    // 动态坐标系计算
+                    const menuRect = menu.getBoundingClientRect();
+                    const itemRect = item.getBoundingClientRect();
+    
+                    // 计算元素相对容器的可视位置
+                    const visibleTop = itemRect.top - menuRect.top;
+                    const visibleBottom = itemRect.bottom - menuRect.top;
+                    const menuHeight = menuRect.height;
+    
+                    // 智能滚动判断
+                    let targetScroll = menu.scrollTop;
+    
+                    // 顶部越界判断（包含 margin）
+                    if (visibleTop < margin) {
+                        targetScroll += visibleTop - margin;
+                    }
+                    // 底部越界判断（包含 margin）
+                    else if (visibleBottom > menuHeight - margin) {
+                        targetScroll += visibleBottom - (menuHeight - margin);
+                    }
 
-          // 清空菜单内容
-          menu.innerHTML = `<p class="open-any-menu-title">${title}</p>`;
-  
-          // 动态添加选项到菜单
-          options.forEach((option) => {
-            const menuItem = document.createElement('div');
-            menuItem.className = 'open-any-menu-item';
-            menuItem.textContent = option.label;
-            menuItem.addEventListener('click', () => {
-              resolve(option.value); // 返回用户选择的值
-              closeMenu();
+                    // 执行滚动
+                    if (Math.abs(targetScroll - menu.scrollTop) > 1) {
+                        menu.scrollTo({ top: targetScroll, behavior: 'smooth' });
+                    }
+                });
+            };
+
+            // 生成菜单项
+            const generateMenuItems = () => {
+                // 动态添加选项到菜单
+                options.forEach((option, index) => {
+                    const menuItem = document.createElement('div');
+                    menuItem.className = 'open-any-menu-item';
+                    menuItem.innerHTML = `<span class="open-any-menu-item-text">${option.label}</span><span class="open-any-menu-item-key">${option?.key?.toUpperCase()?.replace(/(.+)/, '($1)') || ''}</span>`;
+                    menuItem.addEventListener('click', (event) => {
+                        //event.preventDefault(); // 阻止默认行为
+                        option.index = index;
+                        resolve(option); // 返回用户选择的值
+                        closeMenu();
+                    });
+                    menuBody.appendChild(menuItem);
+                    // 保存菜单项到列表
+                    menuItems.push(menuItem);
+                    // 保存按键
+                    if (option.key) keys[option.key.toLowerCase()] = index;
+                    // 赋值当前选中项
+                    if (option.selected) selectedIndex = index;
+                });
+                // 赋值选中项的索引
+                currentIndex = isNumber(selectedIndex) ? selectedIndex : (options.length ? Math.floor((options.length - 1) / 2) : -1);
+                oldOption = options[currentIndex];
+                // 加载时更新选中项在可视区的位置
+                setTimeout(() => {
+                    if (currentIndex >= 0) {
+                        menuItems[currentIndex].classList.toggle('fn__selected', true);
+                        menuItems[currentIndex].scrollIntoView({ behavior: "smooth", block: "center" }); //updateSelection();
+                    }
+                }, 0);
+            }
+            generateMenuItems();
+
+            // 监听搜索事件
+            if (config?.search) {
+                const menuSearchInput = menuTitle.querySelector('.open-any-menu-search-input');
+                setTimeout(()=>menuSearchInput.focus(), 50);
+                let isComposing = false; // 新增输入法状态标志
+                const handleSearch = (event) => {
+                    event.preventDefault();
+                    if (isComposing) return; // 正在输入法输入时跳过
+                    const searchTerms = event.target.value.trim();
+                    let searchCount = menuItems.length;
+                    let visiableIndexs = [];
+                    const getIsVisible = (searchTerms, option) => {
+                        if(searchTerms.includes('OR')) {
+                            searchTerms = searchTerms.split('OR');
+                            return (
+                                searchTerms.some(searchTerm => option.label.toLowerCase().includes(searchTerm.trim().toLowerCase())) ||
+                                searchTerms.some(searchTerm => option?.pinyin?.toLowerCase()?.includes(searchTerm.trim().toLowerCase())) ||
+                                searchTerms.some(searchTerm => option?.pinyinFirst?.toLowerCase()?.includes(searchTerm.trim().toLowerCase()))
+                            );
+                        } else if(searchTerms.includes('AND') || searchTerms.includes(' ')) {
+                            searchTerms = searchTerms.includes('AND') ? searchTerms.split('AND') : searchTerms.split(' ');
+                            return (
+                                searchTerms.every(searchTerm => option.label.toLowerCase().includes(searchTerm.trim().toLowerCase())) ||
+                                searchTerms.every(searchTerm => option?.pinyin?.toLowerCase()?.includes(searchTerm.trim().toLowerCase())) ||
+                                searchTerms.every(searchTerm => option?.pinyinFirst?.toLowerCase()?.includes(searchTerm.trim().toLowerCase()))
+                            );
+                        }
+                        return (
+                            option.label.toLowerCase().includes(searchTerms.trim().toLowerCase()) ||
+                            option?.pinyin?.toLowerCase()?.includes(searchTerms.trim().toLowerCase()) ||
+                            option?.pinyinFirst?.toLowerCase()?.includes(searchTerms.trim().toLowerCase())
+                            //option?.key?.toLowerCase() === searchTerms.trim().toLowerCase() // 快捷键搜索
+                        );
+                    };
+                    menuItems.forEach((menuItem, index) => {
+                        const option = options[index];
+                        const isVisible = getIsVisible(searchTerms, option);
+                        menuItem.style.display = isVisible ? '' : 'none';
+                        searchCount -= isVisible ? 0 : 1;
+                        isVisible ? visiableIndexs.push(index) : '';
+                    });
+                    searchCount > 0 ? menuBody.classList.remove('search-empty') : menuBody.classList.add('search-empty');
+    
+                    // 找到可见项中是否存在之前选中项的索引
+                    let newVisibleIndex = -1;
+                    for (let i = 0; i < menuItems.length; i++) {
+                        const option = options[i];
+                        if (menuItems[i].style.display !== 'none' && option.label === oldOption?.label && option.value === oldOption?.value) {
+                            newVisibleIndex = i;
+                            break;
+                        }
+                    }
+                    // 如果不存在已选中项，则取中间项的索引
+                    if(newVisibleIndex === -1) {
+                        const visiableIndex = Math.floor((visiableIndexs.length - 1) / 2);
+                        newVisibleIndex = visiableIndexs[visiableIndex];
+                    }
+                    currentIndex = newVisibleIndex;
+                    updateSelection();
+                };
+                // 新增输入法事件监听
+                menuSearchInput.addEventListener('compositionstart', () => {
+                    isComposing = true;
+                });
+                menuSearchInput.addEventListener('compositionend', (event) => {
+                    isComposing = false;
+                    // 输入法输入完成后主动触发一次搜索
+                    handleSearch(event);
+                });
+                menuSearchInput.addEventListener('input', (event) => {
+                    handleSearch(event);
+                });
+            }
+    
+            // 打开菜单
+            overlay.style.display = 'flex';
+    
+            // 监听键盘事件
+            const handleKeyDown = (event) => {
+                if (event.key === 'Escape') {
+                    resolve(null); // 如果按下 Esc 键，返回 null
+                    closeMenu();
+                }
+                // 方向键导航（支持跳过隐藏项）
+                else if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    let newIndex = currentIndex - 1;
+                    while (newIndex >= 0 && menuItems[newIndex].style.display === 'none') newIndex--;
+                    if (newIndex >= 0) {
+                        currentIndex = newIndex;
+                        updateSelection('up', menuTitle.children.length > 0 ? 45 : 25);
+                    }
+                }
+                else if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    let newIndex = currentIndex + 1;
+                    while (newIndex < options.length && menuItems[newIndex].style.display === 'none') newIndex++;
+                    if (newIndex < options.length) {
+                        currentIndex = newIndex;
+                        updateSelection('down');
+                    }
+                }
+                // 回车确认
+                else if (event.key === 'Enter') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (currentIndex >= 0 && menuItems[currentIndex].style.display !== 'none') {
+                        menuItems[currentIndex].click();
+                    }
+                } else if (keys[event.key.toLowerCase()] && !event.target.matches('.open-any-menu-search-input:focus')) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    menuItems[keys[event.key.toLowerCase()]].click();
+                }
+            };
+            document.addEventListener('keydown', handleKeyDown, true);
+    
+            // 关闭菜单时清理事件监听器
+            function closeMenu() {
+                //overlay.style.display = 'none';
+                overlay.remove();
+                document.removeEventListener('keydown', handleKeyDown, true);
+            }
+    
+            // 点击遮罩层外部关闭菜单
+            overlay.addEventListener('click', (event) => {
+                if (event.target === overlay) {
+                    resolve(null); // 返回 null
+                    closeMenu();
+                }
             });
-            menu.appendChild(menuItem);
-          });
-  
-          // 打开菜单
-          overlay.style.display = 'flex';
-  
-          // 监听键盘事件
-          const handleKeyDown = (event) => {
-            if (event.key === 'Escape') {
-              resolve(null); // 如果按下 Esc 键，返回 null
-              closeMenu();
-            }
-          };
-          document.addEventListener('keydown', handleKeyDown);
-  
-          // 关闭菜单时清理事件监听器
-          function closeMenu() {
-            overlay.style.display = 'none';
-            document.removeEventListener('keydown', handleKeyDown);
-          }
-  
-          // 点击遮罩层外部关闭菜单
-          overlay.addEventListener('click', (event) => {
-            if (event.target === overlay) {
-              resolve(null); // 返回 null
-              closeMenu();
-            }
-          });
         });
+    }
+    //实现dialog对话框
+    /*
+    options = {
+        ...options,
+        showAction?: boolean,
+        // 当点击确定后不想关闭对话框时，可设置为options.disableClose=true;即可
+        confirmCallback?: (options?: IObject) => void
+    }
+    */
+    // 创建基础对话框，showDialog基础上增加content容器和确定与取消按钮
+    // 当点击确定后不想关闭对话框时，可设置为options.disableClose=true;即可
+    function showBasicDialog(options = {}) {
+        options.width = options?.width || "min(100%, 500px)";
+        options.height = options?.height || "min(100vh, 300px)";
+        const showAction = options?.showAction === false  ? false : true;
+        const actionHtml = showAction ? `
+        <div class="b3-dialog__action">
+            <button class="b3-button b3-button--cancel">取消</button><div class="fn__space"></div>
+            <button class="b3-button b3-button--text">确定</button>
+        </div>` : '';
+        options.content = `
+        <div class="b3-dialog__content">
+            ${options.content}
+        </div>
+        ${actionHtml}`;
+        const element = showDialog(options);
+        if(showAction) {
+            element.querySelector(".b3-button--text").addEventListener("click", (event) => {
+                if(typeof options.confirmCallback === 'function') options.confirmCallback(element, options);
+                if (!options.disableClose) {
+                    destroyDialog(element, options);
+                }
+                event.preventDefault();
+                event.stopPropagation();
+            });
+            element.querySelector(".b3-button--cancel").addEventListener("click", (event) => {
+                if (!options.disableClose) {
+                    destroyDialog(element, options);
+                }
+                event.preventDefault();
+                event.stopPropagation();
+            });
+        }
+    }
+    /*
+    options = {
+        title?: string,
+        content: string,
+        transparent?: boolean,
+        width?: string,
+        height?: string,
+        left?: string,
+        top?: string,
+        destroyCallback?: (options?: IObject) => void,
+        disableClose?: boolean,
+        hideCloseIcon?: boolean,
+        disableAnimation?: boolean,
+        containerClassName?: string,
+    }*/
+    // 创建对话框
+    // 当不想关闭对话框时，可设置为options.disableClose=true;即可
+    function showDialog(options={}) {
+        const disableClose = options.disableClose;
+        const destroyCallback = options.destroyCallback;
+        const element = document.createElement("div");
+        let left = options.left;
+        let top = options.top;
+        element.innerHTML = `<div class="b3-dialog" style="z-index: ${++window.siyuan.zIndex};${typeof left === "string" ? "display:block" : ""}">
+    <div class="b3-dialog__scrim"${options.transparent ? 'style="background-color:transparent"' : ""}></div>
+    <div class="b3-dialog__container ${options.containerClassName || ""}" style="width:${options?.width || "auto"};height:${options.height || "auto"};
+    left:${left || "auto"};top:${top || "auto"}">
+    <svg ${(!!document.getElementById("sidebar") && options.title) ? 'style="top:0;right:0;"' : ""} class="b3-dialog__close${(disableClose || options.hideCloseIcon) ? " fn__none" : ""}"><use xlink:href="#iconCloseRound"></use></svg>
+    <div class="resize__move b3-dialog__header${options?.title ? "" : " fn__none"}" onselectstart="return false;">${options?.title || ""}</div>
+    <div class="b3-dialog__body">${options.content}</div>
+    <div class="resize__rd"></div><div class="resize__ld"></div><div class="resize__lt"></div><div class="resize__rt"></div><div class="resize__r"></div><div class="resize__d"></div><div class="resize__t"></div><div class="resize__l"></div>
+    </div></div>`;
+        element.querySelector(".b3-dialog__scrim").addEventListener("click", (event) => {
+            if (!disableClose) {
+                destroyDialog(element, options);
+            }
+            event.preventDefault();
+            event.stopPropagation();
+        });
+        if (!disableClose) {
+            element.querySelector(".b3-dialog__close").addEventListener("click", (event) => {
+                destroyDialog(element, options);
+                event.preventDefault();
+                event.stopPropagation();
+            });
+        }
+        document.body.append(element);
+        if (options.disableAnimation) {
+            element.classList.add("b3-dialog--open");
+        } else {
+            setTimeout(() => {
+                element.classList.add("b3-dialog--open");
+            });
+        }
+        return element;
+    }
+    function destroyDialog(element, options) {
+        element.classList.remove("b3-dialog--open");
+        setTimeout(() => {
+            // av 修改列头emoji后点击关闭emoji图标
+            if ((element.querySelector(".b3-dialog")).style.zIndex < window.siyuan.menus.menu.element.style.zIndex) {
+                // https://github.com/siyuan-note/siyuan/issues/6783
+                window.siyuan.menus.menu.remove();
+            }
+            element.remove();
+            if (options.destroyCallback) {
+                options.destroyCallback(options);
+            }
+            // https://github.com/siyuan-note/siyuan/issues/10475
+            document.getElementById("drag")?.classList.remove("fn__hidden");
+        }, 190);
     }
 })();
