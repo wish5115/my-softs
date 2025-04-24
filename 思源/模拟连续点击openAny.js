@@ -1442,14 +1442,14 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
 
     // 弹出输入框（使用场景：比如快捷输入，问ai等）
     // 使用示例
-    // const result = await showInputBox(1, '默认内容');
+    // const result = await showInputBox('默认内容');
     // if (result !== null) {
     //   console.log('用户输入:', result);
     //   alert(`提交内容: ${result}`);
     // } else {
     //   console.log('用户取消了输入');
     // }
-    function showInputBox(defaultText = '', title = '', placeholder = '', lines = 1) {
+    function showInputBox(defaultText = '', title = '', placeholder = '', lines = 1, enterSubmit = true) {
         return new Promise((resolve) => {
           // 创建模态框元素
           const mask = document.createElement('div');
@@ -1526,7 +1526,11 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             resolve(null);
           };
           const handleKeyDown = (e) => {
-            if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey) handleConfirm();
+            if(enterSubmit) {
+                if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey) handleConfirm();
+            } else {
+                if (e.key === 'Enter' && e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey) handleConfirm();
+            }
             if (e.key === 'Escape') handleCancel();
           };
           const cleanup = () => {
