@@ -1,6 +1,7 @@
 // 快速打开自定义功能
 // see https://ld246.com/article/1745488922117
-// version 0.0.1
+// version 0.0.2
+// 0.0.2 增加快捷键支持，把思源命令面板的命令移植过来
 // 使用帮助
 // 建议把代码放到runjs插件的代码块中方便修改和添加菜单项（当然直接把该代码放到js代码片段中也行，代码片段修改后需要刷新页面）
 // 然后，把下面的这行代码放到js代码片段中加载时运行即可（注意，外部调用runjs代码块，先要给块命名，然后保存为可调用的方法）
@@ -9,7 +10,7 @@
 //                  或将光标聚焦在代码块中，然后按 alt + F5 即可运行当前的代码块
 // 如何添加新菜单？
 // 只需要“自定义菜单区 开始”和“自定义菜单区 结束”直接添加 addMenu('菜单名', ()=>{})即可
-// 比如：addMenu('demo1', ()=>{alert('demo1')}, 'D'); 这里第三个参数D代表当菜单出现时按D键直接选中demo1这个菜单
+// 比如：addMenu('demo1', (event, functions, option, selection)=>{alert('demo1')}, 'D', 'shortcut'); 这里第三个参数D代表当菜单出现时按D键直接选中demo1这个菜单
 (async (menus = [], pressKey = '' /* 👈修改快捷键可在这里修改pressKey，默认ctrl+; 修改后pressKey后需要刷新页面 */)=>{
     ///////////////////////////////// 自定义菜单区 开始 /////////////////////////////////
     // 打开本代码片编辑窗口
@@ -135,7 +136,7 @@
     }, 'C');
   
     // 字母大小写转换
-    addMenu('字母大小写转换', (event, {getEditor}, {selectedText, selection, range}) => {
+    addMenu('字母大小写转换', (event, {getEditor}, option, {selectedText, selection, range}) => {
         let text = selectedText;
         if(/[a-z]/.test(text)) {
             text = text.toUpperCase();
@@ -182,7 +183,7 @@
         const selectedOption = await functions.showOptionsMenu(menus, {width:'min(800px, 100%)',maxWidth:'min(1000px, 100%)', height:'min(800px, calc(100% - 80px))', maxHeight:'min(800px, calc(100% - 80px))', search:true, menuItemStyle: 'text-align:left'});
         if (selectedOption !== null) {
             if(typeof selectedOption.callback === 'function') {
-                selectedOption.callback(event, functions, {selectedText, selection, range});
+                selectedOption.callback(event, functions, selectedOption, {selectedText, selection, range});
                 setStorageVal('local-quickopen-selected', selectedOption.label);
             } else {
                 alert(selectedOption.callback+' 不是有效的函数');
@@ -193,6 +194,42 @@
     openAny.removeKeymap(pressKey); // 注意，这里未提供callback时，会删除同名的所有监听
     openAny.addKeymap(pressKey, handler);
 
+    // 把命令面板的命令移植过来
+    // see https://github.com/siyuan-note/siyuan/blob/e47b8efc2f2611163beca9fad4ee5424001515ff/app/src/boot/globalEvent/command/panel.ts#L49
+    Object.keys(window.siyuan.config.keymap.general).forEach((key) => {
+        let keys;
+        if (isMobile()) {
+            keys = ["addToDatabase", "fileTree", "outline", "bookmark", "tag", "dailyNote", "inbox", "backlinks",
+                "dataHistory", "editReadonly", "enter", "enterBack", "globalSearch", "lockScreen", "mainMenu", "move",
+                "newFile", "recentDocs", "replace", "riffCard", "search", "selectOpen1", "syncNow"];
+        } else {
+            keys = ["addToDatabase", "fileTree", "outline", "bookmark", "tag", "dailyNote", "inbox", "backlinks",
+                "graphView", "globalGraph", "closeAll", "closeLeft", "closeOthers", "closeRight", "closeTab",
+                "closeUnmodified", "config", "dataHistory", "editReadonly", "enter", "enterBack", "globalSearch", "goBack",
+                "goForward", "goToEditTabNext", "goToEditTabPrev", "goToTab1", "goToTab2", "goToTab3", "goToTab4",
+                "goToTab5", "goToTab6", "goToTab7", "goToTab8", "goToTab9", "goToTabNext", "goToTabPrev", "lockScreen",
+                "mainMenu", "move", "newFile", "recentDocs", "replace", "riffCard", "search", "selectOpen1", "syncNow",
+                "splitLR", "splitMoveB", "splitMoveR", "splitTB", "tabToWindow", "stickSearch", "toggleDock", "unsplitAll",
+                "unsplit"];
+            if (!isBrowser()) {
+                keys.push("toggleWin");
+            }
+        }
+        if (keys.includes(key)) {
+            addMenu(window.siyuan.languages[key], (event, functions, option, selection)=>runSiyuanCommand(key, '', event, functions, option, selection), '', !isMobile()?window.siyuan.config.keymap.general[key].custom:'', window.siyuan.languages[key]);
+        }
+    });
+    Object.keys(window.siyuan.config.keymap.editor.general).forEach((key) => {
+        if (["switchReadonly", "switchAdjust"].includes(key)) {
+            addMenu(window.siyuan.languages[key], (event, functions, option, selection)=>runSiyuanCommand(key, '', event, functions, option, selection), '', !isMobile()?updateHotkeyTip(window.siyuan.config.keymap.editor.general[key].custom):'', window.siyuan.languages[key]);
+        }
+    });
+    window.siyuan.ws.app.plugins.forEach(plugin => {
+        plugin.commands.forEach(command => {
+            addMenu(`${plugin.displayName}: ${command.langText || plugin.i18n[command.langKey]}`, (event, functions, option, selection)=>runSiyuanCommand(command, 'plugin', event, functions, option, selection), '', !isMobile()?updateHotkeyTip(command.customHotkey):'', `${plugin.displayName}: ${command.langText || plugin.i18n[command.langKey]}`);
+        });
+    });
+    
     // 生成拼音和拼音首字母
     setTimeout(async ()=>{
         let pinyinCache = await getFile('/data/storage/quickopen_pinyin_catche.json') || '{}';
@@ -234,8 +271,22 @@
     }, 0);
 
     // 添加菜单函数
-    function addMenu(name, callback, key, value) {
-        menus.push({ label: name, value: value||name, key: key || '', callback: callback });
+    function addMenu(name, callback, key, shortcut, value) {
+        menus.push({ label: name, value: value||name, key: key || '', shortcut: shortcut, callback: callback });
+    }
+
+    function runSiyuanCommand(command, type, event, functions, option, selection) {
+        if(type === 'plugin') {
+            if (command.callback) {
+                command.callback();
+            } else if (command.globalCallback) {
+                command.globalCallback();
+            }
+        } else {
+            setTimeout(()=>{
+                openAny.click('#barCommand').click(`#commands [data-command="${command}"]`);
+            }, 0);
+        }
     }
 
     // see https://github.com/siyuan-note/siyuan/blob/1317020c1791edf440da7f836d366567e03dd843/app/src/protyle/util/compatibility.ts#L409
@@ -316,6 +367,51 @@
         };
         check();
       });
+    }
+
+    function isMobile() {
+        return !!document.getElementById("sidebar");
+    }
+
+    function isBrowser() {
+        return !navigator.userAgent.startsWith("SiYuan") ||
+            navigator.userAgent.indexOf("iPad") > -1 ||
+            (/Android/.test(navigator.userAgent) && !/(?:Mobile)/.test(navigator.userAgent));
+    }
+
+    function isMac() {
+        return navigator.platform.indexOf("Mac") > -1;
+    }
+
+    function updateHotkeyTip(hotkey) {
+        if (isMac()) {
+            return hotkey;
+        }
+    
+        const KEY_MAP = new Map(Object.entries({
+            "⌘": "Ctrl",
+            "⌃": "Ctrl",
+            "⇧": "Shift",
+            "⌥": "Alt",
+            "⇥": "Tab",
+            "⌫": "Backspace",
+            "⌦": "Delete",
+            "↩": "Enter",
+        }));
+    
+        const keys = [];
+    
+        if ((hotkey.indexOf("⌘") > -1 || hotkey.indexOf("⌃") > -1)) keys.push(KEY_MAP.get("⌘"));
+        if (hotkey.indexOf("⇧") > -1) keys.push(KEY_MAP.get("⇧"));
+        if (hotkey.indexOf("⌥") > -1) keys.push(KEY_MAP.get("⌥"));
+    
+        // 不能去最后一个，需匹配 F2
+        const lastKey = hotkey.replace(/⌘|⇧|⌥|⌃/g, "");
+        if (lastKey) {
+            keys.push(KEY_MAP.get(lastKey) || lastKey);
+        }
+    
+        return keys.join("+");
     }
 
     function generateReward(node) {
