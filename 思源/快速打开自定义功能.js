@@ -1,0 +1,330 @@
+// 快速打开自定义功能
+// version 0.0.1
+// 使用帮助
+// 建议把代码放到runjs插件的代码块中方便修改和添加菜单项（当然直接把该代码放到js代码片段中也行，代码片段修改后需要刷新页面）
+// 然后，把下面的这行代码放到js代码片段中加载时运行即可（注意，外部调用runjs代码块，先要给块命名，然后保存为可调用的方法）
+// runjs调用 runJs.plugin.call('quickOpen')
+// runjs中修改代码后，只需点击「块菜单——>Run JS——> 运行代码」即可
+//                  或将光标聚焦在代码块中，然后按 alt + F5 即可运行当前的代码块
+// 如何添加新菜单？
+// 只需要“自定义菜单区 开始”和“自定义菜单区 结束”直接添加 addMenu('菜单名', ()=>{})即可
+// 比如：addMenu('demo1', ()=>{alert('demo1')}, 'D'); 这里第三个参数D代表当菜单出现时按D键直接选中demo1这个菜单
+(async (menus = [], pressKey = '' /* 👈修改快捷键可在这里修改pressKey，默认ctrl+; 修改后pressKey后需要刷新页面 */)=>{
+    ///////////////////////////////// 自定义菜单区 开始 /////////////////////////////////
+    // 打开本代码片编辑窗口
+    addMenu('打开本代码片编辑窗口', (event, {getProtyleEl, showErrorMessage}) => {
+        // 如果在runjs代码块中，设置这个代码块的可调用方法名，如果不在runjs中保持空或注释即可
+        const runjsCallableName = 'quickOpen';
+  
+        // 如果在代码片段中，设置这个代码片段的名字，如果不在代码片段中保持空或注释即可
+        const snippetName = '快速打开自定义功能';
+  
+        // 当二者都配置的话，runjs优先（代码片段修改代码后需要刷新页面，runjs只需要按alt+f5即可）
+        if(typeof runjsCallableName !== 'undefined' && runjsCallableName) {
+            const codeBlockId = window.siyuan.ws.app.plugins.find(item=>item.name==='sy-run-js')?.data["Callable.json"]?.quickOpen;
+            if(!codeBlockId) showErrorMessage('没有找到'+runjsCallableName+'的代码块');
+            window.open('siyuan://blocks/'+codeBlockId);
+        } else {
+            openAny.clicks('#barWorkspace', '[data-id="config"]', '[data-name="appearance"]', '#codeSnippet', '[data-key="dialog-setting"] svg.b3-dialog__close', '[data-type="js"]').input(typeof snippetName === 'undefined' ? '' : snippetName, '[data-action="search"][data-type="js"]');
+        }
+    }, 'E');
+
+    // 移动当前文档到
+    addMenu('移动当前文档到', (event, {getProtyleEl}) => {
+        openAny.click('[data-type="doc"]', getProtyleEl()).click('[data-name="titleMenu"] button[data-id="move"]');
+    }, 'M');
+  
+    // Bing搜索
+    addMenu('Bing搜索', (event, {getSelectedText}) => {
+        // 搜索引擎URL，%s% 是搜索关键词
+        const searchUrl = 'https://cn.bing.com/search?q=%s%&form=QBRE';
+        window.open(searchUrl.replace('%s%', getSelectedText()));
+    }, 'B');
+  
+    // 问DeepSeek
+    addMenu('问DeepSeek', (event, {getSelectedText}) => {
+        // ai引擎URL，%s% 是查询关键词，支持deepseek-r1
+        const aiUrl = 'https://chat.baidu.com/search?word=%s%';
+        window.open(aiUrl.replace('%s%', getSelectedText()));
+    }, 'D');
+  
+    // 打开翻译
+    addMenu('打开翻译', (event, {getSelectedText}) => {
+        // 翻译引擎URL，%s% 是翻译关键词
+        const fanyiUrl = 'https://fanyi.baidu.com/mtpe-individual/multimodal?query=%s%';
+        window.open(fanyiUrl.replace('%s%', getSelectedText()));
+    }, 'T');
+  
+    // 打开查词
+    addMenu('打开查词', (event, {getSelectedText}) => {
+        const url = 'https://www.iciba.com/word?w=%s%';
+        window.open(url.replace('%s%', getSelectedText()));
+    });
+  
+    // 打开设置
+    addMenu('打开设置', (event, {}) => {
+        openAny.pressByKeymap('config');
+    });
+  
+    // 打开日记
+    addMenu('打开日记', (event, {}) => {
+        // 在这里输入你想在哪个笔记本中打开今日日记
+        const noteBookName = '我的笔记';
+        // 这里用wwhenExist先等待指定元素出现，否则需要在do内调用 await new OpenAny().whenExist()等待目标出现
+        openAny.click('#barWorkspace').whenExist('[data-name="barWorkspace"]').do(()=>{
+            const subMenuItems = [...openAny.queryElAll('[data-id="dailyNote"] .b3-menu__label')];
+            const notebutton = subMenuItems.find(item => item.textContent === noteBookName)?.closest('button.b3-menu__item');
+            // 返回链元素，供下一个链click调用，也可以直接在这里click，不用再次调用下一个链click
+            return notebutton;
+        }).click();
+    });
+  
+    // 打开集市
+    addMenu('打开集市', (event, {}) => {
+        openAny.clicks('#barWorkspace', '[data-id="config"]', '[data-name="bazaar"]');
+    });
+  
+    // 打开代码片段
+    addMenu('打开代码片段', (event, {}) => {
+        openAny.clicks('#barWorkspace', '[data-id="config"]', '[data-name="appearance"]', '#codeSnippet', '[data-key="dialog-setting"] svg.b3-dialog__close');
+    }, 'S');
+  
+    // 打开快捷键设置
+    addMenu('打开快捷键设置', (event, {}) => {
+        openAny.clicks('#barWorkspace', '[data-id="config"]', '[data-name="keymap"]');
+    });
+  
+    // 打开搜索
+    addMenu('打开思源搜索', (event, {}) => {
+        openAny.press('alt+p');
+    });
+  
+    // 打开仅搜索文档
+    addMenu('打开仅搜索文档', (event, {}) => {
+        // 请参考 ctrl+shif+p 全局搜索仅搜文档，然后把这个快捷键填尽量
+        openAny.press('ctrl+shif+p');
+    }, 'P');
+
+    // 模式切换
+    addMenu('模式切换', (event, {}) => {
+        const isPreview = document.querySelector('.protyle-preview:not(.fn__none) .protyle-preview__action');
+        if(!isPreview) openAny.press('alt+meta+9'); else openAny.press('alt+meta+7');
+    }, '7');
+  
+    // 打开链滴
+    addMenu('打开链滴', (event, {}) => {
+        window.open('https://ld246.com');
+    });
+  
+    // 打开我的博客
+    addMenu('打开我的博客', (event, {}) => {
+        window.open('https://pipe.b3log.org/blogs/wilsons');
+    });
+  
+    // 打开思源工作空间
+    addMenu('打开思源工作空间', (event, {showFileInFolder}) => {
+        showFileInFolder(window.siyuan.config.system.workspaceDir);
+    });
+  
+    // 打开计算器
+    addMenu('打开计算器', (event, {runCmd, isMac}) => {
+        let cmd = `start calc`;
+        if(isMac()) cmd = `open -a Calculator`;
+        runCmd(cmd);
+    }, 'C');
+  
+    // 字母大小写转换
+    addMenu('字母大小写转换', (event, {getEditor}, {selectedText, selection, range}) => {
+        let text = selectedText;
+        if(/[a-z]/.test(text)) {
+            text = text.toUpperCase();
+        } else {
+            text = text.toLowerCase();
+        }
+        // 替换选中的文本
+        range.deleteContents();
+        range.insertNode(document.createTextNode(text));
+
+        // 恢复选中范围
+        selection.removeAllRanges();
+        selection.addRange(range);
+        //const editor = getEditor();
+        //openAny.sendText(text, editor);
+    });
+
+    ///////////////////////////////// 自定义菜单区 结束 /////////////////////////////////
+
+    // 等待openAny加载完毕  
+    await waitFor(() => typeof openAny !== 'undefined');
+
+    // 生成菜单列表
+    const handler = async (event, functions)=>{
+        event.preventDefault();
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        const selectedText = selection.toString();
+        const lastSelected = await getStorageVal('local-quickopen-selected');
+        if(lastSelected) {
+            const lastSelectedItem = menus.find(item=>item.selected);
+            if(lastSelectedItem) lastSelectedItem.selected=false;
+            const selectedItem = menus.find(item=>item.label===lastSelected);
+            if(selectedItem) selectedItem.selected=true;
+        }
+        functions.whenElementExist('.open-any-menu-title:not([data-reward="true"])').then((title)=>{
+            const search = title.querySelector('.open-any-menu-search');
+            if(search) {
+                search.style.width = 'calc(100% - 74px)';
+                generateReward(title);
+                title.dataset.reward = true;
+            }
+        });
+        const selectedOption = await functions.showOptionsMenu(menus, {width:'min(800px, 100%)',maxWidth:'min(1000px, 100%)', height:'min(800px, calc(100% - 80px))', maxHeight:'min(800px, calc(100% - 80px))', search:true, menuItemStyle: 'text-align:left'});
+        if (selectedOption !== null) {
+            if(typeof selectedOption.callback === 'function') {
+                selectedOption.callback(event, functions, {selectedText, selection, range});
+                setStorageVal('local-quickopen-selected', selectedOption.label);
+            } else {
+                alert(selectedOption.callback+' 不是有效的函数');
+            }
+        }
+    };
+    pressKey = pressKey || (openAny.fn.isMac() ? 'meta+;' : 'ctrl+;');
+    openAny.removeKeymap(pressKey); // 注意，这里未提供callback时，会删除同名的所有监听
+    openAny.addKeymap(pressKey, handler);
+
+    // 生成拼音和拼音首字母
+    setTimeout(async ()=>{
+        let pinyinCache = await getFile('/data/storage/quickopen_pinyin_catche.json') || '{}';
+        pinyinCache = JSON.parse(pinyinCache);
+        if(pinyinCache.code && pinyinCache.code !== 0) pinyinCache = {};
+        let hasNewCache = false;
+        for (const menu of menus) {
+            try {
+                const words = encodeURIComponent(menu.label);
+                if(!pinyinCache[menu.label]) pinyinCache[menu.label] = {};
+                // 生成汉字拼音
+                let pinyin = pinyinCache[menu.label]?.pinyin;
+                if(!pinyin) {
+                    pinyin = await (await fetch('https://tools.getquicker.cn/api/Chinese/GetPinyin?source='+words+'&tone=false&forName=false')).text();
+                    if(pinyin) {
+                        pinyinCache[menu.label].pinyin = pinyin;
+                        hasNewCache = true;
+                    }
+                }
+                if(pinyin) menu.pinyin = pinyin;
+                // 生成拼音首字母
+                let pinyinFirst = pinyinCache[menu.label]?.pinyinFirst;
+                if(!pinyinFirst) {
+                    pinyinFirst = await (await fetch('https://tools.getquicker.cn/api/Chinese/GetFirstPinyin?source='+words)).text();
+                    if(pinyinFirst) {
+                        pinyinCache[menu.label].pinyinFirst = pinyinFirst;
+                        hasNewCache = true;
+                    }
+                }
+                if(pinyinFirst) menu.pinyinFirst = pinyinFirst;
+            } catch(e) {
+                console.warn(e);
+                return;
+            }
+        }
+        if(hasNewCache) {
+            putFile('/data/storage/quickopen_pinyin_catche.json', JSON.stringify(pinyinCache));
+        }
+    }, 0);
+
+    // 添加菜单函数
+    function addMenu(name, callback, key, value) {
+        menus.push({ label: name, value: value||name, key: key || '', callback: callback });
+    }
+
+    // see https://github.com/siyuan-note/siyuan/blob/1317020c1791edf440da7f836d366567e03dd843/app/src/protyle/util/compatibility.ts#L409
+    async function setStorageVal(key, val, cb) {
+        if (window.siyuan.config.readonly) {
+            return;
+        }
+        const result = await fetchSyncPost("/api/storage/setLocalStorageVal", {
+            app: window.siyuan.ws.app.appId,
+            key,
+            val,
+        });
+        if(result && result.code === 0) {
+            if (cb) {
+                cb();
+            }
+            return result;
+        }
+    }
+  
+    // see https://github.com/siyuan-note/siyuan/blob/e47b8efc2f2611163beca9fad4ee5424001515ff/app/src/protyle/util/compatibility.ts#L258
+    async function getStorageVal(key) {
+        const result = await fetchSyncPost("/api/storage/getLocalStorage");
+        if(result && result.code === 0 && result.data) {
+            return result.data[key];
+        }
+    }
+
+    async function fetchSyncPost(url, data, method = 'POST') {
+        return await (await fetch(url, {method: method, body: JSON.stringify(data||{})})).json();
+    }
+
+    // 获取文件
+    async function getFile(path) {
+        return fetch("/api/file/getFile", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                path,
+            }),
+        }).then((response) => {
+            if (response.ok) {
+                return response.text();
+            } else {
+                throw new Error("Failed to get file content");
+            }
+        }).catch((error) => {
+            console.error(error);
+        });
+    }
+
+    // 存储文件，支持创建文件夹，当isDir true时创建文件夹，忽略文件
+     async function putFile(path, content = '', isDir = false) {
+        const formData = new FormData();
+        formData.append("path", path);
+        formData.append("isDir", isDir)
+        formData.append("file", new Blob([content]));
+        const result = await fetch("/api/file/putFile", {
+            method: "POST",
+            body: formData,
+        });
+        const json = await result.json();
+        return json;
+    }
+
+    function waitFor(conditionFn, timeoutMs=5000) {
+      return new Promise((resolve, reject) => {
+        const start = Date.now();
+        const check = () => {
+          if(typeof conditionFn === 'string') 
+              conditionFn = () => document.querySelector(conditionFn);
+          const result = conditionFn();
+          if (result) resolve(result);
+          else if (Date.now() - start > timeoutMs) reject();
+          else requestAnimationFrame(check); // 利用浏览器刷新周期
+        };
+        check();
+      });
+    }
+
+    function generateReward(node) {
+        const a = document.createElement('a');
+        a.href = 'https://ld246.com';
+        a.textContent = '打赏作者';
+        a.target = '_blank';
+        a.style.position = 'absolute';
+        a.style.right = '0';
+        a.style.top = '22px';
+        node.appendChild(a);
+    }
+})();
