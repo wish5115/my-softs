@@ -1,4 +1,5 @@
 // 快速打开自定义功能
+// see https://ld246.com/article/1745488922117
 // version 0.0.1
 // 使用帮助
 // 建议把代码放到runjs插件的代码块中方便修改和添加菜单项（当然直接把该代码放到js代码片段中也行，代码片段修改后需要刷新页面）
@@ -319,7 +320,7 @@
 
     function generateReward(node) {
         const a = document.createElement('a');
-        a.href = 'https://ld246.com';
+        a.href = 'https://ld246.com/article/1745488922117#%E6%89%93%E8%B5%8F%E4%BD%9C%E8%80%85';
         a.textContent = '打赏作者';
         a.target = '_blank';
         a.style.position = 'absolute';
