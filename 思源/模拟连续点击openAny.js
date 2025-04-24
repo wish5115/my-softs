@@ -1460,10 +1460,11 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
           const input = document.createElement(lines>1 ? 'textarea' : 'input');
           //const submitBtn = document.createElement('button');
           input.className = 'b3-text-field fn__block';
+          const ctrl = !enterSubmit && lines > 1 ? 'ctrl+' : '';
           const ln = lines > 1 ? "\n" : "，";
-          input.placeholder = placeholder || "回车提交{1}，Esc或点击空白处取消"+ln+"支持Markdown语法";
+          input.placeholder = placeholder || ctrl+"回车提交{1}，Esc或点击空白处取消"+ln+"支持Markdown语法";
           if(lines > 1) input.setAttribute('rows', lines);
-          input.placeholder = input.placeholder.replace('{1}', lines > 1 ? '，Shift+回车换行' : '');
+          input.placeholder = input.placeholder.replace('{1}', lines > 1 && enterSubmit ? '，Shift+回车换行' : '');
           //submitBtn.className = 'b3-button fn__size200 b3-button--outline';
           // 添加基础样式
           Object.assign(mask.style, {
@@ -1526,7 +1527,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             resolve(null);
           };
           const handleKeyDown = (e) => {
-            if(enterSubmit) {
+            if(enterSubmit || lines === 1) {
                 if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey) handleConfirm();
             } else {
                 if (e.key === 'Enter' && e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey) handleConfirm();
