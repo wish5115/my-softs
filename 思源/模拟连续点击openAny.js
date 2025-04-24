@@ -1,12 +1,13 @@
 // 模拟连续点击 openAny
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 // see https://ld246.com/article/1744896396694
-// version 0.0.4
+// version 0.0.5
 // 0.0.2 增加toolbar出现事件；选项菜单；输入框；改进事件传递机制，默认捕获阶段触发；增加鼠标事件；增加newSetStyle函数
 // 0.0.3 改进promise执行链，更加健壮和可调试性，增加catch方法
 // 0.0.3.1 改进输入框和选项菜单样式和支持手机版
 // 0.0.3.2 优化细节，修复bug
 // 0.0.4 支持模拟鼠标操作，比如 ctrl+mouseleft, ctrl+mouseright，打开本地文件，交互对话框等；setKeymap更改为addKeymap；新增removeKeymap;
+// 0.0.5 选项菜单增加快捷键支持，参数增加closeMenu调用及disableClose参数在需要时可禁用关闭
 
 // 调用方式：
 // 注意：选择符不一定要全局唯一，只要能达到目的且不会产生歧义及副作用即可
@@ -1554,9 +1555,9 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     // 使用示例：调用异步选项菜单
     // async function demo() {
     //     const options = [
-    //       { label: '选项 1', value: 'value1', key: 'a', pinyin: '', pinyinFirst: '', callback: () => {} },
-    //       { label: '选项 2', value: 'value2', key: 'b', pinyin: '', pinyinFirst: '', callback: () => {} },
-    //       { label: '选项 3', value: 'value3', key: 'c', pinyin: '', pinyinFirst: '', callback: () => {} }
+    //       { label: '选项 1', value: 'value1', key: 'a', pinyin: '', pinyinFirst: '', shortcut: '', callback: () => {} },
+    //       { label: '选项 2', value: 'value2', key: 'b', pinyin: '', pinyinFirst: '', shortcut: '', callback: () => {} },
+    //       { label: '选项 3', value: 'value3', key: 'c', pinyin: '', pinyinFirst: '', shortcut: '', callback: () => {} }
     //     ];
     //     const selectedOption = await showOptionsMenu(options);
     //     if (selectedOption === null) {
@@ -1651,6 +1652,9 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             background-color: white;
             font-size: 16px;
         }
+        .open-any-menu-search .b3-text-field {
+            box-shadow: none;
+        }
         .open-any-menu-search .b3-text-field:not(.b3-text-field--text):focus{
             box-shadow: none;
             /*box-shadow: inset 0 0 0 1px #3575f0, 0 0 0 3px rgba(53, 117, 240, .12);*/
@@ -1658,6 +1662,9 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
         .open-any-menu-search .b3-text-field:not(.b3-text-field--text):hover{
             /*box-shadow: inset 0 0 0 .6px #222;*/
             box-shadow: none;
+        }
+        .open-any-menu-item-shortcut{
+            float: right;
         }
    `);
    const setMenuItemStyle = newSetStyle();
@@ -1771,12 +1778,13 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                 options.forEach((option, index) => {
                     const menuItem = document.createElement('div');
                     menuItem.className = 'open-any-menu-item';
-                    menuItem.innerHTML = `<span class="open-any-menu-item-text">${option.label}</span><span class="open-any-menu-item-key">${option?.key?.toUpperCase()?.replace(/(.+)/, '($1)') || ''}</span>`;
+                    menuItem.innerHTML = `<span class="open-any-menu-item-text">${option.label}</span><span class="open-any-menu-item-key">${option?.key?.toUpperCase()?.replace(/(.+)/, '($1)') || ''}</span><span class="open-any-menu-item-shortcut">${option?.shortcut||''}</span>`;
                     menuItem.addEventListener('click', (event) => {
                         //event.preventDefault(); // 阻止默认行为
                         option.index = index;
+                        option.closeMenu = closeMenu;
                         resolve(option); // 返回用户选择的值
-                        closeMenu();
+                        if(!option.disableClose) closeMenu();
                     });
                     menuBody.appendChild(menuItem);
                     // 保存菜单项到列表
@@ -1919,7 +1927,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             // 关闭菜单时清理事件监听器
             function closeMenu() {
                 //overlay.style.display = 'none';
-                overlay.remove();
+                overlay?.remove();
                 document.removeEventListener('keydown', handleKeyDown, true);
             }
     
