@@ -11,6 +11,7 @@
 // 如何添加新菜单？
 // 只需要“自定义菜单区 开始”和“自定义菜单区 结束”直接添加 addMenu('菜单名', ()=>{})即可
 // 比如：addMenu('demo1', (event, functions, option, selection)=>{alert('demo1')}, 'D', 'shortcut'); 这里第三个参数D代表当菜单出现时按D键直接选中demo1这个菜单
+// 注意，弹出菜单可能使编辑器失去焦点，有些操作可能需要编辑器聚焦才有效，如果有问题，可以试试用setTimeout(()=>{},0)来延迟下。
 (async (menus = [], pressKey = '' /* 👈修改快捷键可在这里修改pressKey，默认ctrl+; 修改后pressKey后需要刷新页面 */)=>{
     ///////////////////////////////// 自定义菜单区 开始 /////////////////////////////////
     // 打开本代码片编辑窗口
@@ -229,7 +230,7 @@
             addMenu(`${plugin.displayName}: ${command.langText || plugin.i18n[command.langKey]}`, (event, functions, option, selection)=>runSiyuanCommand(command, 'plugin', event, functions, option, selection), '', !isMobile()?updateHotkeyTip(command.customHotkey):'', `${plugin.displayName}: ${command.langText || plugin.i18n[command.langKey]}`);
         });
     });
-    
+  
     // 生成拼音和拼音首字母
     setTimeout(async ()=>{
         let pinyinCache = await getFile('/data/storage/quickopen_pinyin_catche.json') || '{}';
@@ -283,6 +284,7 @@
                 command.globalCallback();
             }
         } else {
+            // 这里有些操作可能需要编辑器聚焦才有效，因此使用setTimeout(()=>{},0)来延迟下
             setTimeout(()=>{
                 openAny.click('#barCommand').click(`#commands [data-command="${command}"]`);
             }, 0);
@@ -387,7 +389,7 @@
         if (isMac()) {
             return hotkey;
         }
-    
+  
         const KEY_MAP = new Map(Object.entries({
             "⌘": "Ctrl",
             "⌃": "Ctrl",
@@ -398,19 +400,19 @@
             "⌦": "Delete",
             "↩": "Enter",
         }));
-    
+  
         const keys = [];
-    
+  
         if ((hotkey.indexOf("⌘") > -1 || hotkey.indexOf("⌃") > -1)) keys.push(KEY_MAP.get("⌘"));
         if (hotkey.indexOf("⇧") > -1) keys.push(KEY_MAP.get("⇧"));
         if (hotkey.indexOf("⌥") > -1) keys.push(KEY_MAP.get("⌥"));
-    
+  
         // 不能去最后一个，需匹配 F2
         const lastKey = hotkey.replace(/⌘|⇧|⌥|⌃/g, "");
         if (lastKey) {
             keys.push(KEY_MAP.get(lastKey) || lastKey);
         }
-    
+  
         return keys.join("+");
     }
 
