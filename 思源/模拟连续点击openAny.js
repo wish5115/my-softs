@@ -1,13 +1,14 @@
 // 模拟连续点击 openAny
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 // see https://ld246.com/article/1744896396694
-// version 0.0.5
+// version 0.0.5.1
 // 0.0.2 增加toolbar出现事件；选项菜单；输入框；改进事件传递机制，默认捕获阶段触发；增加鼠标事件；增加newSetStyle函数
 // 0.0.3 改进promise执行链，更加健壮和可调试性，增加catch方法
 // 0.0.3.1 改进输入框和选项菜单样式和支持手机版
 // 0.0.3.2 优化细节，修复bug
 // 0.0.4 支持模拟鼠标操作，比如 ctrl+mouseleft, ctrl+mouseright，打开本地文件，交互对话框等；setKeymap更改为addKeymap；新增removeKeymap;
 // 0.0.5 选项菜单增加快捷键支持，参数增加closeMenu调用及disableClose参数在需要时可禁用关闭
+// 0.5.1 修复openAny.addKeymap方法注册的事件，无法被openAny.press触发的问题
 
 // 调用方式：
 // 注意：选择符不一定要全局唯一，只要能达到目的且不会产生歧义及副作用即可
@@ -480,13 +481,13 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             });
             // 判断快捷键是否包含鼠标按键
             if(!this.keymapMousedownBound && keyCombination.some(key => ['mouseleft', 'mousemiddle', 'mouseright'].includes(key))) {
-                (node||window).addEventListener('mousedown', this.handleKeyDown.bind(this, this.functions), options || true);
+                (node||document).addEventListener('mousedown', this.handleKeyDown.bind(this, this.functions), options || true);
                 this.keymapMousedownBound = true;
             } else if(!this.keymapMouseOverBound && keyCombination.includes('mouseover')) {
-                (node||window).addEventListener('mouseover', this.handleKeyDown.bind(this, this.functions), options || true);
+                (node||document).addEventListener('mouseover', this.handleKeyDown.bind(this, this.functions), options || true);
                 this.keymapMouseOverBound = true;
             } else if(!this.keymapKeydownBound) {
-                (node||window).addEventListener('keydown', this.handleKeyDown.bind(this, this.functions), options || true);
+                (node||document).addEventListener('keydown', this.handleKeyDown.bind(this, this.functions), options || true);
                 this.keymapKeydownBound = true;
             }
             return this;
