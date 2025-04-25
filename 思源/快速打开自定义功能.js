@@ -104,8 +104,9 @@
   
     // 打开仅搜索文档
     addMenu('打开仅搜索文档', (event, {}) => {
-        // 请参考 ctrl+shif+p 全局搜索仅搜文档，然后把这个快捷键填尽量
-        openAny.press('ctrl+shif+p');
+        // 请参考 ctrl+shif+p 全局搜索仅搜文档，然后把这个快捷键填进来
+        const pressKey = openAny.fn.isMac() ? 'meta+shift+p' : 'ctrl+shift+p'
+        openAny.press(pressKey);
     }, 'P');
 
     // 模式切换
