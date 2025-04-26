@@ -179,7 +179,7 @@
     }
 
     ////////////// 保持与上一行的开始位置对齐（兜底方案） /////////////////
-    // 次方案是从光标位置扫描到上一个出现换行符的结点，从而计算出从上一个换行符到光标结点之间的空白符
+    // 此方案是从光标位置扫描到上一个出现换行符的结点，从而计算出从上一个换行符到光标结点之间的空白符
     function getCurrentIndent() {
         const selection = window.getSelection();
         if (!selection.rangeCount) return '';
