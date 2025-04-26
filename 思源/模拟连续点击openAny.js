@@ -1,7 +1,7 @@
 // 模拟连续点击 openAny
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 // see https://ld246.com/article/1744896396694
-// version 0.0.5.1
+// version 0.0.5.2
 // 0.0.2 增加toolbar出现事件；选项菜单；输入框；改进事件传递机制，默认捕获阶段触发；增加鼠标事件；增加newSetStyle函数
 // 0.0.3 改进promise执行链，更加健壮和可调试性，增加catch方法
 // 0.0.3.1 改进输入框和选项菜单样式和支持手机版
@@ -9,6 +9,7 @@
 // 0.0.4 支持模拟鼠标操作，比如 ctrl+mouseleft, ctrl+mouseright，打开本地文件，交互对话框等；setKeymap更改为addKeymap；新增removeKeymap;
 // 0.0.5 选项菜单增加快捷键支持，参数增加closeMenu调用及disableClose参数在需要时可禁用关闭
 // 0.5.1 修复openAny.addKeymap方法注册的事件，无法被openAny.press触发的问题
+// 0.5.2 修复按esc时，三大ui的关闭问题（当多个实例时，现在支持仅关闭最上层的实例，一层一层关）
 
 // 调用方式：
 // 注意：选择符不一定要全局唯一，只要能达到目的且不会产生歧义及副作用即可
@@ -1537,6 +1538,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             if (e.key === 'Escape') handleCancel();
           };
           const cleanup = () => {
+            if(!mask.matches('&:last-child')) return;
             document.body.removeChild(mask);
             input.removeEventListener('keydown', handleKeyDown);
             //submitBtn.removeEventListener('click', handleConfirm);
@@ -1927,6 +1929,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     
             // 关闭菜单时清理事件监听器
             function closeMenu() {
+                if(!overlay.matches('&:last-child')) return;
                 //overlay.style.display = 'none';
                 overlay?.remove();
                 document.removeEventListener('keydown', handleKeyDown, true);
@@ -2002,6 +2005,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     }*/
     // 创建对话框
     // 当不想关闭对话框时，可设置为options.disableClose=true;即可
+    let onDialogKeydownBind;
     function showDialog(options={}) {
         const disableClose = options.disableClose;
         const destroyCallback = options.destroyCallback;
@@ -2031,6 +2035,8 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                 event.stopPropagation();
             });
         }
+        onDialogKeydownBind = onDialogKeydown.bind(null, element, options);
+        document.addEventListener("keydown", onDialogKeydownBind, true);
         document.body.append(element);
         if (options.disableAnimation) {
             element.classList.add("b3-dialog--open");
@@ -2043,6 +2049,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     }
     function destroyDialog(element, options) {
         element.classList.remove("b3-dialog--open");
+        if(onDialogKeydownBind) document.removeEventListener("keydown", onDialogKeydownBind, true);
         setTimeout(() => {
             // av 修改列头emoji后点击关闭emoji图标
             if ((element.querySelector(".b3-dialog")).style.zIndex < window.siyuan.menus.menu.element.style.zIndex) {
@@ -2057,4 +2064,12 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             document.getElementById("drag")?.classList.remove("fn__hidden");
         }, 190);
     }
+    function onDialogKeydown(element, options, event) {
+        if (event.key === "Escape") {
+            if(!element.matches('&:last-child')) return;
+            if (!options.disableClose) {
+                destroyDialog(element, options);
+            }
+        }
+    };
 })();
