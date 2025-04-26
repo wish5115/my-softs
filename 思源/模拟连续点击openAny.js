@@ -2005,7 +2005,6 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     }*/
     // 创建对话框
     // 当不想关闭对话框时，可设置为options.disableClose=true;即可
-    let onDialogKeydownBind;
     function showDialog(options={}) {
         const disableClose = options.disableClose;
         const destroyCallback = options.destroyCallback;
@@ -2035,8 +2034,18 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                 event.stopPropagation();
             });
         }
-        onDialogKeydownBind = onDialogKeydown.bind(null, element, options);
-        document.addEventListener("keydown", onDialogKeydownBind, true);
+
+        const keydownHandler = (element, options, event) => {
+            if (event.key === "Escape") {
+                if(!element.matches('&:last-child')) return;
+                if (!options.disableClose) {
+                    destroyDialog(element, options);
+                }
+            }
+        };
+        element.keydownBind = keydownHandler.bind(null, element, options);
+        document.addEventListener("keydown", element.keydownBind, true);
+
         document.body.append(element);
         if (options.disableAnimation) {
             element.classList.add("b3-dialog--open");
@@ -2049,7 +2058,11 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     }
     function destroyDialog(element, options) {
         element.classList.remove("b3-dialog--open");
-        if(onDialogKeydownBind) document.removeEventListener("keydown", onDialogKeydownBind, true);
+        // 移除绑定的事件
+        if(element.keydownBind) {
+            document.removeEventListener("keydown", element.keydownBind, true);
+            element.keydownBind = null;
+        }
         setTimeout(() => {
             // av 修改列头emoji后点击关闭emoji图标
             if ((element.querySelector(".b3-dialog")).style.zIndex < window.siyuan.menus.menu.element.style.zIndex) {
@@ -2064,12 +2077,4 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             document.getElementById("drag")?.classList.remove("fn__hidden");
         }, 190);
     }
-    function onDialogKeydown(element, options, event) {
-        if (event.key === "Escape") {
-            if(!element.matches('&:last-child')) return;
-            if (!options.disableClose) {
-                destroyDialog(element, options);
-            }
-        }
-    };
 })();
