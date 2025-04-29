@@ -302,7 +302,7 @@
             const lang = detectLanguage()||'_default';
             const rules = langRules[lang]?.comment;
             if(!rules?.prefix) return;
-            toggleComment(rules?.prefix, rules?.suffix, rules?.isWrap);
+            toggleComment(rules?.prefix, rules?.suffix, rules?.isWrap, tabSpace);
         }
     }, true);
 
