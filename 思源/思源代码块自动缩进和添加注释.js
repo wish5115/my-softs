@@ -672,6 +672,7 @@
     
         let isWrapped = false;
         if (isWrap) {
+            // 多行注释，判断选中行是否已添加注释
             const trimmed = selectedText.trim();
             isWrapped = trimmed.startsWith(commentPrefix.trim()) && 
                        trimmed.endsWith(commentSuffix.trim()) &&
@@ -770,11 +771,13 @@
         const editableElement = range.startContainer.parentElement.closest('[contenteditable]');
         if (editableElement) editableElement.dispatchEvent(new Event('input', { bubbles: true }));
     }
-    
+
+    // 转义正则中的特殊字符
     function escapeRegExp(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
-    
+
+    // 判断某行是否已添加注释
     function isLineCommented(line, prefix, suffix) {
         const trimmedLine = line.trim();
         if (trimmedLine === '') return false;
@@ -784,12 +787,14 @@
             return trimmedLine.startsWith(prefix) && trimmedLine.endsWith(suffix);
         }
     }
-    
+
+    // 判断所有选中行是否已添加注释
     function isSelectionCommented(lines, prefix, suffix) {
         const nonEmptyLines = lines.filter(line => line.trim() !== '');
         return nonEmptyLines.length === 0 || nonEmptyLines.every(line => isLineCommented(line, prefix, suffix));
     }
-    
+
+    // 计算注释分割符前后的空格数
     function calculateCommentSpaces(str, prefix, suffix) {
         // 找到注释的起始和结束位置
         const start = str.indexOf(prefix);
@@ -815,6 +820,7 @@
         return { afterPrefix, beforeSuffix };
     }
     
+    // 替换最后一个匹配的字符，这里是匹配注释的结束符
     function replaceLastRegex(str, regex, replacement) {
         const matches = Array.from(str.matchAll(regex)); // 获取所有匹配项
         if (matches.length === 0) return str; // 没有匹配项，直接返回原字符串
