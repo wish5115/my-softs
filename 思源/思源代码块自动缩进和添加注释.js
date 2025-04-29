@@ -1,10 +1,11 @@
 // 思源代码块自动缩进和ctrl+/添加注释
 // see https://ld246.com/article/1745642027248
-// version 0.0.5
+// version 0.0.5.1
 // 0.0.2 改进计算光标前的空白符算法，从全结点扫描到仅扫描上一个换行符到光标处的结点，性能大幅度提升
 // 0.0.3 增加代码注释功能
 // 0.0.4 修复注释潜在bug，去掉commentWithSpace参数，改为配置设置空格数
 // 0.0.5 修复取消注释时的潜在bug
+// 0.0.5.1 改进取消注释时删除的空间计算逻辑，更加接近真实使用情形
 
 // 原理是首先获取上一行的缩进空白符，然后再根据不同语言的特点，在不同关键词下增加不同的缩进
 // 上一行的缩进空白符是保底缩进，如果是无法识别的语言，就默认与上一行缩进对齐了
@@ -686,14 +687,18 @@
             if (isWrapped) {
                 // 取消注释
 
+                // 计算分隔符的空格数
+                const prefixSpacesCount = countStringSpaces(commentPrefix, 'end');
+                const suffixSpacesCount = commentSuffix.length > 0 ? countStringSpaces(commentSuffix, 'start') : prefixSpacesCount;
+
                 // 去掉分隔符两边空格（兼容多种情况考虑）
                 commentPrefix = commentPrefix.trim();
                 commentSuffix = commentSuffix.trim();
                 
                 // 兼容多个空格情况
                 const spaces = calculateCommentSpaces(selectedText, commentPrefix, commentSuffix);
-                const prefixSpaces = spaces.afterPrefix % tabSpace > 0 ? ' '.repeat(spaces.afterPrefix % tabSpace) : '';
-                const suffixSpaces = spaces.beforeSuffix % tabSpace > 0 ? ' '.repeat(spaces.beforeSuffix % tabSpace) : '';
+                const prefixSpaces = spaces.afterPrefix % tabSpace > 0 ? ' '.repeat(prefixSpacesCount) : '';
+                const suffixSpaces = spaces.beforeSuffix % tabSpace > 0 ? ' '.repeat(suffixSpacesCount) : '';
                 processedText = selectedText.replace(new RegExp(`${escapeRegExp(commentPrefix)}${prefixSpaces}`), '');
                 //processedText = processedText.replace(new RegExp(`${suffixSpaces}${escapeRegExp(commentSuffix)}`), '');
                 processedText = replaceLastRegex(processedText, new RegExp(`${suffixSpaces}${escapeRegExp(commentSuffix)}`, 'g'), '');
@@ -727,6 +732,10 @@
             const isAllCommented = isSelectionCommented(lines, commentPrefix?.trim(), commentSuffix?.trim());
             // 如果都添加了注释，则取消注释，否则添加注释
             const shouldAdd = !isAllCommented;
+
+            // 计算分隔符的空格数
+            const prefixSpacesCount = countStringSpaces(commentPrefix, 'end');
+            const suffixSpacesCount = commentSuffix.length > 0 ? countStringSpaces(commentSuffix, 'start') : prefixSpacesCount;
     
             processedText = lines.map(line => {
                 if (line.trim() === '') return line;
@@ -738,15 +747,15 @@
                         commentPrefix + line;
                 } else {
                     // 取消注释
-                    
+
                     // 去掉分隔符两边空格（兼容多种情况考虑）
                     commentPrefix = commentPrefix.trim();
                     commentSuffix = commentSuffix.trim();
     
                     // 计算注释前缀后的空格和注释后缀前的空格
                     const spaces = calculateCommentSpaces(line, commentPrefix, commentSuffix);
-                    const prefixSpaces = spaces.afterPrefix % tabSpace > 0 ? ' '.repeat(spaces.afterPrefix % tabSpace) : '';
-                    const suffixSpaces = spaces.beforeSuffix % tabSpace > 0 ? ' '.repeat(spaces.beforeSuffix % tabSpace) : '';
+                    const prefixSpaces = spaces.afterPrefix % tabSpace > 0 ? ' '.repeat(prefixSpacesCount) : '';
+                    const suffixSpaces = spaces.beforeSuffix % tabSpace > 0 ? ' '.repeat(suffixSpacesCount) : '';
                     // 替换掉注释
                     const pattern = commentSuffix ? 
                         `^(\\s*)${escapeRegExp(commentPrefix)}${prefixSpaces}(.*?)${suffixSpaces}${escapeRegExp(commentSuffix)}(\\s*)$` :
@@ -835,6 +844,11 @@
             replacement + 
             str.slice(startIndex + matchedLength)
         );
+    }
+
+    // 获取字符串尾部空格数
+    function countStringSpaces(str, pos = 'end') {
+      return str.length - (pos === 'end' ? str.trimEnd() : str.trimStart()).length;
     }
 
     ////////////// 功能辅助函数部分 /////////////////
