@@ -41,6 +41,10 @@
             white-space: break-spaces;
             ${tooltipStyles}
         }
+        .mytooltip .message::selection {
+            /*color: white;*/
+            background-color: lightyellow;
+        }
         [data-theme-mode="light"] {
             /* 整个滚动条 */
             .mytooltip .message::-webkit-scrollbar {
