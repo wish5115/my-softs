@@ -1,113 +1,301 @@
-// 思源代码块自动缩进
+// 思源代码块自动缩进和ctrl+/添加注释
 //see https://ld246.com/article/1745642027248
-// version 0.0.2
+// version 0.0.3
 // 0.0.2 改进计算光标前的空白符算法，从全结点扫描到仅扫描上一个换行符到光标处的结点，性能大幅度提升
+// 0.0.3 增加代码注释功能
 
 // 原理是首先获取上一行的缩进空白符，然后再根据不同语言的特点，在不同关键词下增加不同的缩进
 // 上一行的缩进空白符是保底缩进，如果是无法识别的语言，就默认与上一行缩进对齐了
 // 如果是已知语言的已知关键词，则根据langRules配置里的规则，调用action进行计算最终缩进
 (() => {
+    // 是否开启自动缩进 true 开启 false 不开启
+    const isEnableAutoIndent = true;
+    
+    // 是否开启添加注释 true 开启 false 不开启
+    // ctrl/meta + / 添加注释，再次按ctrl/meta + / 则取消注释
+    const isEnableComment = true;
+    
     ////////////// 多语言配置部分 /////////////////
     // 可扩展更多语言规则
     // 正则表示不同关键词结尾的前面应该加什么样的缩进，具体缩进数由action函数决定
     // action 默认调用addIndent添加缩进，默认是上一行的缩进+空格或tab（这个由思源 tab 空格数设置决定的）
     // 当然也可以在action里自行处理，base参数就是上一行的缩进空白符
     const langRules = {
-      // JavaScript/TypeScript
-      javascript: {
-        pattern: /([{([]|=>|\b(if|for|while|switch|function|class)\b.*\))\s*$/,
-        action: (base) => addIndent(base)
-      },
+        // JavaScript/TypeScript
+        javascript: {
+            pattern: /([{([]|=>|\b(if|for|while|switch|function|class)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ', // 单行注释
+                suffix: '',
+                isWrap: false
+            },
+        },
+
+        // js，同JavaScript
+        js: {
+            pattern: /([{([]|=>|\b(if|for|while|switch|function|class)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '//', // 单行注释
+                suffix: '',
+                isWrap: false
+            },
+        },
     
-      // Python
-      python: {
-        pattern: /(:\s*|\\\s*)$/,  // 冒号结尾或行尾续行符
-        action: (base) => addIndent(base)
-      },
+        // Python
+        python: {
+            pattern: /(:\s*|\\\s*)$/,  // 冒号结尾或行尾续行符
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '# ', // 单行注释
+                suffix: '',
+                isWrap: false
+            },
+        },
     
-      // HTML/XML
-      html: {
-        pattern: /<(?!\/?[a-z]+\s*\/?>)[^>]+>$/i,  // 未闭合标签
-        action: (base) => addIndent(base)
-      },
+        // HTML/XML
+        html: {
+            pattern: /<(?!\/?[a-z]+\s*\/?>)[^>]+>$/i,  // 未闭合标签
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '<!--', // 多行注释包裹
+                suffix: '-->',
+                isWrap: true
+            },
+        },
     
-      // CSS/LESS/SCSS
-      css: {
-        pattern: /{\s*$/,  // CSS规则开始
-        action: (base) => addIndent(base)
-      },
+        // CSS/LESS/SCSS
+        css: {
+            pattern: /{\s*$/,  // CSS规则开始
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '/* ', // 多行注释包裹（CSS 无单行注释）
+                suffix: ' */',
+                isWrap: true
+            },
+        },
     
-      // Java/C/C++/C#
-      java: {
-        pattern: /([{([]|\b(if|for|while|switch)\b.*\))\s*$/,
-        action: (base) => addIndent(base)
-      },
+        // Java/C/C++/C#
+        java: {
+            pattern: /([{([]|\b(if|for|while|switch)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ', // 单行注释
+                suffix: '',
+                isWrap: false
+            },
+        },
     
-      // PHP
-      php: {
-        pattern: /(:\s*|{\s*|\(|\[|\b(if|foreach|for|while|switch|function)\b.*\))\s*$/,
-        action: (base) => addIndent(base)
-      },
+        // PHP
+        php: {
+            pattern: /(:\s*|{\s*|\(|\[|\b(if|foreach|for|while|switch|function)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ', // 单行注释
+                suffix: '',
+                isWrap: false
+            },
+        },
     
-      // Ruby
-      ruby: {
-        pattern: /(\b(do|if|unless|while|until|def|class|module)\b.*|\{\s*|->\s*)$/,
-        action: (base) => addIndent(base)
-      },
+        // Ruby
+        ruby: {
+            pattern: /(\b(do|if|unless|while|until|def|class|module)\b.*|\{\s*|->\s*)$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '# ', // 单行注释
+                suffix: '',
+                isWrap: false
+            },
+        },
     
-      // Swift
-      swift: {
-        pattern: /([{([]|\b(if|for|while|switch|func|class)\b.*\))\s*$/,
-        action: (base) => addIndent(base)
-      },
+        // Swift
+        swift: {
+            pattern: /([{([]|\b(if|for|while|switch|func|class)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ', // 单行注释
+                suffix: '',
+                isWrap: false
+            },
+        },
     
-      // Go
-      go: {
-        pattern: /([{([]|\b(if|for|switch|func)\b.*\))\s*$/,
-        action: (base) => addIndent(base)
-      },
+        // Go
+        go: {
+            pattern: /([{([]|\b(if|for|switch|func)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ', // 单行注释
+                suffix: '',
+                isWrap: false
+            },
+        },
+        // golang同Go
+        golang: {
+            pattern: /([{([]|\b(if|for|switch|func)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ', // 单行注释
+                suffix: '',
+                isWrap: false
+            },
+        },
     
-      // Rust
-      rust: {
-        pattern: /([{([]|\b(if|for|while|loop|match|fn)\b.*\))\s*$/,
-        action: (base) => addIndent(base)
-      },
+        // Rust
+        rust: {
+            pattern: /([{([]|\b(if|for|while|loop|match|fn)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ', // 单行注释
+                suffix: '',
+                isWrap: false
+            },
+        },
     
-      // SQL
-      sql: {
-        pattern: /(\b(BEGIN|CASE|WHEN|THEN|ELSE)\b|\(\s*)$/i,
-        action: (base) => addIndent(base)
-      },
+        // SQL
+        sql: {
+            pattern: /(\b(BEGIN|CASE|WHEN|THEN|ELSE)\b|\(\s*)$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '-- ', // 单行注释
+                suffix: '',
+                isWrap: false
+            },
+        },
     
-      // Markdown
-      markdown: {
-        pattern: /([*\-+]|\d+\.)\s.*$/,  // 列表项
-        action: (base) => addIndent(base, ' '.repeat(3))  // 列表缩进3空格
-      },
+        // Markdown
+        markdown: {
+            pattern: /([*\-+]|\d+\.)\s.*$/,  // 列表项
+            action: (base) => addIndent(base, ' '.repeat(3)),  // 列表缩进3空格
+            comment: {
+                prefix: '<!-- ', // HTML 式多行注释（Markdown 无原生注释）
+                suffix: ' -->',
+                isWrap: true
+            },
+        },
     
-      // YAML
-      yaml: {
-        pattern: /:\s*$/,  // 冒号结尾
-        action: (base) => addIndent(base, ' '.repeat(2))  // 固定2空格缩进
-      },
+        // YAML
+        yaml: {
+            pattern: /:\s*$/,  // 冒号结尾
+            action: (base) => addIndent(base, ' '.repeat(2)),  // 固定2空格缩进
+            comment: {
+                prefix: '# ', // 单行注释
+                suffix: '',
+                isWrap: false
+            },
+        },
+
+        // Shell/Bash
+        shell: {
+            pattern: /(\b(do|if|then|else|while|for|case)\b|{\s*|\(\s*)\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '# ', // 单行注释
+                suffix: '',
+                isWrap: false
+            },
+        },
+
+        // PowerShell
+        powershell: {
+            pattern: /({|\(|\[|\b(begin|process|end|if|foreach|for|while|function)\b.*)\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '# ', // 单行注释
+                suffix: '',
+                isWrap: false
+            },
+        },
+
+        // Batch (bat/cmd)
+        bat: {
+            pattern: /(\b(if|else|for)\b.*\))\s*$/i,
+            action: (base) => addIndent(base, ' '.repeat(4)), // 通常bat使用4空格缩进
+            comment: {
+                prefix: 'REM ', // 批处理注释
+                suffix: '',
+                isWrap: false
+            },
+        },
+        cmd: { // cmd复用bat的配置
+            pattern: /(\b(if|else|for)\b.*\))\s*$/i,
+            action: (base) => addIndent(base, ' '.repeat(4)),
+            comment: {
+                prefix: 'REM ',
+                suffix: '',
+                isWrap: false
+            },
+        },
+
+        // AppleScript
+        applescript: {
+            pattern: /(\b(on|tell|if|repeat|with|using terms from)\b|->\s*)\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '-- ', // AppleScript注释
+                suffix: '',
+                isWrap: false
+            },
+        },
+
+        // VBScript
+        vbscript: {
+            pattern: /(\b(If|For|Do|While|Function|Sub|Class)\b.*)\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: "' ",   //VBScript单引号注释
+                suffix: '',
+                isWrap: false
+            },
+        },
+         // vbs，同VBScript
+        vbs: {
+            pattern: /(\b(If|For|Do|While|Function|Sub|Class)\b.*)\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: "' ",   //VBScript单引号注释
+                suffix: '',
+                isWrap: false
+            },
+        },
     
-      // 通用规则（兜底）
-      _default: {
-        pattern: /([{([]|\b(if|for|while|function)\b.*\))\s*$/,
-        action: (base) => addIndent(base)
-      }
+        // 通用规则（兜底）
+        _default: {
+            pattern: /([{([]|\b(if|for|while|function)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ', // 默认使用单行注释
+                suffix: '',
+                isWrap: false
+            },
+        }
     };
     
     ////////////// 监听回车事件部分 /////////////////
     let hljs;
     const tabSpace = window.siyuan?.config?.editor?.codeTabSpaces || 4;
     document.addEventListener('keydown', (event) => {
+        const ctrlKey = isMac() ? event.metaKey : event.ctrlKey;
         if (event.key === 'Enter') {
+            // 自动缩进事件
+            if(!isEnableAutoIndent) return;
             // 非代码块返回
             hljs = getCursorElement()?.closest('.hljs');
             if (!hljs) return;
             // 先获取当前缩进后再等待默认回车完成后插入空白符，因此这里不要阻止默认按键行为
             handleNewLineIndentation();
+        } else if (ctrlKey && event.key === '/' && !event.shiftKey && !event.altKey) {
+            // 添加注释事件
+            if(!isEnableComment) return;
+            // 非代码块返回
+            hljs = getCursorElement()?.closest('.hljs');
+            if (!hljs) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const lang = detectLanguage()||'_default';
+            const rules = langRules[lang]?.comment;
+            if(!rules?.prefix) return;
+            toggleComment(rules?.prefix, rules?.suffix, rules?.isWrap);
         }
     }, true);
 
@@ -314,6 +502,174 @@
     //   return nodes;
     // }
 
+    ////////////// 增加注释部分 /////////////////
+    function toggleComment(commentPrefix, commentSuffix, isWrap, tabSpace = 4) {
+        // isWrap 是否使用多行注释
+        // isWrapped 是否已添加了多行注释
+        if (!commentSuffix) {
+            isWrap = false;
+        }
+    
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+    
+        const range = selection.getRangeAt(0);
+        let selectedText = selection.toString();
+        const lines = selectedText.split('\n');
+    
+        let isWrapped = false;
+        if (isWrap) {
+            const trimmed = selectedText.trim();
+            isWrapped = trimmed.startsWith(commentPrefix) && 
+                       trimmed.endsWith(commentSuffix) &&
+                       (selectedText.startsWith(commentPrefix) || 
+                        selectedText.endsWith(commentSuffix));
+        }
+    
+        let processedText;
+        if (isWrap) {
+            // 多行注释
+            if (isWrapped) {
+                // 取消注释
+    
+                // 兼容多个空格情况
+                const spaces = calculateCommentSpaces(selectedText, commentPrefix, commentSuffix);
+                const prefixSpaces = spaces.afterPrefix % tabSpace > 0 ? ' '.repeat(spaces.afterPrefix % tabSpace) : '';
+                const suffixSpaces = spaces.beforeSuffix % tabSpace > 0 ? ' '.repeat(spaces.beforeSuffix % tabSpace) : '';
+                processedText = selectedText.replace(new RegExp(`${escapeRegExp(commentPrefix)}${prefixSpaces}`), '');
+                //processedText = processedText.replace(new RegExp(`${suffixSpaces}${escapeRegExp(commentSuffix)}`), '');
+                processedText = replaceLastRegex(processedText, new RegExp(`${suffixSpaces}${escapeRegExp(commentSuffix)}`, 'g'), '');
+    
+                // 仅兼容一个空格
+                // let prefixIndex = selectedText.indexOf(commentPrefix);
+                // let suffixIndex = selectedText.lastIndexOf(commentSuffix);
+    
+                // // 处理注释前缀后的空格
+                // let prefixEndIndex = prefixIndex + commentPrefix.length;
+                // if (selectedText[prefixEndIndex - 1] === ' ') {
+                //     prefixEndIndex++;
+                // }
+    
+                // // 处理注释后缀前的空格
+                // let suffixStartIndex = suffixIndex;
+                // if (selectedText[suffixStartIndex - 1] === ' ') {
+                //     suffixStartIndex--;
+                // }
+    
+                // processedText = selectedText.slice(0, prefixIndex) +
+                //                selectedText.slice(prefixEndIndex, suffixStartIndex) +
+                //                selectedText.slice(suffixIndex + commentSuffix.length);
+            } else {
+                // 添加注释
+                processedText = commentPrefix + selectedText + commentSuffix;
+            }
+        } else {
+            // 单行注释
+            // 选中行是否都添加了注释
+            const isAllCommented = isSelectionCommented(lines, commentPrefix, commentSuffix);
+            // 如果都添加了注释，则取消注释，否则添加注释
+            const shouldAdd = !isAllCommented;
+    
+            processedText = lines.map(line => {
+                if (line.trim() === '') return line;
+    
+                if (shouldAdd) {
+                    // 添加注释
+                    return commentSuffix ? 
+                        `${commentPrefix}${line}${commentSuffix}` : 
+                        commentPrefix + line;
+                } else {
+                    // 取消注释
+    
+                    // 计算注释前缀后的空格和注释后缀前的空格
+                    const spaces = calculateCommentSpaces(line, commentPrefix, commentSuffix);
+                    const prefixSpaces = spaces.afterPrefix % tabSpace > 0 ? ' '.repeat(spaces.afterPrefix % tabSpace) : '';
+                    const suffixSpaces = spaces.beforeSuffix % tabSpace > 0 ? ' '.repeat(spaces.beforeSuffix % tabSpace) : '';
+                    // 替换掉注释
+                    const pattern = commentSuffix ? 
+                        `^(\\s*)${escapeRegExp(commentPrefix)}${prefixSpaces}(.*?)${suffixSpaces}${escapeRegExp(commentSuffix)}(\\s*)$` :
+                        `^(\\s*)${escapeRegExp(commentPrefix)}${prefixSpaces}(.*?)$`;
+    
+                    return line.replace(new RegExp(pattern), commentSuffix ? '$1$2$3' : '$1$2');
+                }
+            }).join('\n');
+        }
+    
+        // 更新dom
+        range.deleteContents();
+        const textNode = document.createTextNode(processedText);
+        range.insertNode(textNode);
+    
+        range.selectNodeContents(textNode);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    
+        // 触发input事件
+        const editableElement = range.startContainer.parentElement.closest('[contenteditable]');
+        if (editableElement) editableElement.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    
+    function isLineCommented(line, prefix, suffix) {
+        const trimmedLine = line.trim();
+        if (trimmedLine === '') return false;
+        if (suffix === '') {
+            return trimmedLine.startsWith(prefix);
+        } else {
+            return trimmedLine.startsWith(prefix) && trimmedLine.endsWith(suffix);
+        }
+    }
+    
+    function isSelectionCommented(lines, prefix, suffix) {
+        const nonEmptyLines = lines.filter(line => line.trim() !== '');
+        return nonEmptyLines.length === 0 || nonEmptyLines.every(line => isLineCommented(line, prefix, suffix));
+    }
+    
+    function calculateCommentSpaces(str, prefix, suffix) {
+        // 找到注释的起始和结束位置
+        const start = str.indexOf(prefix);
+        const end = str.lastIndexOf(suffix);
+    
+        if (start === -1 || end === -1) {
+            return { afterPrefix: 0, beforeSuffix: 0 };
+        }
+        // 计算 /* 后的空格数
+        let afterPrefix = 0;
+        let i = start + prefix.length; // 从 /* 后面的第一个字符开始
+        while (i < end && str[i] === ' ') {
+            afterPrefix++;
+            i++;
+        }
+        // 计算 */ 前的空格数
+        let beforeSuffix = 0;
+        let j = end - 1; // 从 */ 前面的第一个字符开始
+        while (j >= start && str[j] === ' ') {
+            beforeSuffix++;
+            j--;
+        }
+        return { afterPrefix, beforeSuffix };
+    }
+    
+    function replaceLastRegex(str, regex, replacement) {
+        const matches = Array.from(str.matchAll(regex)); // 获取所有匹配项
+        if (matches.length === 0) return str; // 没有匹配项，直接返回原字符串
+    
+        // 获取最后一个匹配项的位置和长度
+        const lastMatch = matches[matches.length - 1];
+        const startIndex = lastMatch.index;
+        const matchedLength = lastMatch[0].length;
+    
+        return (
+            str.slice(0, startIndex) + 
+            replacement + 
+            str.slice(startIndex + matchedLength)
+        );
+    }
+
     ////////////// 功能辅助函数部分 /////////////////
     // 获取光标所在元素
     function getCursorElement() {
@@ -337,5 +693,10 @@
         // 通过双重事件循环等待确保浏览器完成布局
         await Promise.resolve();  // 等待当前任务完成
         await new Promise(r => requestAnimationFrame(r)); // 等待渲染更新
+    }
+
+    // 判断系统平台
+    function isMac() {
+        return navigator.platform.indexOf("Mac") > -1;
     }
 })();
