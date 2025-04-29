@@ -1,8 +1,9 @@
 // 思源代码块自动缩进和ctrl+/添加注释
 // see https://ld246.com/article/1745642027248
-// version 0.0.3
+// version 0.0.4
 // 0.0.2 改进计算光标前的空白符算法，从全结点扫描到仅扫描上一个换行符到光标处的结点，性能大幅度提升
 // 0.0.3 增加代码注释功能
+// 0.0.4 修复注释潜在bug，去掉commentWithSpace参数，改为配置设置空格数
 
 // 原理是首先获取上一行的缩进空白符，然后再根据不同语言的特点，在不同关键词下增加不同的缩进
 // 上一行的缩进空白符是保底缩进，如果是无法识别的语言，就默认与上一行缩进对齐了
@@ -16,9 +17,6 @@
     // 是否开启添加注释 true 开启 false 不开启
     // ctrl/meta + / 添加注释，再次按ctrl/meta + / 则取消注释
     const isEnableComment = true;
-
-    // 注释符后面（单行注释）或前面（多行注释结束符）是否添加空格，true 添加 false 不添加
-    const commentWithSpace = true;
     
     ////////////// 多语言配置部分 /////////////////
     // 可扩展更多语言规则
@@ -44,7 +42,7 @@
             pattern: /([{([]|=>|\b(if|for|while|switch|function|class)\b.*\))\s*$/i,
             action: (base) => addIndent(base),
             comment: {
-                prefix: '//', // 单行注释
+                prefix: '// ', // 单行注释
                 suffix: '',
                 isWrap: false
             },
@@ -66,8 +64,8 @@
             pattern: /<(?!\/?[a-z]+\s*\/?>)[^>]+>$/i,  // 未闭合标签
             action: (base) => addIndent(base),
             comment: {
-                prefix: '<!--', // 多行注释包裹
-                suffix: '-->',
+                prefix: '<!-- ', // 多行注释包裹
+                suffix: ' -->',
                 isWrap: false
             },
         },
@@ -262,6 +260,153 @@
             comment: {
                 prefix: "' ",   //VBScript单引号注释
                 suffix: '',
+                isWrap: false
+            },
+        },
+
+        // C++
+        "c++": {
+            pattern: /([{([]|\b(if|for|while|switch|class|namespace)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ', 
+                suffix: '',
+                isWrap: false
+            },
+        },
+        cpp: { // cpp 别名同 C++
+            pattern: /([{([]|\b(if|for|while|switch|class|namespace)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ',
+                suffix: '',
+                isWrap: false
+            },
+        },
+
+        // C
+        c: {
+            pattern: /([{([]|\b(if|for|while|switch)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '/* ', // C风格多行注释
+                suffix: ' */',
+                isWrap: false
+            },
+        },
+
+        // Objective-C
+        "objectivec": {
+            pattern: /(@(interface|implementation|protocol)\b|\b(if|for|while)\b.*\)|{\s*)\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ',
+                suffix: '',
+                isWrap: false
+            },
+        },
+        objc: { // objc 别名
+            pattern: /(@(interface|implementation|protocol)\b|\b(if|for|while)\b.*\)|{\s*)\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ',
+                suffix: '',
+                isWrap: false
+            },
+        },
+
+        // C#
+        "c#": {
+            pattern: /([{([]|\b(if|for|while|switch|class|namespace)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ',
+                suffix: '',
+                isWrap: false
+            },
+        },
+        csharp: { // csharp 别名
+            pattern: /([{([]|\b(if|for|while|switch|class|namespace)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ',
+                suffix: '',
+                isWrap: false
+            },
+        },
+
+        // VB.NET
+        "vbnet": {
+            pattern: /(\b(If|For|While|Select|Class|Sub|Function)\b.*)\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: "' ", 
+                suffix: '',
+                isWrap: false
+            },
+        },
+        
+        vb: { // vb 别名
+            pattern: /(\b(If|For|While|Select|Class|Sub|Function)\b.*)\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: "' ",
+                suffix: '',
+                isWrap: false
+            },
+        },
+
+        // Lua
+        lua: {
+            pattern: /(\b(do|if|then|else|for|while|function)\b|{\s*)\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '-- ', 
+                suffix: '',
+                isWrap: false
+            },
+        },
+
+        // Dart
+        dart: {
+            pattern: /([{([]|=>|\b(if|for|while|switch|class|function)\b.*\))\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ',
+                suffix: '',
+                isWrap: false
+            },
+        },
+
+        // Vim Script
+        vim: {
+            pattern: /(\b(function|if|for|while)\b.*)\s*$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '" ', 
+                suffix: '',
+                isWrap: false
+            },
+        },
+
+        // JSON (通常不需要自动缩进，但可添加基本规则)
+        json: {
+            pattern: /([{\[])\s*$/,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '// ', // JSON 本身不支持注释，但某些解析器允许
+                suffix: '',
+                isWrap: false
+            },
+        },
+
+        // XML (复用HTML配置并增强)
+        xml: {
+            pattern: /<(?!\/?[a-zA-Z]+\s*\/?>)[^>]+>$/i,
+            action: (base) => addIndent(base),
+            comment: {
+                prefix: '<!-- ',
+                suffix: ' -->',
                 isWrap: false
             },
         },
@@ -568,8 +713,7 @@
                 //                selectedText.slice(suffixIndex + commentSuffix.length);
             } else {
                 // 添加注释
-                const commentSpace = commentWithSpace ? ' ' : '';
-                processedText = commentPrefix + commentSpace + selectedText + commentSpace + commentSuffix;
+                processedText = commentPrefix + selectedText + commentSuffix;
             }
         } else {
             // 单行注释
@@ -583,10 +727,9 @@
     
                 if (shouldAdd) {
                     // 添加注释
-                    const commentSpace = commentWithSpace ? ' ' : '';
                     return commentSuffix ? 
-                        `${commentPrefix}${commentSpace}${line}${commentSpace}${commentSuffix}` : 
-                        commentPrefix + commentSpace + line;
+                        `${commentPrefix}${line}${commentSuffix}` : 
+                        commentPrefix + line;
                 } else {
                     // 取消注释
     
