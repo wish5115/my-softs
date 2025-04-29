@@ -1,5 +1,5 @@
 // 思源代码块自动缩进和ctrl+/添加注释
-//see https://ld246.com/article/1745642027248
+// see https://ld246.com/article/1745642027248
 // version 0.0.3
 // 0.0.2 改进计算光标前的空白符算法，从全结点扫描到仅扫描上一个换行符到光标处的结点，性能大幅度提升
 // 0.0.3 增加代码注释功能
@@ -7,6 +7,8 @@
 // 原理是首先获取上一行的缩进空白符，然后再根据不同语言的特点，在不同关键词下增加不同的缩进
 // 上一行的缩进空白符是保底缩进，如果是无法识别的语言，就默认与上一行缩进对齐了
 // 如果是已知语言的已知关键词，则根据langRules配置里的规则，调用action进行计算最终缩进
+// 注意，添加注释时，最好选中整行或非空白符的开始处，如果选中行的一半，则从一半处注释，下次也最好选择一半取消注释（即同上次选择一致），否则可能非预期结果。
+// 另外，不要选择空白符的中间开始注释，因为取消注释时，会计算注释标记后面或结束符的前面的空白符数，如果不足思源tabSpace整数倍，则会删除这多余的空白符，这是为了兼容其他软件的注释而做出的牺牲，而在空白符中间选择，很可能破坏空白符的结构。
 (() => {
     // 是否开启自动缩进 true 开启 false 不开启
     const isEnableAutoIndent = true;
@@ -14,12 +16,17 @@
     // 是否开启添加注释 true 开启 false 不开启
     // ctrl/meta + / 添加注释，再次按ctrl/meta + / 则取消注释
     const isEnableComment = true;
+
+    // 注释符后面（单行注释）或前面（多行注释结束符）是否添加空格，true 添加 false 不添加
+    const commentWithSpace = true;
     
     ////////////// 多语言配置部分 /////////////////
     // 可扩展更多语言规则
     // 正则表示不同关键词结尾的前面应该加什么样的缩进，具体缩进数由action函数决定
     // action 默认调用addIndent添加缩进，默认是上一行的缩进+空格或tab（这个由思源 tab 空格数设置决定的）
     // 当然也可以在action里自行处理，base参数就是上一行的缩进空白符
+    // comment是注释配置，如果单行配置只需要配置prefix即可，如果多行注释，还需要配置suffix，
+    // isWrap的意思是多行注释下，如果true，则只会在选中文本前后添加注释标记，如果false，则每行都添加注释
     const langRules = {
         // JavaScript/TypeScript
         javascript: {
@@ -61,7 +68,7 @@
             comment: {
                 prefix: '<!--', // 多行注释包裹
                 suffix: '-->',
-                isWrap: true
+                isWrap: false
             },
         },
     
@@ -72,7 +79,7 @@
             comment: {
                 prefix: '/* ', // 多行注释包裹（CSS 无单行注释）
                 suffix: ' */',
-                isWrap: true
+                isWrap: false
             },
         },
     
@@ -170,7 +177,7 @@
             comment: {
                 prefix: '<!-- ', // HTML 式多行注释（Markdown 无原生注释）
                 suffix: ' -->',
-                isWrap: true
+                isWrap: false
             },
         },
     
@@ -561,7 +568,8 @@
                 //                selectedText.slice(suffixIndex + commentSuffix.length);
             } else {
                 // 添加注释
-                processedText = commentPrefix + selectedText + commentSuffix;
+                const commentSpace = commentWithSpace ? ' ' : '';
+                processedText = commentPrefix + commentSpace + selectedText + commentSpace + commentSuffix;
             }
         } else {
             // 单行注释
@@ -575,9 +583,10 @@
     
                 if (shouldAdd) {
                     // 添加注释
+                    const commentSpace = commentWithSpace ? ' ' : '';
                     return commentSuffix ? 
-                        `${commentPrefix}${line}${commentSuffix}` : 
-                        commentPrefix + line;
+                        `${commentPrefix}${commentSpace}${line}${commentSpace}${commentSuffix}` : 
+                        commentPrefix + commentSpace + line;
                 } else {
                     // 取消注释
     
