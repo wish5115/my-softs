@@ -13,7 +13,7 @@
     // little 当鼠标进入提示框再进入目标元素会闪烁下（感觉没啥影响），但优点是当鼠标移开目标元素关闭提示框时，无论上/下/左右都可以。
     // no 不闪烁，但缺点是当鼠标移开目标元素关闭提示框时，只能上/下才行，左右必须超越提示框的宽度范围才行。
     // little 选择闪烁版本，no 选择不闪烁版本
-    const flashingStatus = 'little';
+    const flashingStatus = 'no';
     
     // 添加样式
     addStyle(`
