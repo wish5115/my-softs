@@ -11,16 +11,20 @@
 
     // 闪烁情况选择
     // little 当鼠标进入提示框再进入目标元素会闪烁下（感觉没啥影响），但优点是当鼠标移开目标元素关闭提示框时，无论上/下/左右都可以。
-    // no 不闪烁，但缺点是当鼠标移开目标元素关闭提示框时，只能上/下才行，左右必须超越提示框的宽度范围才行。
+    // no 不闪烁，但缺点是当鼠标移开目标元素关闭提示框时，只能上/下才行，左右必须超越提示框的宽度范围才行，且不支持点击备注。
     // little 选择闪烁版本，no 选择不闪烁版本
-    const flashingStatus = 'no';
+    const flashingStatus = 'little';
     
     // 添加样式
     addStyle(`
         /* 去掉默认提示 */
-        .b3-tooltips__nw::before, .b3-tooltips__nw::after,
-        .b3-tooltips__nw:hover::before, .b3-tooltips__nw:hover::after{
-            display: none;
+        .protyle-attr--memo{
+            &.b3-tooltips:hover::before, &.b3-tooltips:hover::after,
+            &.b3-tooltips__nw::before, &.b3-tooltips__nw::after,
+            &.b3-tooltips__nw:hover::before, &.b3-tooltips__nw:hover::after,
+            &.b3-tooltips__s::before, &.b3-tooltips__se::before, &.b3-tooltips__sw::before{
+                display: none!important;
+            }
         }
         /* 自定义提示框样式 */
         .mytooltip {
