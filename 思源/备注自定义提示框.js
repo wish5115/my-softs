@@ -8,6 +8,12 @@
         font-size: 16px;
         line-height: 150%;
     `;
+
+    // 闪烁情况选择
+    // little 当鼠标进入提示框再进入目标元素会闪烁下（感觉没啥影响），但优点是当鼠标移开目标元素关闭提示框时，无论上/下/左右都可以。
+    // no 不闪烁，但缺点是当鼠标移开目标元素关闭提示框时，只能上/下才行，左右必须超越提示框的宽度范围才行。
+    // little 选择闪烁版本，no 选择不闪烁版本
+    const flashingStatus = 'little';
     
     // 添加样式
     addStyle(`
@@ -64,7 +70,7 @@
             const memo = e.target.closest(".protyle-attr--memo");
             if(!memo) return;
             if(!hasBoundMouseout) {
-                memo.addEventListener('mouseout', () => {
+                memo.addEventListener('mouseleave', () => {
                     hideTooltip();
                 });
             }
@@ -127,14 +133,15 @@
         if (left + messageElement.clientWidth > window.innerWidth) {
             left = window.innerWidth - messageElement.clientWidth;
         }
+        const targetHeight = flashingStatus === 'little' ? 0 : targetRect.height;
         if(top > targetRect.top) {
             // 显示到目标元素的下面
-            messageElement.style.paddingTop = (targetRect.height+5) + 'px';
-            messageElement.style.marginTop = (-targetRect.height-5) + 'px';
+            messageElement.style.paddingTop = (targetHeight+5) + 'px';
+            messageElement.style.marginTop = (-targetHeight-5) + 'px';
         } else {
             // 显示到目标元素的上面
-            messageElement.style.paddingBottom = (targetRect.height+5) + 'px';
-            messageElement.style.marginBottom = (-targetRect.height-5) + 'px';
+            messageElement.style.paddingBottom = (targetHeight+5) + 'px';
+            messageElement.style.marginBottom = (-targetHeight-5) + 'px';
         }
         messageElement.style.top = top + "px";
         messageElement.style.left = left + "px";
