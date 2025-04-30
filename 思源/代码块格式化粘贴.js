@@ -1,6 +1,6 @@
 // 代码块格式化粘贴
 // 仅支持2空格，4空格和tab三种格式的缩进
-// see 
+// see https://ld246.com/article/1746030522663
 (()=>{
     // 是否启用智能粘贴快捷键 ctrl+alt+v 智能粘贴
     const enableSmartPasteShortcut = true;
