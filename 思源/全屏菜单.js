@@ -1,5 +1,5 @@
 // 全屏菜单（Esc退出全屏）
-// see 
+// see https://ld246.com/article/1746079460404
 (()=>{
     // 判断是否全屏状态
     if(localStorage.getItem('isFullscreen') === 'true') {
