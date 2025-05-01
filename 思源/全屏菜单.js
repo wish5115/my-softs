@@ -10,7 +10,7 @@ left:auto;top:auto">
   <svg class="b3-dialog__close"><use xlink:href="#iconCloseRound"></use></svg>
   <div class="resize__move b3-dialog__header" onselectstart="return false;">⚠️ 全屏确认</div>
   <div class="b3-dialog__body"><div class="b3-dialog__content">
-    <div class="ft__breakword">意外退出全屏，确定要 <b>继续全屏</b> 吗？
+    <div class="ft__breakword">意外退出全屏，您想要 <b>继续全屏</b> 吗？
 <div class="fn__hr"></div>
 <div class="ft__smaller ft__on-surface">全屏后可按 <code class="fn__code">Esc</code> 键退出全屏</div></div>
 </div>
