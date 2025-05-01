@@ -1,4 +1,4 @@
-// 添加块到指定数据库（支持绑定块和不绑定块）
+// 添加块到指定数据库（支持绑定块和不绑定块，支持文档块和普通块）
 // see https://ld246.com/article/1746087652265
 // 注意：只能在块菜单中操作（你的右键可能不是块菜单）
 (()=>{
@@ -18,7 +18,7 @@
     
     // 监听块右键菜单
     whenElementExist('#commonMenu .b3-menu__items').then((menuItems) => {
-        observeBlockMenu(menuItems, async ()=>{
+        observeBlockMenu(menuItems, async (isTitleMenu)=>{
             if(menuItems.querySelector('.add-to-my-av')||menuItems.querySelector('.add-to-my-av-no-bind')) return;
             const addAv = menuItems.querySelector('button[data-id="addToDatabase"]');
             if(!addAv) return;
@@ -31,7 +31,7 @@
                 addAv.insertAdjacentHTML('afterend', menuButtonHtml);
                 const menuBtn = menuItems.querySelector('.add-to-my-av-no-bind');
                 menuBtn.onclick = async () => {
-                    menuItemClick(false);
+                    menuItemClick(isTitleMenu, false);
                 };
             }
 
@@ -43,20 +43,33 @@
                 addAv.insertAdjacentHTML('afterend', menuButtonHtml);
                 const menuBtn = menuItems.querySelector('.add-to-my-av');
                 menuBtn.onclick = async () => {
-                    menuItemClick(true);
+                    menuItemClick(isTitleMenu, true);
                 };
             }
         });
     });
     // 菜单点击事件
-    async function menuItemClick(isBindBlock) {
+    async function menuItemClick(isTitleMenu, isBindBlock) {
         window.siyuan.menus.menu.remove();
         const avId = await getAvIdByAvBlockId(toAvBlockId);
         if(!avId) {
             showMessage('未找到指定数据库，请确认数据库块ID配置是否正确', true);
             return;
         }
-        const blocks = document.querySelectorAll('.protyle-wysiwyg--select');
+        let blocks = [];
+        if(isTitleMenu) {
+            // 添加文档块到数据库
+            const docTitleEl = (document.querySelector('[data-type="wnd"].layout__wnd--active .protyle:not(.fn__none)')||document.querySelector('[data-type="wnd"] .protyle:not(.fn__none)'))?.querySelector('.protyle-title');
+            const docId = docTitleEl?.dataset?.nodeId;
+            const docTitle = docTitleEl?.querySelector('.protyle-title__input')?.textContent;
+            blocks = [{
+                dataset: {nodeId: docId},
+                textContent: docTitle,
+            }];
+        } else {
+            // 添加普通块到数据库
+            blocks = document.querySelectorAll('.protyle-wysiwyg--select');
+        }
         // 绑定块
         if(isBindBlock){
             const blockIds = [...blocks].map(block => block.dataset.nodeId);
@@ -157,6 +170,7 @@
     function observeBlockMenu(selector, callback) {
         let hasFlag1 = false;
         let hasFlag2 = false;
+        let isTitleMenu = false;
         // 创建一个 MutationObserver 实例
         const observer = new MutationObserver((mutationsList) => {
             // 遍历所有变化
@@ -166,18 +180,22 @@
                     // 遍历所有添加的节点
                     mutation.addedNodes.forEach((node) => {
                         // 检查节点是否是目标菜单
-                        if(hasFlag1 && hasFlag2) return;
+                        if((hasFlag1 && hasFlag2) || isTitleMenu) return;
                         if (node.nodeType === 1 && node.querySelector('.b3-menu__label')?.textContent?.trim() === window.siyuan.languages.cut) {
                             hasFlag1 = true;
                         }
                         if (node.nodeType === 1 && node.querySelector('.b3-menu__label')?.textContent?.trim() === window.siyuan.languages.move) {
                             hasFlag2 = true;
                         }
-                        if(hasFlag1 && hasFlag2) {
-                           callback();
+                        if(node.nodeType === 1 && node.closest('[data-name="titleMenu"]')) {
+                            isTitleMenu = true;
+                        }
+                        if((hasFlag1 && hasFlag2) || isTitleMenu) {
+                           callback(isTitleMenu);
                            setTimeout(() => {
                                hasFlag1 = false;
                                hasFlag2 = false;
+                               isTitleMenu = false;
                            }, 200);
                         }
                     });
