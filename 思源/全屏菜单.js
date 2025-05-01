@@ -58,7 +58,8 @@ left:auto;top:auto">
             if(mainMenu.querySelector('button[data-id="fullScreen"]')) return;
             const sp2 = mainMenu.querySelector('button[data-id="separator_2"]');
             const fullScreenText = isFullScreen() ? '退出全屏' : '全屏';
-            const btnString = `<button data-id="fullScreen" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconFullscreen"></use></svg><span class="b3-menu__label">${fullScreenText}</span></button>`;
+            const fullScreenIcon = isFullScreen() ? '#iconFullscreenExit' : '#iconFullscreen';
+            const btnString = `<button data-id="fullScreen" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="${fullScreenIcon}"></use></svg><span class="b3-menu__label">${fullScreenText}</span></button>`;
             setTimeout(() => {
                 sp2.insertAdjacentHTML('beforebegin', btnString);
                 const button = mainMenu.querySelector('button[data-id="fullScreen"]');
