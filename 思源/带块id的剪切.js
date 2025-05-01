@@ -9,7 +9,7 @@
 (()=>{
     // 选择的块id列表
     let selectedIds = [];
-    // 监听图片右键菜单
+    // 监听块右键菜单
     whenElementExist('#commonMenu .b3-menu__items').then((menuItems) => {
         observeBlockMenu(menuItems, async ()=>{
             if(menuItems.querySelector('.cut-with-id')) return;
