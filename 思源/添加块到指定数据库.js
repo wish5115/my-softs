@@ -1,66 +1,63 @@
 // 添加块到指定数据库（支持绑定块和不绑定块，支持文档块和普通块）
 // see https://ld246.com/article/1746087652265
 // 注意：只能在块菜单中操作（你的右键可能不是块菜单）
-// version 0.0.2
-// 0.0.2 支持同时发送到多个数据库中
+// version 0.0.3
+// 0.0.2 （已废弃）
+// 0.0.3 修改参数配置方式
 (()=>{
-
-    // 是否开启绑定块菜单，true 开启，false 不开启
-    const isEnableBindBlock = true;
-
-    // 是否开启不绑定块菜单，true 开启，false 不开启
-    const isEnableNotBindBlock = true;
-    
-    // 添加到的数据库块id列表（必填），注意是数据库所在块id，如果移动了数据库位置需要更改
-    const toAvBlockIds = [
-        '20250501223635-2hu6d9z',
-        '20250502120433-a7o0ahx',
+    // 块菜单配置
+    const menus = [
+        {
+            // 菜单名，显示在块或文档右键菜单上
+            name: "添加到数据库A",
+            // 添加到的数据库块id列表（必填），注意是数据库所在块id，如果移动了数据库位置需要更改
+            toAvBlockId: "20250501223635-2hu6d9z",
+            // 指定数据库的列名，不填默认是添加到主键列，该参数仅对不绑定块菜单有效，如果多个列名一样的则取第一个
+            // 注意，目前仅支持文本列
+            toAvColName: "",
+            // 是否绑定块菜单，true 绑定，false 不绑定
+            isBindBlock: true,
+        },
+        {
+            name: "添加到数据库B",
+            toAvBlockId: "20250502120433-a7o0ahx",
+            toAvColName: "",
+            isBindBlock: false,
+        },
+        {
+            name: "添加到数据库C",
+            toAvBlockId: "20250502120433-a7o0666",
+            toAvColName: "",
+            isBindBlock: false,
+        }
     ];
-
-    // 指定数据库的列名，不填默认是添加到主键列，该参数仅对不绑定块菜单有效，如果多个列名一样的则取第一个
-    // 注意，目前仅支持文本列
-    const toAvColName = '';
     
     // 监听块右键菜单
     whenElementExist('#commonMenu .b3-menu__items').then((menuItems) => {
+        const menusReverse = menus.reverse();
         observeBlockMenu(menuItems, async (isTitleMenu)=>{
-            if(menuItems.querySelector('.add-to-my-av')||menuItems.querySelector('.add-to-my-av-no-bind')) return;
+            if(menuItems.querySelector('.add-to-my-av')) return;
             const addAv = menuItems.querySelector('button[data-id="addToDatabase"]');
             if(!addAv) return;
-            
-            // 创建非绑定菜单按钮
-            if(isEnableNotBindBlock) {
-                const menuText = '添加到指定数据库（不绑定块）';
+            if(menus.length === 0) return;
+            // 生成块菜单
+            menusReverse.forEach((menu,index) => {
+                const menuText = menu.name+ (menu.isBindBlock?'':'（不绑定块）');
                 const menuIcon = '#iconDatabase';
-                const menuButtonHtml = `<button class="b3-menu__item add-to-my-av-no-bind"><svg class="b3-menu__icon " style=""><use xlink:href="${menuIcon}"></use></svg><span class="b3-menu__label">${menuText}</span></button>`;
+                const menuClass = `add-to-my-av-${menu.toAvBlockId}-${menus.length-index-1}`;
+                const menuButtonHtml = `<button class="b3-menu__item ${menuClass}"><svg class="b3-menu__icon " style=""><use xlink:href="${menuIcon}"></use></svg><span class="b3-menu__label">${menuText}</span></button>`;
                 addAv.insertAdjacentHTML('afterend', menuButtonHtml);
-                const menuBtn = menuItems.querySelector('.add-to-my-av-no-bind');
+                const menuBtn = menuItems.querySelector('.'+menuClass);
+                // 块菜单点击事件
                 menuBtn.onclick = async () => {
                     window.siyuan.menus.menu.remove();
-                    toAvBlockIds.forEach(toAvBlockId => {
-                        menuItemClick(toAvBlockId, isTitleMenu, false);
-                    });
+                    menuItemClick(menu.toAvBlockId, menu.toAvColName, menu.isBindBlock, isTitleMenu);
                 };
-            }
-
-            // 创建绑定菜单按钮
-            if(isEnableBindBlock) {
-                const menuText = '添加到指定数据库';
-                const menuIcon = '#iconDatabase';
-                const menuButtonHtml = `<button class="b3-menu__item add-to-my-av"><svg class="b3-menu__icon " style=""><use xlink:href="${menuIcon}"></use></svg><span class="b3-menu__label">${menuText}</span></button>`;
-                addAv.insertAdjacentHTML('afterend', menuButtonHtml);
-                const menuBtn = menuItems.querySelector('.add-to-my-av');
-                menuBtn.onclick = async () => {
-                    window.siyuan.menus.menu.remove();
-                    toAvBlockIds.forEach(toAvBlockId => {
-                        menuItemClick(toAvBlockId, isTitleMenu, true);
-                    });
-                };
-            }
+            });
         });
     });
     // 菜单点击事件
-    async function menuItemClick(toAvBlockId, isTitleMenu, isBindBlock) {
+    async function menuItemClick(toAvBlockId, toAvColName, isBindBlock, isTitleMenu) {
         const avId = await getAvIdByAvBlockId(toAvBlockId);
         if(!avId) {
             showMessage('未找到块ID'+toAvBlockId+'所在的数据库，请检查数据库块ID配置是否正确', true);
