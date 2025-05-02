@@ -1,6 +1,8 @@
 // 添加块到指定数据库（支持绑定块和不绑定块，支持文档块和普通块）
 // see https://ld246.com/article/1746087652265
 // 注意：只能在块菜单中操作（你的右键可能不是块菜单）
+// version 0.0.2
+// 0.0.2 支持同时发送到多个数据库中
 (()=>{
 
     // 是否开启绑定块菜单，true 开启，false 不开启
@@ -9,8 +11,11 @@
     // 是否开启不绑定块菜单，true 开启，false 不开启
     const isEnableNotBindBlock = true;
     
-    // 添加到的数据库块id（必填），注意是数据库所在块id，如果移动了数据库位置需要更改
-    const toAvBlockId = '20250501223635-2hu6d9z';
+    // 添加到的数据库块id列表（必填），注意是数据库所在块id，如果移动了数据库位置需要更改
+    const toAvBlockIds = [
+        '20250501223635-2hu6d9z',
+        '20250502120433-a7o0ahx',
+    ];
 
     // 指定数据库的列名，不填默认是添加到主键列，该参数仅对不绑定块菜单有效，如果多个列名一样的则取第一个
     // 注意，目前仅支持文本列
@@ -31,7 +36,10 @@
                 addAv.insertAdjacentHTML('afterend', menuButtonHtml);
                 const menuBtn = menuItems.querySelector('.add-to-my-av-no-bind');
                 menuBtn.onclick = async () => {
-                    menuItemClick(isTitleMenu, false);
+                    window.siyuan.menus.menu.remove();
+                    toAvBlockIds.forEach(toAvBlockId => {
+                        menuItemClick(toAvBlockId, isTitleMenu, false);
+                    });
                 };
             }
 
@@ -43,17 +51,19 @@
                 addAv.insertAdjacentHTML('afterend', menuButtonHtml);
                 const menuBtn = menuItems.querySelector('.add-to-my-av');
                 menuBtn.onclick = async () => {
-                    menuItemClick(isTitleMenu, true);
+                    window.siyuan.menus.menu.remove();
+                    toAvBlockIds.forEach(toAvBlockId => {
+                        menuItemClick(toAvBlockId, isTitleMenu, true);
+                    });
                 };
             }
         });
     });
     // 菜单点击事件
-    async function menuItemClick(isTitleMenu, isBindBlock) {
-        window.siyuan.menus.menu.remove();
+    async function menuItemClick(toAvBlockId, isTitleMenu, isBindBlock) {
         const avId = await getAvIdByAvBlockId(toAvBlockId);
         if(!avId) {
-            showMessage('未找到指定数据库，请确认数据库块ID配置是否正确', true);
+            showMessage('未找到块ID'+toAvBlockId+'所在的数据库，请检查数据库块ID配置是否正确', true);
             return;
         }
         let blocks = [];
@@ -95,7 +105,7 @@
     // 通过块id获取数据库id
     async function getAvIdByAvBlockId(blockId) {
         const av = await getAvBySql(`SELECT * FROM blocks where type ='av' and id='${blockId}'`);
-        if(av.length === 0) return error("未找到数据库文档块，请检查数据库文档块id是否正确");
+        if(av.length === 0) return '';
         const avId = av.map(av => getDataAvIdFromHtml(av.markdown))[0];
         return avId || '';
     }
