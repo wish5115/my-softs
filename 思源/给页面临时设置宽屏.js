@@ -135,6 +135,8 @@
             }
         } else {
             // 自动触发
+            // 修改自 queguaiya大佬的 toggleDockItems函数
+            // see https://ld246.com/article/1745155135925
             if (activeDocks.length > 0) {
                 lastDockTypes = Array.from(activeDocks).map(dock => `[data-type="${dock.dataset.type}"]`);
                 lastDockTypes.forEach(dockType => document.querySelector(dockType)?.click());
