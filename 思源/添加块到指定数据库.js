@@ -92,12 +92,14 @@
             addBlocksToAvNoBind(blocks, avId, pkKeyID, keyID);
         }
     }
+    // 通过块id获取数据库id
     async function getAvIdByAvBlockId(blockId) {
         const av = await getAvBySql(`SELECT * FROM blocks where type ='av' and id='${blockId}'`);
         if(av.length === 0) return error("未找到数据库文档块，请检查数据库文档块id是否正确");
         const avId = av.map(av => getDataAvIdFromHtml(av.markdown))[0];
         return avId || '';
     }
+    // 从数据库HTML代码中获取数据库id
     function getDataAvIdFromHtml(htmlString) {
         // 使用正则表达式匹配data-av-id的值
         const match = htmlString.match(/data-av-id="([^"]+)"/);
@@ -106,6 +108,7 @@
         }
         return "";  // 如果没有找到匹配项，则返回空
     }
+    // 通过sql获取数据库信息
     async function getAvBySql(sql) {
         const result = await requestApi('/api/query/sql', {"stmt": sql});
         if(result.code !== 0){
