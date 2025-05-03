@@ -20,13 +20,14 @@
  */
 
 // 原理
-// 首先会扫描自身的版本信息，放到全局变量里
-// 在版本信息中加入上次扫描时间和延迟检查时间
-// 延迟时间是从30分钟到90分钟随机产生的，因此会把不同代码检查时间分散开
-// 然后设置定时器，每1小时检查一次，根据延迟时间和上次扫描时间，判断某个代码片段是否需要检查更新
-// 需要更新时会拉取远程代码文件，并解析出版本信息，如果需要更新则更新全局变量里的版本信息，每更新一次，下次检查会推迟约4个小时
-// 然后，当你打开代码片段窗口时，会读取全局变量中的版本信息，发现有更新的代码则显示到代码片段的顶部
-// 然后，如果你对某个片段感兴趣，可以进去查看版本信息（暂不支持css代码片段的检查更新）
+// 1 首先会扫描自身的版本信息，放到全局变量里
+// 2 在版本信息中加入上次扫描时间和延迟检查时间字段
+// 3 代码开始抢占主程序，仅有一个代码片段抢占成功，未抢占成功的代码此时生命周期已经结束
+// 3 然后页面加载1分钟后，开始对全局变量中的版本号开始分配随机延迟时间和初始化检查日期（注意这个随机延迟时间是逐渐增大，以保证后续每次执行周期内只对一个代码执行检查更新，并在默认3小时内检查一遍所有的代码版本）
+// 4 然后设置定时器，每x检查一次，这个x是根据总间隔时间/总脚本数计算出来的，然后根据延迟时间和上次扫描时间，判断某个代码片段是否需要检查更新
+// 5 需要更新时会拉取远程代码文件，并解析出版本信息，如果需要更新则更新全局变量里的版本信息，并更新检查时间
+// 6 然后，当你打开代码片段窗口时，会读取全局变量中的版本信息，发现有更新的代码则显示到代码片段的顶部
+// 7 然后，如果你对某个片段感兴趣，可以进去查看版本信息（暂不支持css代码片段的检查更新）
 
 function checkNewVersion(script = document.currentScript) {
     let totalInterval = 3600 * 1000 * 3; // 默认3小时检查一次
@@ -152,7 +153,6 @@ function checkNewVersion(script = document.currentScript) {
                 window.snippetsNewVersions.versionList[currentName + updateUrl].newVersion = remoteVersion;
                 if(remoteUpdateUrl) window.snippetsNewVersions.versionList[currentName + updateUrl].scriptUrl = remoteUpdateUrl;
                 window.snippetsNewVersions.versionList[currentName + updateUrl].updateDesc = remoteUpdateDesc;
-                window.snippetsNewVersions.versionList[currentName + updateUrl].checkDelay += 3600 * 3000;
             }
         }).catch(err => { console.warn(err); });
     }
