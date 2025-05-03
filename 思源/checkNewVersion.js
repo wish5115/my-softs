@@ -29,6 +29,7 @@
 // 然后，如果你对某个片段感兴趣，可以进去查看版本信息（暂不支持css代码片段的检查更新）
 
 function checkNewVersion(script = document.currentScript) {
+    let totalInterval = 3600 * 1000 * 3; // 默认3小时检查一次
     // 扫描本代码的版本信息
     const textContent = script?.textContent || '';
     if (!textContent) return;
@@ -50,21 +51,53 @@ function checkNewVersion(script = document.currentScript) {
         scriptUrl: updateUrl,
         newVersion: '',
         updateDesc: '',
-        checkDelay: getRandomInt(),
+        checkDelay: totalInterval+60000,
         lastCheck: Date.now(),
     }
     // 注册检查函数
-    if (!window.snippetsNewVersions.checkFunction) {
-        window.snippetsNewVersions.checkFunction = checkNewVersion;
-        // 设置定时检查版本
-        setInterval(() => {
+    if (!window.snippetsNewVersions.checkNewVersion) {
+        window.snippetsNewVersions.checkNewVersion = checkNewVersion;
+        let initTimer, intervalTimer;
+        // 初始化代码片段延迟间隔
+        const initInterval = (totalInterval) => {
+            const scriptNum = Object.keys(window?.snippetsNewVersions?.versionList||{})?.length;
+            if(!scriptNum) return;
+            const realInterval = Math.floor(totalInterval / (scriptNum || 1));
+            const randomIntervals  = generateRandomTimestamps(totalInterval, realInterval);
+            Object.entries(window?.snippetsNewVersions?.versionList).forEach(([key, snippet]) => {
+                snippet.checkDelay = randomIntervals.pop();
+                snippet.lastCheck = Date.now();
+            });
+            return realInterval;
+        };
+        // 开始检查版本更新状态
+        const checkNewVersionOnInterval = () => {
             Object.entries(window?.snippetsNewVersions?.versionList).forEach(([key, snippet]) => {
                 if (snippet.lastCheck + snippet.checkDelay < Date.now()) {
                     checkAndUpdateNewVersion(snippet.name, snippet.version, snippet.url);
                     snippet.lastCheck = Date.now();
                 }
             });
-        }, 3600 * 1000);
+        }
+        // 用户设置检查更新间隔时间
+        window.snippetsNewVersions.setInterval = (interval) => {
+            interval = Math.floor(interval * 3600 * 1000);
+            const realInterval = initInterval(interval);
+            if(!realInterval) return;
+            if(initTimer) clearTimeout(initTimer);
+            if(intervalTimer) clearInterval(intervalTimer);
+            intervalTimer = setInterval(() => {
+                checkNewVersionOnInterval();
+            }, realInterval);
+        };
+        // 设置定时检查版本
+        initTimer = setTimeout(() => {
+            const realInterval = initInterval(totalInterval);
+            if(!realInterval) return;
+            intervalTimer = setInterval(() => {
+                checkNewVersionOnInterval();
+            }, realInterval);
+        }, 60000);
         // 监听代码片段打开窗口
         new MutationObserver((mutationsList) => {
             for (const mutation of mutationsList) {
@@ -85,7 +118,7 @@ function checkNewVersion(script = document.currentScript) {
             }
         }).observe(document.body, { childList: true });
     }
-    // 功能函数
+    // 检查并更新版本号
     function checkAndUpdateNewVersion(currentName, currentVersion, updateUrl) {
         fetch(updateUrl + (updateUrl.indexOf('?') !== -1 ? '&' : '?') + 't=' + Date.now()).then(response => response.text()).then(text => {
             let remoteVersion = '', remoteUpdateUrl = '', remoteUpdateDesc = '';
@@ -123,7 +156,21 @@ function checkNewVersion(script = document.currentScript) {
             }
         }).catch(err => { console.warn(err); });
     }
-    function getRandomInt(min = 30 * 60 * 1000, max = 90 * 60 * 1000) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
+    // 功能函数
+    function generateRandomTimestamps(totalTime, interval) {
+        const timestamps = [];
+        let current = interval;
+        while (current <= totalTime) {
+            timestamps.push(current);
+            current += interval;
+        }
+        return shuffleArray(timestamps);
+    }
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1)); // 随机索引
+            [array[i], array[j]] = [array[j], array[i]];  // 交换
+        }
+        return array;
     }
 }
