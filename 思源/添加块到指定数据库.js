@@ -1,9 +1,10 @@
 // 添加块到指定数据库（支持绑定块和不绑定块，支持文档块和普通块）
 // see https://ld246.com/article/1746153210116
 // 注意：只能在块菜单中操作（你的右键可能不是块菜单）
-// version 0.0.3
+// version 0.0.4
 // 0.0.2 （已废弃）
 // 0.0.3 修改参数配置方式
+// 0.0.4 修复仅对当前文档中的选中块起作用
 (()=>{
     // 块菜单配置
     const menus = [
@@ -64,9 +65,10 @@
             return;
         }
         let blocks = [];
+        const protyle = document.querySelector('[data-type="wnd"].layout__wnd--active .protyle:not(.fn__none)')||document.querySelector('[data-type="wnd"] .protyle:not(.fn__none)');
         if(isTitleMenu) {
             // 添加文档块到数据库
-            const docTitleEl = (document.querySelector('[data-type="wnd"].layout__wnd--active .protyle:not(.fn__none)')||document.querySelector('[data-type="wnd"] .protyle:not(.fn__none)'))?.querySelector('.protyle-title');
+            const docTitleEl = protyle?.querySelector('.protyle-title');
             const docId = docTitleEl?.dataset?.nodeId;
             const docTitle = docTitleEl?.querySelector('.protyle-title__input')?.textContent;
             blocks = [{
@@ -75,7 +77,7 @@
             }];
         } else {
             // 添加普通块到数据库
-            blocks = document.querySelectorAll('.protyle-wysiwyg--select');
+            blocks = protyle?.querySelectorAll('.protyle-wysiwyg--select');
         }
         // 绑定块
         if(isBindBlock){
