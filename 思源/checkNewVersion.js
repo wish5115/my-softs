@@ -27,6 +27,7 @@
 // 需要更新时会拉取远程代码文件，并解析出版本信息，如果需要更新则更新全局变量里的版本信息，每更新一次，下次检查会推迟约4个小时
 // 然后，当你打开代码片段窗口时，会读取全局变量中的版本信息，发现有更新的代码则显示到代码片段的顶部
 // 然后，如果你对某个片段感兴趣，可以进去查看版本信息（暂不支持css代码片段的检查更新）
+
 function checkNewVersion(script = document.currentScript) {
     // 扫描本代码的版本信息
     const textContent = script?.textContent || '';
@@ -46,6 +47,7 @@ function checkNewVersion(script = document.currentScript) {
         name: currentName,
         version: currentVersion,
         url: updateUrl,
+        scriptUrl: updateUrl,
         newVersion: '',
         updateDesc: '',
         checkDelay: getRandomInt(),
@@ -73,7 +75,7 @@ function checkNewVersion(script = document.currentScript) {
                             if (container && window?.snippetsNewVersions?.versionList) {
                                 let snippetsNewVersionList = '';
                                 Object.entries(window?.snippetsNewVersions?.versionList).forEach(([key, snippet]) => {
-                                    if (snippet.newVersion) snippetsNewVersionList += `<div style="padding:2px 10px;">${snippet.name} 有新版本 V${snippet.newVersion}${snippet.updateDesc.replace(/(.+)/, '，$1')} <a href="${snippet.url}" target="_blank">查看</a></div>`;
+                                    if (snippet.newVersion) snippetsNewVersionList += `<div style="padding:2px 10px;">${snippet.name} 有新版本 V${snippet.newVersion}${snippet.updateDesc.replace(/(.+)/, '，$1')} <a href="${snippet.scriptUrl||snippet.url}" target="_blank">查看</a></div>`;
                                 });
                                 if (snippetsNewVersionList) container.insertAdjacentHTML('afterbegin', `<div style="max-height:200px;overflow:auto;">${snippetsNewVersionList}</div>`);
                             }
@@ -86,14 +88,16 @@ function checkNewVersion(script = document.currentScript) {
     // 功能函数
     function checkAndUpdateNewVersion(currentName, currentVersion, updateUrl) {
         fetch(updateUrl + (updateUrl.indexOf('?') !== -1 ? '&' : '?') + 't=' + Date.now()).then(response => response.text()).then(text => {
-            let remoteVersion = '', updateDesc = '';
+            let remoteVersion = '', remoteUpdateUrl = '', remoteUpdateDesc = '';
             const remoteLines = text.split('\n');
             for (const line of remoteLines) {
-                const match = line.match(/^(?: \*|\/\/)\s*version[ :：]\s*([\s\S]+)$/i);
-                if (match) remoteVersion = match[1]?.trim();
+                const matchVersion = line.match(/^(?: \*|\/\/)\s*version[ :：]\s*([\s\S]+)$/i);
+                if (matchVersion) remoteVersion = matchVersion[1]?.trim();
+                const matchUrl = line.match(/^(?: \*|\/\/)\s*updateUrl[ :：]\s*([\s\S]+)$/i);
+                if (matchUrl) remoteUpdateUrl = matchUrl[1]?.trim();
                 const matchDesc = line.match(/^(?: \*|\/\/)\s*updateDesc[ :：]\s*([\s\S]+)$/i);
-                if (matchDesc) updateDesc = matchDesc[1]?.trim();
-                if (remoteVersion && updateDesc) break;
+                if (matchDesc) remoteUpdateDesc = matchDesc[1]?.trim();
+                if (matchVersion && matchUrl && matchDesc) break;
             }
             if (!remoteVersion) {console.warn('没有获取到远程版本信息'); return;}
             function isNewerVersion(current, remote) {
@@ -113,7 +117,8 @@ function checkNewVersion(script = document.currentScript) {
                 if (!window.snippetsNewVersions.versionList) window.snippetsNewVersions.versionList = {};
                 if (!window.snippetsNewVersions.versionList[currentName + updateUrl]) window.snippetsNewVersions.versionList[currentName + updateUrl] = {};
                 window.snippetsNewVersions.versionList[currentName + updateUrl].newVersion = remoteVersion;
-                window.snippetsNewVersions.versionList[currentName + updateUrl].updateDesc = updateDesc;
+                if(remoteUpdateUrl) window.snippetsNewVersions.versionList[currentName + updateUrl].scriptUrl = remoteUpdateUrl;
+                window.snippetsNewVersions.versionList[currentName + updateUrl].updateDesc = remoteUpdateDesc;
                 window.snippetsNewVersions.versionList[currentName + updateUrl].checkDelay += 3600 * 3000;
             }
         }).catch(err => { console.warn(err); });
