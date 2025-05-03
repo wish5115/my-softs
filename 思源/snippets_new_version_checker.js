@@ -81,7 +81,8 @@
     function checkAndUpdateNewVersion(currentName, currentVersion, updateUrl) {
         fetch(updateUrl + (updateUrl.indexOf('?') !== -1 ? '&' : '?') + 't=' + Date.now()).then(response => response.text()).then(text => {
             let remoteVersion = '', remoteUpdateUrl = '', remoteUpdateDesc = '';
-            const remoteLines = text.split('\n');
+            let remoteLines = text.split('\n');
+            remoteLines = remoteLines.slice(0, 200); // 默认扫描200行
             for (const line of remoteLines) {
                 const matchVersion = line.match(/^(?: \*|\/\/)\s*version[ :：]\s*([\s\S]+)$/i);
                 if (matchVersion) remoteVersion = matchVersion[1]?.trim();
@@ -141,7 +142,9 @@
         // 扫描本代码的版本信息
         const textContent = snippet?.textContent || '';
         if (!textContent) return;
-        const meta = {}; const lines = textContent.split('\n');
+        const meta = {};
+        let lines = textContent.split('\n');
+        lines = lines.slice(0, 200); // 默认扫描200行
         for (const line of lines) {
             const match = line.match(/^(?: \*|\/\/)\s*(\w+)[ :：]\s*([\s\S]+)$/i);
             if (match) { const key = match[1]?.trim()?.toLowerCase(); const value = match[2]?.trim(); meta[key] = value; }
