@@ -1,6 +1,7 @@
 // name 代码片段自动检查更新（开发者推广计划）
-// version 0.0.1
+// version 0.0.2
 // updateUrl https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/snippets_new_version_checker_for_dev.js
+// udateDesc 增加cdn调整cdn顺序
 (async function checkNewVersion() {
     if(!window.snippetsNewVersions) window.snippetsNewVersions = {};
     if(window.snippetsNewVersions.newVersionLoader) return;
