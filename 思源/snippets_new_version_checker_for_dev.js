@@ -5,7 +5,7 @@
     if(!window.snippetsNewVersions) window.snippetsNewVersions = {};
     if(window.snippetsNewVersions.newVersionLoader) return;
     window.snippetsNewVersions.newVersionLoader = checkNewVersion;
-    const domains = ['cdn.jsdmirror.cn/gh/wish5115/my-softs@','jsd.onmicrosoft.cn/gh/wish5115/my-softs@','gcore.jsdelivr.net/gh/wish5115/my-softs@','gitee.com/wish163/mysoft/raw/','gitee.com/wish163/mysoft/raw/'];
+    const domains = ['jsd.onmicrosoft.cn/gh/wish5115/my-softs@','gcore.jsdelivr.net/gh/wish5115/my-softs@','cdn.jsdmirror.cn/gh/wish5115/my-softs@','gitee.com/wish163/mysoft/raw/','gitee.com/wish163/mysoft/raw/'];
     const localUrl = '/snippets/snippets_new_version_checker.js';
     const file = '/data/snippets/snippets_new_version_checker.js';
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
