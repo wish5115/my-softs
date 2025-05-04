@@ -3,7 +3,7 @@
 // updateUrl https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/snippets_new_version_checker.js
 // updateDesc 初始发布
 // author Wilsons
-// see 
+// see https://ld246.com/article/1746326048445
 
 // 原理
 // 1 首先在页面加载1分钟后，会扫描所有代码片段的版本信息，放到全局变量里。
@@ -84,11 +84,11 @@
             let remoteLines = text.split('\n');
             remoteLines = remoteLines.slice(0, 200); // 默认扫描200行
             for (const line of remoteLines) {
-                const matchVersion = line.match(/^(?: \*|\/\/)\s*version[ :：]\s*([\s\S]+)$/i);
+                const matchVersion = line.match(/^(?:\/\*| \*|\/\/)?\s*version[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
                 if (matchVersion) remoteVersion = matchVersion[1]?.trim();
-                const matchUrl = line.match(/^(?: \*|\/\/)\s*updateUrl[ :：]\s*([\s\S]+)$/i);
+                const matchUrl = line.match(/^(?:\/\*| \*|\/\/)?\s*updateUrl[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
                 if (matchUrl) remoteUpdateUrl = matchUrl[1]?.trim();
-                const matchDesc = line.match(/^(?: \*|\/\/)\s*updateDesc[ :：]\s*([\s\S]+)$/i);
+                const matchDesc = line.match(/^(?:\/\*| \*|\/\/)?\s*updateDesc[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
                 if (matchDesc) remoteUpdateDesc = matchDesc[1]?.trim();
                 if (matchVersion && matchUrl && matchDesc) break;
             }
@@ -146,7 +146,7 @@
         let lines = textContent.split('\n');
         lines = lines.slice(0, 200); // 默认扫描200行
         for (const line of lines) {
-            const match = line.match(/^(?: \*|\/\/)\s*(\w+)[ :：]\s*([\s\S]+)$/i);
+            const match = line.match(/^(?:\/\*| \*|\/\/)?\s*(\w+)[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
             if (match) { const key = match[1]?.trim()?.toLowerCase(); const value = match[2]?.trim(); meta[key] = value; }
         }
         const currentName = meta.name;
