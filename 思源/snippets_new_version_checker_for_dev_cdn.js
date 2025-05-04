@@ -2,7 +2,8 @@
 // version 0.0.2
 // updateUrl https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/snippets_new_version_checker_for_dev_cdn.js
 // udateDesc 增加cdn调整cdn顺序
-(() => {
+(async () => {
+    await new Promise(resolve => setTimeout(resolve, 1500));
     if(window?.snippetsNewVersions?.newVersionLoader || window?.snippetsNewVersions?.setInterval) return;
     const urls = ['jsd.onmicrosoft.cn','cdn.jsdmirror.com','gcore.jsdelivr.net','fastly.jsdelivr.net','quantil.jsdelivr.net','originfastly.jsdelivr.net','cdn.mengze.vip','update.gf.qytechs.cn','jsd.nmmsl.top','cdn.bili33.top','jsdelivr.qaq.qa','gitee.com','cdn.jsdmirror.cn','raw.githubusercontent.com'];
     function loadScript(index) {
