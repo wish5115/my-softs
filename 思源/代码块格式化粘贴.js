@@ -39,7 +39,7 @@
                 // 添加智能转换后粘贴
                 addSmartPasteMenuItem();
                 // 添加转换tab/2空格到4空格后粘贴
-                const tab2To4Html = `<button data-id="tab2To4Paste" class="b3-menu__item b3-menu__item--current"><svg class="b3-menu__icon " style=""><use xlink:href="#"></use></svg><span class="b3-menu__label">转换tab/2空格 -> 4空格后粘贴</span></button>`;
+                const tab2To4Html = `<button data-id="tab2To4Paste" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#"></use></svg><span class="b3-menu__label">转换tab/2空格 -> 4空格后粘贴</span></button>`;
                 element.insertAdjacentHTML('afterend', tab2To4Html);
                 const tab2To4Btn = element.parentElement.querySelector('[data-id="tab2To4Paste"]');
                 tab2To4Btn.addEventListener('click', (e) => {
@@ -50,7 +50,7 @@
                 // 添加智能转换后粘贴
                 addSmartPasteMenuItem();
                 // 添加转换tab/4空格到2空格后粘贴
-                const tab4To2Html = `<button data-id="tab4To2Paste" class="b3-menu__item b3-menu__item--current"><svg class="b3-menu__icon " style=""><use xlink:href="#"></use></svg><span class="b3-menu__label">转换tab/4空格 -> 2空格后粘贴</span></button>`;
+                const tab4To2Html = `<button data-id="tab4To2Paste" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#"></use></svg><span class="b3-menu__label">转换tab/4空格 -> 2空格后粘贴</span></button>`;
                 element.insertAdjacentHTML('afterend', tab4To2Html);
                 const tab4To2Btn = element.parentElement.querySelector('[data-id="tab4To2Paste"]');
                 tab4To2Btn.addEventListener('click', (e) => {
@@ -61,7 +61,7 @@
                 // 添加智能转换后粘贴
                 addSmartPasteMenuItem();
                 // 添加转换4空格到Tab后粘贴
-                const space4ToTabHtml = `<button data-id="space4ToTabPaste" class="b3-menu__item b3-menu__item--current"><svg class="b3-menu__icon " style=""><use xlink:href="#"></use></svg><span class="b3-menu__label">转换4空格 -> Tab后粘贴</span></button>`;
+                const space4ToTabHtml = `<button data-id="space4ToTabPaste" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#"></use></svg><span class="b3-menu__label">转换4空格 -> Tab后粘贴</span></button>`;
                 element.insertAdjacentHTML('afterend', space4ToTabHtml);
                 const space4ToTabBtn = element.parentElement.querySelector('[data-id="space4ToTabPaste"]');
                 space4ToTabBtn.addEventListener('click', (e) => {
@@ -69,7 +69,7 @@
                     window.siyuan.menus.menu.remove();
                 });
                 // 添加转换2空格到Tab后粘贴
-                const space2ToTabHtml = `<button data-id="space2ToTabPaste" class="b3-menu__item b3-menu__item--current"><svg class="b3-menu__icon " style=""><use xlink:href="#"></use></svg><span class="b3-menu__label">转换2空格 -> Tab后粘贴</span></button>`;
+                const space2ToTabHtml = `<button data-id="space2ToTabPaste" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#"></use></svg><span class="b3-menu__label">转换2空格 -> Tab后粘贴</span></button>`;
                 element.insertAdjacentHTML('afterend', space2ToTabHtml);
                 const space2ToTabBtn = element.parentElement.querySelector('[data-id="space2ToTabPaste"]');
                 space2ToTabBtn.addEventListener('click', (e) => {
