@@ -18,7 +18,7 @@
     };
     for (let index = 0; index < 5; index++) { // 尝试5次
         await sleep(index * 1000); // 每次暂停 0 1 2 3 4 秒
-        const downUrl = 'https://' + domains[index] + 'main/%E6%80%9D%E6%BA%90/snippets_new_version_checker.js';
+        const downUrl = 'https://' + domains[index] + 'main/%E6%80%9D%E6%BA%90/snippets_new_version_checker.js?t='+Date.now();
         try {
             const res = await fetch("/api/file/getFile", {
                 method: "POST", headers: {"Content-Type": "application/json"},
