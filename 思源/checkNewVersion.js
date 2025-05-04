@@ -1,13 +1,10 @@
+// 已废弃，请使用 https://gitee.com/wish163/mysoft/blob/main/%E6%80%9D%E6%BA%90/snippets_new_version_checker.js?utm_source=ld246.com
+
 // 调用示例
 // checkNewVersion();
 // checkNewVersion(document.currentScript);
 // 在异步中，要先把document.currentScript通过同步获取后放到变量里，
 // 然后再把变量传给checkNewVersion函数
-
-/* name 代码名称 */
-/* version 版本号 */
-/* updateUrl 更新地址 */
-/* updateDesc 更新描述 */
 
 //// 格式
 // name 代码名称
