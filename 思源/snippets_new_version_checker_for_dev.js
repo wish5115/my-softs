@@ -16,16 +16,19 @@
         const script = document.createElement('script');
         script.src = localUrl; document.head.appendChild(script);
     };
-    for (let index = 0; index < 5; index++) { // 尝试5次
-        await sleep(index * 1000); // 每次暂停 0 1 2 3 4 秒
-        const downUrl = 'https://' + domains[index] + 'main/%E6%80%9D%E6%BA%90/snippets_new_version_checker.js?t='+Date.now();
+    for (let index = 0; index < 5; index++) { // 尝试5次，每次暂停 0 1 2 3 4 秒，25%的概率更新文件
+        await sleep(index * 1000); const shoudUpdate = Math.random() < 0.25; const t = shoudUpdate ? '?t='+Date.now():'';
+        const downUrl = 'https://' + domains[index] + 'main/%E6%80%9D%E6%BA%90/snippets_new_version_checker.js'+t;
         try {
-            const res = await fetch("/api/file/getFile", {
-                method: "POST", headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({path: file}),
-            });
-            const jsonText = await res.text();
-            const json = parseJson(jsonText);
+            let json = {code:404};
+            if(!shoudUpdate){
+                const res = await fetch("/api/file/getFile", {
+                    method: "POST", headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({path: file}),
+                });
+                const jsonText = await res.text();
+                json = parseJson(jsonText);
+            }
             if(json && json.code === 404) {
                 const response = await fetch(downUrl); // 不存在下载远程js
                 if (!response.ok) { continue; return; }
