@@ -51,8 +51,10 @@
         Object.entries(window?.snippetsNewVersions?.versionList).forEach(([key, snippet]) => {
             if (snippet.lastCheck + snippet.checkDelay < Date.now()) {
                 const snippetEl = document.getElementById(snippet.id);
-                const version = getVersionFromTextContent(snippetEl.textContent);
-                snippet.version = version;
+                if(snippetEl?.textContent) {
+                    const version = getVersionFromTextContent(snippetEl.textContent);
+                    snippet.version = version;
+                }
                 checkAndUpdateNewVersion(snippet.name, snippet.version, snippet.url);
                 snippet.lastCheck = Date.now();
             }
@@ -141,11 +143,13 @@
                         }
                         // 监听代码片段被更新
                         if (node.nodeType === Node.ELEMENT_NODE && mutation.target.tagName === 'HEAD' && node.matches('[id^="snippetJS"],[id^="snippetCSS"]')) {
-                            const version = getVersionFromTextContent(node.textContent);
-                            const snippetVersion = Object.values(window?.snippetsNewVersions?.versionList||{}).find(item=>item.id===node.id);
-                            const newVersion = snippetVersion?.newVersion;
-                            if(newVersion && (version === newVersion || isNewerVersion(version, newVersion))) {
-                                snippetVersion.newVersion = ''; // 更新后清空新版本
+                            const version = getVersionFromTextContent(node?.textContent||'');
+                            if(version) {
+                                const snippetVersion = Object.values(window?.snippetsNewVersions?.versionList||{}).find(item=>item.id===node.id);
+                                const newVersion = snippetVersion?.newVersion;
+                                if(newVersion && (version === newVersion || isNewerVersion(version, newVersion))) {
+                                    snippetVersion.newVersion = ''; // 更新后清空新版本
+                                }
                             }
                         }
                     });
@@ -196,6 +200,7 @@
         }
     }
     function getVersionFromTextContent(text) {
+        if (!text) return '';
         let lines = text.split('\n');
         lines = lines.slice(0, 200); // 默认扫描200行
         for (const line of lines) {
