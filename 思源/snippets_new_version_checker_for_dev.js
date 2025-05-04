@@ -5,7 +5,7 @@
     if(!window.snippetsNewVersions) window.snippetsNewVersions = {};
     if(window.snippetsNewVersions.newVersionLoader) return;
     window.snippetsNewVersions.newVersionLoader = checkNewVersion;
-    const downUrl = 'https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/snippets_new_version_checker.js';
+    const domains = ['cdn.jsdmirror.cn/gh/wish5115/my-softs@','jsd.onmicrosoft.cn/gh/wish5115/my-softs@','gcore.jsdelivr.net/gh/wish5115/my-softs@','gitee.com/wish163/mysoft/raw/','gitee.com/wish163/mysoft/raw/'];
     const localUrl = '/snippets/snippets_new_version_checker.js';
     const file = '/data/snippets/snippets_new_version_checker.js';
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -17,6 +17,7 @@
     };
     for (let index = 0; index < 5; index++) { // 尝试5次
         await sleep(index * 1000); // 每次暂停 0 1 2 3 4 秒
+        const downUrl = 'https://' + domains[index] + 'main/%E6%80%9D%E6%BA%90/snippets_new_version_checker.js';
         try {
             const res = await fetch("/api/file/getFile", {
                 method: "POST", headers: {"Content-Type": "application/json"},
