@@ -5,6 +5,7 @@
 (async function checkNewVersion() {
     if(!window.snippetsNewVersions) window.snippetsNewVersions = {};
     if(window.snippetsNewVersions.newVersionLoader) return;
+    if(window?.snippetsNewVersions?.setInterval) return;
     window.snippetsNewVersions.newVersionLoader = checkNewVersion;
     const domains = ['jsd.onmicrosoft.cn/gh/wish5115/my-softs@','cdn.jsdmirror.com/gh/wish5115/my-softs@','gcore.jsdelivr.net/gh/wish5115/my-softs@','gitee.com/wish163/mysoft/raw/','gitee.com/wish163/mysoft/raw/'];
     const localUrl = '/snippets/snippets_new_version_checker.js';
