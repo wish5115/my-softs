@@ -1,4 +1,6 @@
-// 思源代码片段自动检查更新（开发者推广计划）
+// name 代码片段自动检查更新(CDN)（开发者推广计划）
+// version 0.0.1
+// updateUrl https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/snippets_new_version_checker_for_dev_cdn.js
 (() => {
     const urls = [
         'https://cdn.mengze.vip/gh/wish5115/my-softs@main/%E6%80%9D%E6%BA%90/snippets_new_version_checker_for_dev.js',
