@@ -16,8 +16,8 @@
         const script = document.createElement('script');
         script.src = localUrl; document.head.appendChild(script);
     };
-    for (let index = 0; index < 5; index++) { // 尝试5次，每次暂停 0 1 2 3 4 秒，25%的概率更新文件
-        await sleep(index * 1000); const shoudUpdate = Math.random() < 0.25; const t = shoudUpdate ? '?t='+Date.now():'';
+    for (let index = 0; index < 5; index++) { // 尝试5次，每次暂停 0 1 2 3 4 秒，20%的概率更新文件
+        await sleep(index * 1000); const shoudUpdate = Math.random() < 0.2; const t = shoudUpdate ? '?t='+Date.now():'';
         const downUrl = 'https://' + domains[index] + 'main/%E6%80%9D%E6%BA%90/snippets_new_version_checker.js'+t;
         try {
             let json = {code:404};
