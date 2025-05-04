@@ -1,7 +1,7 @@
 // name 检查代码片段是否需要更新（用户端）
-// version 0.0.1
+// version 0.0.2
 // updateUrl https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/snippets_new_version_checker.js
-// updateDesc 初始发布
+// updateDesc 修复bug；把匹配到最后一个为准改为匹配到第一个为准以尽早结束查找。
 // author Wilsons
 // see https://ld246.com/article/1746326048445
 
@@ -81,15 +81,22 @@
     function checkAndUpdateNewVersion(currentName, currentVersion, updateUrl) {
         fetch(updateUrl + (updateUrl.indexOf('?') !== -1 ? '&' : '?') + 't=' + Date.now()).then(response => response.text()).then(text => {
             let remoteVersion = '', remoteUpdateUrl = '', remoteUpdateDesc = '';
+            let matchVersion, matchUrl, matchDesc;
             let remoteLines = text.split('\n');
             remoteLines = remoteLines.slice(0, 200); // 默认扫描200行
             for (const line of remoteLines) {
-                const matchVersion = line.match(/^(?:\/\*| \*|\/\/)?\s*version[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
-                if (matchVersion) remoteVersion = matchVersion[1]?.trim();
-                const matchUrl = line.match(/^(?:\/\*| \*|\/\/)?\s*updateUrl[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
-                if (matchUrl) remoteUpdateUrl = matchUrl[1]?.trim();
-                const matchDesc = line.match(/^(?:\/\*| \*|\/\/)?\s*updateDesc[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
-                if (matchDesc) remoteUpdateDesc = matchDesc[1]?.trim();
+                if(!matchVersion) {
+                    matchVersion = line.match(/^(?:\/\*| \*|\/\/)\s*version[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
+                    if (matchVersion) remoteVersion = matchVersion[1]?.trim();
+                }
+                if(!matchUrl) {
+                    matchUrl = line.match(/^(?:\/\*| \*|\/\/)\s*updateUrl[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
+                    if (matchUrl) remoteUpdateUrl = matchUrl[1]?.trim();
+                }
+                if(!matchDesc) {
+                    matchDesc = line.match(/^(?:\/\*| \*|\/\/)\s*updateDesc[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
+                    if (matchDesc) remoteUpdateDesc = matchDesc[1]?.trim();
+                }
                 if (matchVersion && matchUrl && matchDesc) break;
             }
             if (!remoteVersion) {console.warn('没有获取到远程版本信息'); return;}
@@ -143,11 +150,20 @@
         const textContent = snippet?.textContent || '';
         if (!textContent) return;
         const meta = {};
+        const matchKeys = [];
         let lines = textContent.split('\n');
         lines = lines.slice(0, 200); // 默认扫描200行
         for (const line of lines) {
-            const match = line.match(/^(?:\/\*| \*|\/\/)?\s*(\w+)[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
-            if (match) { const key = match[1]?.trim()?.toLowerCase(); const value = match[2]?.trim(); meta[key] = value; }
+            if(['name','version', 'updateurl'].every(item=>matchKeys.includes(item))) break;
+            const match = line.match(/^(?:\/\*| \*|\/\/)\s*(\w+)[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
+            if (match) {
+                const key = match[1]?.trim()?.toLowerCase();
+                const value = match[2]?.trim();
+                if(!matchKeys.includes(key)) {
+                    meta[key] = value;
+                    matchKeys.push(key);
+                }
+            }
         }
         const currentName = meta.name;
         const currentVersion = meta.version;
