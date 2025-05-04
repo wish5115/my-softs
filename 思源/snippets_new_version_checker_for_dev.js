@@ -5,6 +5,7 @@
 (async function checkNewVersion() {
     if(!window.snippetsNewVersions) window.snippetsNewVersions = {};
     if(window.snippetsNewVersions.newVersionLoader) return;
+    await new Promise(resolve => setTimeout(resolve, 1500));
     if(window?.snippetsNewVersions?.setInterval) return;
     window.snippetsNewVersions.newVersionLoader = checkNewVersion;
     const domains = ['jsd.onmicrosoft.cn/gh/wish5115/my-softs@','cdn.jsdmirror.com/gh/wish5115/my-softs@','gcore.jsdelivr.net/gh/wish5115/my-softs@','gitee.com/wish163/mysoft/raw/','gitee.com/wish163/mysoft/raw/'];
