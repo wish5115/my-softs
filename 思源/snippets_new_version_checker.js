@@ -86,15 +86,15 @@
             remoteLines = remoteLines.slice(0, 200); // 默认扫描200行
             for (const line of remoteLines) {
                 if(!matchVersion) {
-                    matchVersion = line.match(/^(?:\/\*| \*|\/\/)\s*version[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
+                    matchVersion = line.match(/^(?:\/\*| \*|\/\/)\s*version[ :：]\s*(.+?)(?:\*\/)?\r*$/i);
                     if (matchVersion) remoteVersion = matchVersion[1]?.trim();
                 }
                 if(!matchUrl) {
-                    matchUrl = line.match(/^(?:\/\*| \*|\/\/)\s*updateUrl[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
+                    matchUrl = line.match(/^(?:\/\*| \*|\/\/)\s*updateUrl[ :：]\s*(.+?)(?:\*\/)?\r*$/i);
                     if (matchUrl) remoteUpdateUrl = matchUrl[1]?.trim();
                 }
                 if(!matchDesc) {
-                    matchDesc = line.match(/^(?:\/\*| \*|\/\/)\s*updateDesc[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
+                    matchDesc = line.match(/^(?:\/\*| \*|\/\/)\s*updateDesc[ :：]\s*(.+?)(?:\*\/)?\r*$/i);
                     if (matchDesc) remoteUpdateDesc = matchDesc[1]?.trim();
                 }
                 if (matchVersion && matchUrl && matchDesc) break;
@@ -155,7 +155,7 @@
         lines = lines.slice(0, 200); // 默认扫描200行
         for (const line of lines) {
             if(['name','version', 'updateurl'].every(item=>matchKeys.includes(item))) break;
-            const match = line.match(/^(?:\/\*| \*|\/\/)\s*(\w+)[ :：]\s*([\s\S]+)(?:\*\/)?$/i);
+            const match = line.match(/^(?:\/\*| \*|\/\/)\s*(\w+)[ :：]\s*(.+?)(?:\*\/)?\r*$/i);
             if (match) {
                 const key = match[1]?.trim()?.toLowerCase();
                 const value = match[2]?.trim();
