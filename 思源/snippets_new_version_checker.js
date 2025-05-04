@@ -1,7 +1,10 @@
 // name 检查代码片段是否需要更新（用户端）
-// version 0.0.2
+// version 0.0.3
 // updateUrl https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/snippets_new_version_checker.js
-// updateDesc 修复bug；把匹配到最后一个为准改为匹配到第一个为准以尽早结束查找。
+// updateDesc 检查前先检查当前的代码是否已更新，当已更新时，清除新版本记录；监听代码更新事件，已更新的清除新版本记录。
+// 更新记录
+// 0.0.2 修复bug；把匹配到最后一个为准改为匹配到第一个为准以尽早结束查找。
+// 0.0.3 检查前先检查当前的代码是否已更新，当已更新时，清除新版本记录；监听代码更新事件，已更新的清除新版本记录。
 // author Wilsons
 // see https://ld246.com/article/1746326048445
 
@@ -47,6 +50,9 @@
     const checkNewVersionOnInterval = () => {
         Object.entries(window?.snippetsNewVersions?.versionList).forEach(([key, snippet]) => {
             if (snippet.lastCheck + snippet.checkDelay < Date.now()) {
+                const snippetEl = document.getElementById(snippet.id);
+                const version = getVersionFromTextContent(snippetEl.textContent);
+                snippet.version = version;
                 checkAndUpdateNewVersion(snippet.name, snippet.version, snippet.url);
                 snippet.lastCheck = Date.now();
             }
@@ -74,7 +80,9 @@
     }, 120000);
 
     // 监听代码片段被打开
-    observeSnippetsOpen();
+    setTimeout(() => {
+        observeSnippetsChange();
+    }, 2000);
 
     // 功能函数
     // 检查并更新版本号
@@ -100,36 +108,28 @@
                 if (matchVersion && matchUrl && matchDesc) break;
             }
             if (!remoteVersion) {console.warn('没有获取到远程版本信息'); return;}
-            function isNewerVersion(current, remote) {
-                function normalize(v) {
-                    return v.replace(/^(v|V|version|ver)[\s:=\-_]*|[^\d.]+/g, '').split('.').filter(Boolean).map(Number).join('.');
-                }
-                const curr = normalize(current).split('.').map(Number);
-                const rem = normalize(remote).split('.').map(Number);
-                for (let i = 0; i < Math.max(curr.length, rem.length); i++) {
-                    if ((rem[i] || 0) > (curr[i] || 0)) return true;
-                    if ((rem[i] || 0) < (curr[i] || 0)) return false;
-                }
-                return false;
-            }
+            if (!window.snippetsNewVersions) window.snippetsNewVersions = {};
+            if (!window.snippetsNewVersions.versionList) window.snippetsNewVersions.versionList = {};
             if (isNewerVersion(currentVersion, remoteVersion)) {
-                if (!window.snippetsNewVersions) window.snippetsNewVersions = {};
-                if (!window.snippetsNewVersions.versionList) window.snippetsNewVersions.versionList = {};
                 if (!window.snippetsNewVersions.versionList[currentName + updateUrl]) window.snippetsNewVersions.versionList[currentName + updateUrl] = {};
                 window.snippetsNewVersions.versionList[currentName + updateUrl].newVersion = remoteVersion;
                 if(remoteUpdateUrl) window.snippetsNewVersions.versionList[currentName + updateUrl].scriptUrl = remoteUpdateUrl;
                 window.snippetsNewVersions.versionList[currentName + updateUrl].updateDesc = remoteUpdateDesc;
+            } else {
+                // 无更新时，清空新版本
+                window.snippetsNewVersions.versionList[currentName + updateUrl].newVersion = '';
             }
         }).catch(err => { console.warn(err); });
     }
     // 监听代码片段窗口被打开
-    function observeSnippetsOpen() {
+    function observeSnippetsChange() {
         // 监听代码片段打开窗口
-        new MutationObserver((mutationsList) => {
+        const observer = new MutationObserver((mutationsList) => {
             for (const mutation of mutationsList) {
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach(node => {
-                        if (node.nodeType === Node.ELEMENT_NODE && node.matches('[data-key="dialog-snippets"]')) {
+                        // 监听代码片段窗口被打开
+                        if (node.nodeType === Node.ELEMENT_NODE && mutation.target.tagName === 'BODY' && node.matches('[data-key="dialog-snippets"]')) {
                             const container = node.querySelector('.b3-dialog__body');
                             if (container && window?.snippetsNewVersions?.versionList) {
                                 let snippetsNewVersionList = '';
@@ -139,10 +139,21 @@
                                 if (snippetsNewVersionList) container.insertAdjacentHTML('afterbegin', `<div style="max-height:200px;overflow:auto;">${snippetsNewVersionList}</div>`);
                             }
                         }
+                        // 监听代码片段被更新
+                        if (node.nodeType === Node.ELEMENT_NODE && mutation.target.tagName === 'HEAD' && node.matches('[id^="snippetJS"],[id^="snippetCSS"]')) {
+                            const version = getVersionFromTextContent(node.textContent);
+                            const snippetVersion = Object.values(window?.snippetsNewVersions?.versionList||{}).find(item=>item.id===node.id);
+                            const newVersion = snippetVersion?.newVersion;
+                            if(newVersion && (version === newVersion || isNewerVersion(version, newVersion))) {
+                                snippetVersion.newVersion = ''; // 更新后清空新版本
+                            }
+                        }
                     });
                 }
             }
-        }).observe(document.body, { childList: true });
+        });
+        observer.observe(document.body, { childList: true });
+        observer.observe(document.head, { childList: true });
     }
     // 生成遵循协议的版本列表
     function generateVersionList(snippet) {
@@ -179,12 +190,36 @@
             newVersion: '',
             updateDesc: '',
             type: snippet.tagName === 'SCRIPT' ? 'JS' : 'CSS',
+            id: snippet.id,
             checkDelay: totalInterval+60000,
             lastCheck: Date.now(),
         }
     }
+    function getVersionFromTextContent(text) {
+        let lines = text.split('\n');
+        lines = lines.slice(0, 200); // 默认扫描200行
+        for (const line of lines) {
+            const matchVersion = line.match(/^(?:\/\*| \*|\/\/)\s*version[ :：]\s*(.+?)(?:\*\/)?\r*$/i);
+            if (matchVersion) {
+                const remoteVersion = matchVersion[1]?.trim();
+                return remoteVersion;
+            }
+        }
+    }
 
     // 辅助函数
+    function isNewerVersion(current, remote) {
+        function normalize(v) {
+            return v.replace(/^(v|V|version|ver)[\s:=\-_]*|[^\d.]+/g, '').split('.').filter(Boolean).map(Number).join('.');
+        }
+        const curr = normalize(current).split('.').map(Number);
+        const rem = normalize(remote).split('.').map(Number);
+        for (let i = 0; i < Math.max(curr.length, rem.length); i++) {
+            if ((rem[i] || 0) > (curr[i] || 0)) return true;
+            if ((rem[i] || 0) < (curr[i] || 0)) return false;
+        }
+        return false;
+    }
     function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
