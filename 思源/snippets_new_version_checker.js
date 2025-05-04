@@ -22,6 +22,9 @@
     // 低于1小时的，可以设置为小数，比如，半小时，可设置为0.5 或 20/60，20分钟等
     const interval = 3;
 
+    // 检查是否已有实例运行
+    if(window?.snippetsNewVersions?.setInterval) return;
+
     // 扫描所有代码片段
     setTimeout( async ()=>{
         const allSnippets = document.querySelectorAll('[id^="snippetCSS"],[id^="snippetJS"]');
