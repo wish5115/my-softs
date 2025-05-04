@@ -7,7 +7,7 @@
     function loadScript(index) {
         if (index >= urls.length) { console.warn('所有 CDN 节点都无法加载目标脚本。'); return;}
         const script = document.createElement('script'), prefixs = {'gitee.com':'wish163/mysoft/raw/','raw.githubusercontent.com':'wish5115/my-softs/refs/heads/','update.gf.qytechs.cn':'scripts/534829/checkNewVersion.user.js'};
-        script.src = 'https://'+urls[index]+'/'+(prefixs[urls[index]]||'gh/wish5115/my-softs@')+(urls[index]==='update.gf.qytechs.cn'?'':'main/%E6%80%9D%E6%BA%90/snippets_new_version_checker_for_dev.js'+(Math.random() < 0.25?'t='+Date.now():''));
+        script.src = 'https://'+urls[index]+'/'+(prefixs[urls[index]]||'gh/wish5115/my-softs@')+(urls[index]==='update.gf.qytechs.cn'?'':'main/%E6%80%9D%E6%BA%90/snippets_new_version_checker_for_dev.js'+(Math.random() < 0.2?'t='+Date.now():''));
         script.onerror = () => { console.warn(`加载失败：${urls[index]}，尝试下一个节点...`); script.remove(); loadScript(index + 1);}; document.head.appendChild(script);
     } loadScript(0);
 })();
