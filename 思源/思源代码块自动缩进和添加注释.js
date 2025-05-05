@@ -1,11 +1,12 @@
 // 思源代码块自动缩进和ctrl+/添加注释
 // see https://ld246.com/article/1745642027248
-// version 0.0.5.1
+// version 0.0.6
 // 0.0.2 改进计算光标前的空白符算法，从全结点扫描到仅扫描上一个换行符到光标处的结点，性能大幅度提升
 // 0.0.3 增加代码注释功能
 // 0.0.4 修复注释潜在bug，去掉commentWithSpace参数，改为配置设置空格数
 // 0.0.5 修复取消注释时的潜在bug
 // 0.0.5.1 改进取消注释时删除的空间计算逻辑，更加接近真实使用情形
+// 0.0.6 新增 Shift+Backspace 删除一个单位的空白符
 
 // 原理是首先获取上一行的缩进空白符，然后再根据不同语言的特点，在不同关键词下增加不同的缩进
 // 上一行的缩进空白符是保底缩进，如果是无法识别的语言，就默认与上一行缩进对齐了
@@ -19,6 +20,9 @@
     // 是否开启添加注释 true 开启 false 不开启
     // ctrl/meta + / 添加注释，再次按ctrl/meta + / 则取消注释
     const isEnableComment = true;
+
+    // 是否开启Shift+Backspace删除缩进单位，通常是4空格，2空格，tab，这是有思源tab空格数设置决定的
+    const isEnableShiftBackspace = true;
     
     ////////////// 多语言配置部分 /////////////////
     // 可扩展更多语言规则
@@ -450,6 +454,14 @@
             const rules = langRules[lang]?.comment;
             if(!rules?.prefix) return;
             toggleComment(rules?.prefix, rules?.suffix, rules?.isWrap, tabSpace);
+        } else if (event.shiftKey && event.key === 'Backspace' && !event.altKey && !event.ctrlKey && !event.metaKey) {
+            if (!isEnableShiftBackspace) return;
+            // 非代码块返回
+            hljs = getCursorElement()?.closest('.hljs');
+            if (!hljs) return;
+            event.preventDefault();
+            event.stopPropagation();
+            handleShiftBackspace();
         }
     }, true);
 
@@ -849,6 +861,63 @@
     // 获取字符串尾部空格数
     function countStringSpaces(str, pos = 'end') {
       return str.length - (pos === 'end' ? str.trimEnd() : str.trimStart()).length;
+    }
+
+    ////////////// 新增 Shift+Backspace 处理函数 /////////////////
+    function handleShiftBackspace() {
+        const tabSpace = window.siyuan?.config?.editor?.codeTabSpaces || 4;
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+
+        const range = selection.getRangeAt(0);
+        const startContainer = range.startContainer;
+        const startOffset = range.startOffset;
+
+        // 只处理文本节点
+        if (startContainer.nodeType !== Node.TEXT_NODE) return;
+
+        const text = startContainer.textContent;
+        let targetChar, maxDelete;
+
+        // 根据配置确定删除单位
+        if (tabSpace === 0) {
+            targetChar = '\t';  // 使用制表符
+            maxDelete = 1;
+        } else {
+            targetChar = ' ';   // 使用空格
+            maxDelete = tabSpace;
+        }
+
+        // 计算需要删除的字符数
+        let deleteCount = 0;
+        let i = startOffset - 1;
+        while (i >= 0 && deleteCount < maxDelete) {
+            if (text[i] === targetChar) {
+                deleteCount++;
+                i--;
+            } else {
+                break;
+            }
+        }
+
+        if (deleteCount === 0) return; // 没有可删除的缩进单位
+
+        // 执行删除操作
+        const newText = text.slice(0, i + 1) + text.slice(startOffset);
+        startContainer.textContent = newText;
+
+        // 调整光标位置
+        const newOffset = i + 1;
+        range.setStart(startContainer, newOffset);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        // 触发输入事件
+        const editableElement = startContainer.parentElement.closest('[contenteditable]');
+        if (editableElement) {
+            editableElement.dispatchEvent(new Event('input', { bubbles: true }));
+        }
     }
 
     ////////////// 功能辅助函数部分 /////////////////
