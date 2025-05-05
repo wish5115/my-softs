@@ -6,7 +6,7 @@
     if(window?.snippetsNewVersions?.newVersionLoader) return;
     await new Promise(resolve => setTimeout(resolve, 1500));
     if(window?.snippetsNewVersions?.setInterval) return;
-    const urls = ['jsd.onmicrosoft.cn','cdn.jsdmirror.com','gcore.jsdelivr.net','fastly.jsdelivr.net','quantil.jsdelivr.net','originfastly.jsdelivr.net','cdn.mengze.vip','update.gf.qytechs.cn','jsd.nmmsl.top','cdn.bili33.top','jsdelivr.qaq.qa','gitee.com','cdn.jsdmirror.cn','raw.githubusercontent.com'];
+    const urls = ['jsd.onmicrosoft.cn','cdn.jsdmirror.com','gcore.jsdelivr.net','fastly.jsdelivr.net','quantil.jsdelivr.net','originfastly.jsdelivr.net','cdn.mengze.vip','update.gf.qytechs.cn','jsd.nmmsl.top','cdn.bili33.top','jsdelivr.qaq.qa','jsdelivr.5210521.xyz','gitee.com','cdn.jsdmirror.cn','raw.githubusercontent.com'];
     function loadScript(index) {
         if (index >= urls.length) { console.warn('所有 CDN 节点都无法加载目标脚本。'); return;}
         const script = document.createElement('script'), prefixs = {'gitee.com':'wish163/mysoft/raw/','raw.githubusercontent.com':'wish5115/my-softs/refs/heads/','update.gf.qytechs.cn':'scripts/534829/checkNewVersion.user.js'};
