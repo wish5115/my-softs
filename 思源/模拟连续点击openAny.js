@@ -1,15 +1,17 @@
-// 模拟连续点击 openAny
+// name 模拟连续点击 openAny
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 // see https://ld246.com/article/1744896396694
-// version 0.0.5.2
-// 0.0.2 增加toolbar出现事件；选项菜单；输入框；改进事件传递机制，默认捕获阶段触发；增加鼠标事件；增加newSetStyle函数
-// 0.0.3 改进promise执行链，更加健壮和可调试性，增加catch方法
-// 0.0.3.1 改进输入框和选项菜单样式和支持手机版
-// 0.0.3.2 优化细节，修复bug
-// 0.0.4 支持模拟鼠标操作，比如 ctrl+mouseleft, ctrl+mouseright，打开本地文件，交互对话框等；setKeymap更改为addKeymap；新增removeKeymap;
-// 0.0.5 选项菜单增加快捷键支持，参数增加closeMenu调用及disableClose参数在需要时可禁用关闭
-// 0.5.1 修复openAny.addKeymap方法注册的事件，无法被openAny.press触发的问题
-// 0.5.2 修复按esc时，三大ui的关闭问题（当多个实例时，现在支持仅关闭最上层的实例，一层一层关）
+// version 0.0.6
+// updateDesc 0.0.6 增加observeElement，修复潜在bug，新增observeElement, putFile, getFile, getCursorElement, showMsgBox等
+// updateDesc 0.0.5.2 修复按esc时，三大ui的关闭问题（当多个实例时，现在支持仅关闭最上层的实例，一层一层关）
+// updateDesc 0.0.5.1 修复openAny.addKeymap方法注册的事件，无法被openAny.press触发的问题
+// updateDesc 0.0.5 选项菜单增加快捷键支持，参数增加closeMenu调用及disableClose参数在需要时可禁用关闭
+// updateDesc 0.0.4 支持模拟鼠标操作，比如 ctrl+mouseleft, ctrl+mouseright，打开本地文件，交互对话框等；setKeymap更改为addKeymap；新增removeKeymap;
+// updateDesc 0.0.3.2 优化细节，修复bug
+// updateDesc 0.0.3.1 改进输入框和选项菜单样式和支持手机版
+// updateDesc 0.0.3 改进promise执行链，更加健壮和可调试性，增加catch方法
+// updateDesc 0.0.2 增加toolbar出现事件；选项菜单；输入框；改进事件传递机制，默认捕获阶段触发；增加鼠标事件；增加newSetStyle函数
+// updateUrl https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/%E6%A8%A1%E6%8B%9F%E8%BF%9E%E7%BB%AD%E7%82%B9%E5%87%BBopenAny.js
 
 // 调用方式：
 // 注意：选择符不一定要全局唯一，只要能达到目的且不会产生歧义及副作用即可
@@ -103,6 +105,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
         functions = {
             sleep,
             whenElementExist,
+            whenElementExistBySleep,
             whenElementRemoved,
             showMessage,
             showErrorMessage,
@@ -119,8 +122,11 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             getCharsBeforeCursor,
             showInputBox,
             showOptionsMenu,
+            showMsgBox,
             showBasicDialog,
             showDialog,
+            showMessage,
+            showErrorMessage,
             destroyDialog,
             showFileInFolder,
             openFile,
@@ -138,6 +144,10 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             isReadOnly,
             getProtyleEl,
             getEditor,
+            getCursorElement,
+            observeElement,
+            putFile,
+            getFile,
         };
 
         constructor(params) {
@@ -194,12 +204,12 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             this.resetChain(); // 调用重置方法（已包含链清理逻辑）
             throw error; // 抛出错误，由外部捕获
         }
-        
+
         showMessage(isShowMessage = true) {
             this.isShowMessage = isShowMessage;
             return this;
         }
-        
+
         setTimeout(timeout) {
             this.timeout = timeout;
             return this;
@@ -214,6 +224,8 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                 } else if(selector?.nodeType ===1) {
                     // 如果已经是dom元素
                     this.prev = selector;
+                }  else if(typeof selector === 'function') {
+                    this.prev = await selector();
                 } else {
                     // 如果是选择符
                     selector = selector.trim();
@@ -251,7 +263,6 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             for (const selector of selectors) {
                 this.click(selector, parentElement, timeout); // 调用 click 方法并添加到 promiseChain
             }
-    
             return this; // 返回当前实例以支持链式调用
         }
 
@@ -271,6 +282,8 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             } else if(selector?.nodeType ===1) {
                 // 如果已经是dom元素
                 this.prev = selector;
+            }  else if(typeof selector === 'function') {
+                this.prev = await selector();
             } else {
                 // 如果是选择符
                 selector = selector.trim();
@@ -291,9 +304,31 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             return this;
         }
 
-        whenExist(selector, parentElement, timeout) {
+        waitFor(selector, parentElement, timeout, callback) {
+            return this.whenElementExist(selector, parentElement, timeout, callback);
+        }
+
+        whenExist(selector, parentElement, timeout, callback) {
+            return this.whenElementExist(selector, parentElement, timeout, callback);
+        }
+
+        whenElementExist(selector, parentElement, timeout, callback) {
             this._chain = this._chain.then(async () => {
                 await this.#getElement(selector, parentElement, timeout);
+                if(callback && typeof callback === 'function') {
+                    callback({prev:this.prev, ...this.functions});
+                }
+            });
+            return this;
+        }
+
+        observe(selector, callback, options, parent) {
+            return this.observeElement(selector, callback, options, parent);
+        }
+
+        observeElement(selector, callback, options, observeElement) {
+            this._chain = this._chain.then(async () => {
+                observeElement(selector, callback, options, observeElement)
             });
             return this;
         }
@@ -395,11 +430,10 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
         invoke(callback) {
             this._chain = this._chain.then(async () => {
                 if(typeof callback !== 'function') this.throwError('元素 ' + callback + ' 不是有效的函数');
-                this.functions.prev = this.prev
                 try {
-                    this._invokeReturn = await callback.call(this, this.functions);
+                    this._invokeReturn = await callback.call(this, {prev:this.prev, ...this.functions});
                     this.prev = this._invokeReturn;
-                    //this.prev = await callback(this.functions);
+                    //this.prev = await callback({prev:this.prev, ...this.functions});
                 } catch (e) {
                     this.throwError('执行函数时出错：' + e.message);
                 }
@@ -499,27 +533,21 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             if (typeof keys === 'undefined' || !keys) {
                 this.throwError('参数keys不能为空');
             }
-        
             // 解析快捷键字符串并排序
             const keyCombination = keys.toLowerCase().split('+').map(item => item.trim()).sort();
-        
             // 过滤掉匹配的快捷键
             this.keymaps = this.keymaps.filter(keymap => {
                 // 匹配按键组合
                 const isKeysMatch = keymap.keys.join('+') === keyCombination.join('+');
-        
                 // 如果按键不匹配，直接保留
                 if (!isKeysMatch) return true;
-        
                 // 比较其他字段：callback, node, options
                 const isCallbackMatch = callback === null || keymap.callback.toString() === callback.toString();
                 const isNodeMatch = node === null || keymap.node === node;
                 const isOptionsMatch = options === null || options === keymap.options || JSON.stringify(keymap.options) === JSON.stringify(options);
-        
                 // 如果所有提供的条件都匹配，则移除此记录
                 return !(isCallbackMatch && isNodeMatch && isOptionsMatch);
             });
-        
             return this;
         }
 
@@ -531,7 +559,6 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             if (event.ctrlKey) pressedKeys.push('ctrl');
             if (event.shiftKey) pressedKeys.push('shift');
             if (event.metaKey) pressedKeys.push('meta');
-        
             // 根据事件类型处理主键
             switch (event.type) {
                 case 'mousedown':
@@ -552,9 +579,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                     if (key) pressedKeys.push(key.toLowerCase());
                     break;
             }
-        
             pressedKeys.sort(); // 排序以确保组合顺序一致
-        
             // 遍历映射表，匹配快捷键
             for (const { keys, callback } of this.keymaps) {
                 if (keys.join('+') === pressedKeys.join('+')) {
@@ -615,7 +640,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             return this._chain.then(resolve, reject);
         }
     }
-    
+
     window.openAny = new OpenAny({default: true});
     window.OpenAny = OpenAny;
 
@@ -875,6 +900,85 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             }
         });
     }
+    function whenElementExistBySleep(selector, node, timeout = 5000, sleep = 40) {
+        return new Promise((resolve, reject) => {
+            let isResolved = false;
+            const check = () => {
+                const el = (typeof selector === 'function' ? selector() : (node || document).querySelector(selector));
+                if (el) {
+                    isResolved = true;
+                    resolve(el);
+                } else if (!isResolved) {
+                    setTimeout(check, sleep); // 每 40ms 检查一次
+                }
+            };
+            check();
+            setTimeout(() => {
+                if (!isResolved) {
+                    reject(new Error(`Timeout: Element not found for selector "${selector}" within ${timeout}ms`));
+                }
+            }, timeout);
+        });
+    }
+
+    // 调用示例
+    // observeElement('.tooltip.tooltip--memo:not(.fn__none)', ({element, mutationsList, stop})=>{
+    //     console.log([element?.outerHTML,mutationsList, stop]);
+    // });
+    async function observeElement(selector, callback, options, observedEl, delay = 100) {
+        let observer, selectorFn = selector;
+        let isStopped = false;
+        let lastElementExists = false; // 记录上一次元素是否存在
+        // 转换选择器为函数
+        if (typeof selector !== 'function') {
+            selectorFn = () => {
+                if (selector?.nodeType === 1) return selector;
+                return typeof selector === 'string' ? document.querySelector(selector) : null;
+            };
+        }
+        const stop = () => {
+            isStopped = true;
+            observer?.disconnect();
+        };
+        // 初始检查
+        const initialElement = selectorFn();
+        lastElementExists = !!initialElement;
+        if (initialElement && typeof callback === 'function') {
+            callback({ element: initialElement, mutationsList: null, stop });
+            if (isStopped) return;
+        }
+        if (isStopped) return;
+        // 核心优化：仅在元素存在状态变化时触发回调
+        let ticking = false;
+        observer = new MutationObserver((mutationsList) => {
+            if (!ticking) {
+                ticking = true;
+                requestAnimationFrame(() => {
+                    const currentElement = selectorFn();
+                    const currentExists = !!currentElement;
+                    // 状态变化时才触发
+                    if (currentExists !== lastElementExists) {
+                        if (currentExists && typeof callback === 'function') {
+                            callback({
+                                element: currentElement,
+                                mutationsList: currentExists ? mutationsList : [],
+                                stop
+                            });
+                        }
+                        lastElementExists = currentExists;
+                    }
+                    ticking = false;
+                });
+            }
+        });
+        if (isStopped) return;
+        // 优化监听范围：只监听必要的变化
+        if (typeof observedEl === 'string') {
+            observedEl = await whenElementExist(observedEl);
+            if (isStopped) return;
+        }
+        observer.observe(observedEl || document.body, options || {childList: true, subtree: true});
+    }
 
     function whenElementRemoved(selector, callback, node = document.body, once = true) {
         // 创建一个 MutationObserver 实例
@@ -954,6 +1058,52 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
         return getProtyle()?.notebookId;
     }
 
+    function getCursorElement() {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            // 获取选择范围的起始位置所在的节点
+            const startContainer = range.startContainer;
+            // 如果起始位置是文本节点，返回其父元素节点
+            const cursorElement = startContainer.nodeType === Node.TEXT_NODE
+                ? startContainer.parentElement
+                : startContainer;
+            return cursorElement;
+        }
+        return null;
+    }
+
+    async function putFile(path, content = '', isDir = false) {
+        const formData = new FormData();
+        formData.append("path", path);
+        formData.append("isDir", isDir)
+        formData.append("file", new Blob([content]));
+        const result = await fetch("/api/file/putFile", { // 写入js到本地
+            method: "POST",
+            body: formData,
+        });
+        const json = await result.json();
+        return json;
+    }
+
+    async function getFile(path, type = 'text') {
+        return fetch("/api/file/getFile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path }),
+        }).then((response) => {
+            if (response.ok) {
+                if(type==='json') return response.json();
+                else if(type==='blob') return response.blob();
+                else return response.text();
+            } else {
+                throw new Error("Failed to get file content");
+            }
+        }).catch((error) => {
+            console.error(error);
+        });
+    }
+
     function newSetStyle() {
         let styleElement = null; // 保存当前样式元素的引用
         return (css = '') => {
@@ -1003,7 +1153,6 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             callback(element);
             setTimeout(()=>hasLoad=false, 200);
         };
-      
         // 旧版本加载需要这个
         whenElementExist('.protyle:not(.fn__none)').then(observeCallback);
         // 监听加载protyle
@@ -1021,7 +1170,6 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                 // 检查是否是属性变化并且变化的属性是 class
                 if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                     const targetElement = mutation.target; // 发生变化的目标元素
-    
                     // 判断目标元素是否匹配指定选择器 .protyle:not(.fn__none)
                     if (targetElement.matches('.protyle:not(.fn__none)')) {
                         // 触发回调
@@ -1649,6 +1797,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
         .open-any-menu-body.search-empty::before {
             content: "没找到任何内容";
             float: left;
+            color: #222;
         }
         .open-any-menu-search .open-any-menu-search-input{
             color: #222;
@@ -1681,34 +1830,25 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             // 创建 overlay 元素
             const overlay = document.createElement('div');
             overlay.className = 'open-any-overlay';
-    
             // 创建 menu 元素
             const menu = document.createElement('div');
             menu.className = 'open-any-menu';
-    
             const menuTitle = document.createElement('div');
             menuTitle.className = 'open-any-menu-title';
-    
             const menuBody = document.createElement('div');
             menuBody.className = 'open-any-menu-body';
-    
             // 将menuTitle 添加到 menu 中
             menu.appendChild(menuTitle);
-    
             // 将menuBody 添加到 menu 中
             menu.appendChild(menuBody);
-    
             // 将 menu 添加到 overlay 中
             overlay.appendChild(menu);
-    
             // 将 overlay 添加到 body 的末尾
             document.body.appendChild(overlay);
-    
             // 设置menuItem样式
             if (config?.menuItemStyle) {
                 setMenuItemStyle(`.open-any-menu-item{${config.menuItemStyle}}`);
             }
-    
             // 设置menu宽度等
             if (config?.width) menu.style.width = config.width;
             if (config?.height) menu.style.height = config.height;
@@ -1716,7 +1856,6 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             if (config?.maxHeight) menu.style.maxHeight = config.maxHeight;
             if (config?.minWidth) menu.style.minWidth = config.minWidth;
             if (config?.minHeight) menu.style.minHeight = config.minHeight;
-    
             // 清空菜单内容
             let title = config?.title || '';
             if (typeof config === 'string') title = config;
@@ -1727,18 +1866,14 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                     <input type="text" style="width:100%" placeholder="${config?.searchPlaceholder||'搜索'}" class="open-any-menu-search-input b3-text-field b3-form__icon-input">
                 </div>` : '';
             menuTitle.innerHTML = `${titleHtml}${searchHtml}`;
-    
             const menuItems = [];
             const keys = {};
             let currentIndex, oldOption;
-    
             // 计算选中项在可视区的显示位置
             const updateSelection = (direction, margin = 25) => {
                 menuItems.forEach((item, index) => {
                     item.classList.toggle('fn__selected', index === currentIndex);
-    
                     if (index !== currentIndex) return;
-    
                     // 首尾项处理
                     if (currentIndex === 0) {
                         return menu.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1746,19 +1881,15 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                     if (currentIndex === options.length - 1) {
                         return menu.scrollTo({ top: menu.scrollHeight, behavior: 'smooth' });
                     }
-    
                     // 动态坐标系计算
                     const menuRect = menu.getBoundingClientRect();
                     const itemRect = item.getBoundingClientRect();
-    
                     // 计算元素相对容器的可视位置
                     const visibleTop = itemRect.top - menuRect.top;
                     const visibleBottom = itemRect.bottom - menuRect.top;
                     const menuHeight = menuRect.height;
-    
                     // 智能滚动判断
                     let targetScroll = menu.scrollTop;
-    
                     // 顶部越界判断（包含 margin）
                     if (visibleTop < margin) {
                         targetScroll += visibleTop - margin;
@@ -1767,7 +1898,6 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                     else if (visibleBottom > menuHeight - margin) {
                         targetScroll += visibleBottom - (menuHeight - margin);
                     }
-
                     // 执行滚动
                     if (Math.abs(targetScroll - menu.scrollTop) > 1) {
                         menu.scrollTo({ top: targetScroll, behavior: 'smooth' });
@@ -1949,6 +2079,8 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     options = {
         ...options,
         showAction?: boolean,
+        comfirmBtnText?: boolean,
+        cancelBtnText?: boolean,
         // 当点击确定后不想关闭对话框时，可设置为options.disableClose=true;即可
         confirmCallback?: (options?: IObject) => void
     }
@@ -1959,10 +2091,12 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
         options.width = options?.width || "min(100%, 500px)";
         options.height = options?.height || "min(100vh, 300px)";
         const showAction = options?.showAction === false  ? false : true;
+        const comfirmBtnText = options?.comfirmBtnText === null ? '' : (options?.comfirmBtnText || "确定");
+        const cancelBtnText = options?.cancelBtnText === null ? '' : (options?.cancelBtnText || "取消");
         const actionHtml = showAction ? `
         <div class="b3-dialog__action">
-            <button class="b3-button b3-button--cancel">取消</button><div class="fn__space"></div>
-            <button class="b3-button b3-button--text">确定</button>
+            <button class="b3-button b3-button--cancel">${cancelBtnText}</button><div class="fn__space"></div>
+            <button class="b3-button b3-button--text">${comfirmBtnText}</button>
         </div>` : '';
         options.content = `
         <div class="b3-dialog__content">
@@ -2076,5 +2210,46 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             // https://github.com/siyuan-note/siyuan/issues/10475
             document.getElementById("drag")?.classList.remove("fn__hidden");
         }, 190);
+    }
+    /**
+     * 显示一个消息框，返回 Promise<boolean>
+     * @param {string} content - 内容
+     * @param {string} [title=''] - 标题
+     * @param {string} [confirmBtnText='确定'] - 确定按钮文字
+     * @param {string} [cancelBtnText='取消'] - 取消按钮文字
+     * @param {string} [width='518px'] - 宽度
+     * @param {string} [height='158px'] - 高度
+     * @returns {Promise<boolean>} 如果点击确定，resolve(true)，否则 reject(false) 或 resolve(false)
+     */
+    function showMsgBox(
+        content,
+        title = '',
+        confirmBtnText = '确定',
+        cancelBtnText = '取消',
+        width = '518px',
+        height = '158px'
+    ) {
+        return new Promise((resolve, reject) => {
+            // 定义点击确定后的回调
+            const confirmCallback = () => {
+                resolve(true); // 用户点击了“确定”
+            };
+            // 定义点击取消或关闭后的回调
+            const destroyCallback = () => {
+                resolve(false);
+            };
+            // 调用基础弹窗方法
+            showBasicDialog({
+                title,
+                content,
+                confirmCallback,
+                destroyCallback,
+                confirmBtnText,
+                cancelBtnText,
+                showAction: true,
+                width: isNumber(width) ? width+'px' : width,
+                height: isNumber(height) ? height+'px' : height,
+            });
+        });
     }
 })();
