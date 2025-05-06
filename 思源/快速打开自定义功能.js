@@ -1,7 +1,8 @@
 // 快速打开自定义功能
 // see https://ld246.com/article/1745488922117
-// version 0.0.2
+// version 0.0.3
 // 0.0.2 增加快捷键支持，把思源命令面板的命令移植过来
+// 0.0.3 增加 刷新页面，全屏，宽屏，断点调试，打开网页版等功能
 // 使用帮助
 // 建议把代码放到runjs插件的代码块中方便修改和添加菜单项（当然直接把该代码放到js代码片段中也行，代码片段修改后需要刷新页面）
 // 然后，把下面的这行代码放到js代码片段中加载时运行即可（注意，外部调用runjs代码块，先要给块命名，然后保存为可调用的方法）
@@ -63,7 +64,82 @@
         const url = 'https://www.iciba.com/word?w=%s%';
         window.open(url.replace('%s%', getSelectedText()));
     });
-  
+    
+    // 刷新页面
+    addMenu('刷新页面', (event, {}) => {
+        window.reload();
+    }, 'R');
+
+    // 全屏
+    addMenu('全屏', (event, {}, menuItem) => {
+        if(event?.isWillShow) {
+            if (isFullScreen()) {
+                menuItem.label = '退出全屏';
+            } else {
+                menuItem.label = '全屏';
+            }
+            return;
+        }
+        if(isFullScreen()){
+            exitFullscreen();
+        } else {
+            requestFullScreen(document.querySelector('html'));
+        }
+    }, 'F', '', '', true);
+    
+    // 宽屏
+    addMenu('宽屏', async (event, {showMsgBox}, menuItem) => {
+        // 需要先安装宽屏代码片段后才行 https://ld246.com/article/1746079460404#%E4%BB%A3%E7%A0%81
+        if(event?.isWillShow) {
+            const editor = getEditor();
+            if ((editor?.firstElementChild?.offsetWidth||0) + 40 >= (editor?.offsetWidth||0)) {
+                menuItem.label = '取消宽屏';
+            } else {
+                menuItem.label = '宽屏';
+            }
+            return;
+        }
+        if(!document.querySelector('.dock__item[aria-label$="宽屏风格"]')) {
+            await showMsgBox('请先安装宽屏代码片段！<a href="" target="_blank">点击这里安装</a>', '异常提醒', '', null);
+            return;
+        }
+        openAny.click('.dock__item[aria-label$="宽屏风格"]');
+    }, 'W', '', '', true);
+    
+    // 打开网页版
+    addMenu('打开网页版', (event, {}) => {
+        window.open(window.location.origin);
+    });
+
+    // 延迟断点
+    addMenu('debugger', (event, {}) => {
+        setTimeout('debugger', 5000);
+    });
+
+    // vConsole
+    addMenu('vConsole', (event, {}) => {
+        const shouldLoad = event?.isLoading ? localStorage.getItem('vconsole_running') === 'true' : !window.VConsole;
+        if(shouldLoad) {
+            const src = 'https://unpkg.com/vconsole@latest/dist/vconsole.min.js';
+            const script = document.createElement('script');
+            script.onload = () => {
+                window.vConsole = new window.VConsole();
+                localStorage.setItem('vconsole_running', true);
+            }
+            script.src = src;
+            document.head.appendChild(script);
+        } else {
+            if(event?.isLoading) return;
+            if(window?.vConsole?.isInited) {
+                window.vConsole.destroy();
+                localStorage.setItem('vconsole_running', false);
+            } else {
+                window.vConsole = new window.VConsole();
+                localStorage.setItem('vconsole_running', true);
+            }
+        }
+    }, '', '', '', '', true);
+    
     // 打开设置
     addMenu('打开设置', (event, {}) => {
         openAny.pressByKeymap('config');
@@ -167,11 +243,11 @@
         const selection = window.getSelection();
         const range = selection.getRangeAt(0);
         const selectedText = selection.toString();
-        const lastSelected = await getStorageVal('local-quickopen-selected');
+        const lastSelected = await getStorageVal('local-quickopen-selected');console.log(lastSelected,2222);
         if(lastSelected) {
             const lastSelectedItem = menus.find(item=>item.selected);
             if(lastSelectedItem) lastSelectedItem.selected=false;
-            const selectedItem = menus.find(item=>item.label===lastSelected);
+            const selectedItem = menus.find(item=>item.value===lastSelected);
             if(selectedItem) selectedItem.selected=true;
         }
         functions.whenElementExist('.open-any-menu-title:not([data-reward="true"])').then((title)=>{
@@ -182,11 +258,14 @@
                 title.dataset.reward = true;
             }
         });
+        // 显示菜单前回调
+        menus.forEach(menu => menu.runOnShow && menu.callback({isWillShow: true}, functions, menu, {selectedText, selection, range}));
+        // 显示菜单        
         const selectedOption = await functions.showOptionsMenu(menus, {width:'min(800px, 100%)',maxWidth:'min(1000px, 100%)', height:'min(800px, calc(100% - 80px))', maxHeight:'min(800px, calc(100% - 80px))', search:true, menuItemStyle: 'text-align:left'});
         if (selectedOption !== null) {
             if(typeof selectedOption.callback === 'function') {
                 selectedOption.callback(event, functions, selectedOption, {selectedText, selection, range});
-                setStorageVal('local-quickopen-selected', selectedOption.label);
+                setStorageVal('local-quickopen-selected', selectedOption.value);console.log(selectedOption.value,1111);
             } else {
                 alert(selectedOption.callback+' 不是有效的函数');
             }
@@ -272,9 +351,14 @@
         }
     }, 0);
 
+    // 执行加载时执行的菜单
+    setTimeout(async ()=>{
+        menus.forEach(menu => menu.runOnLoad && menu.callback({isLoading: true}, openAny.fn, menu, {}));
+    }, 0);
+
     // 添加菜单函数
-    function addMenu(name, callback, key, shortcut, value) {
-        menus.push({ label: name, value: value||name, key: key || '', shortcut: shortcut, callback: callback });
+    function addMenu(name, callback, key, shortcut, value, runOnShow = false, runOnLoad = false) {
+        menus.push({ label: name, value: value||name, key: key || '', shortcut: shortcut, callback: callback, runOnShow, runOnLoad });
     }
 
     function runSiyuanCommand(command, type, event, functions, option, selection) {
@@ -415,6 +499,38 @@
         }
   
         return keys.join("+");
+    }
+
+    function requestFullScreen(element) {
+        if (element.requestFullscreen) {
+            element.requestFullscreen();
+        } else if (element.mozRequestFullScreen) { // Firefox
+            element.mozRequestFullScreen();
+        } else if (element.webkitRequestFullscreen) { // Chrome, Safari, Opera
+            element.webkitRequestFullscreen();
+        } else if (element.msRequestFullscreen) { // IE/Edge
+            element.msRequestFullscreen();
+        }
+    }
+
+    function exitFullscreen() {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) { /* Chrome, Safari, Opera */
+        document.webkitExitFullscreen();
+      } else if (document.mozCancelFullScreen) { /* Firefox */
+        document.mozCancelFullScreen();
+      } else if (document.msExitFullscreen) { /* IE/Edge Legacy */
+        document.msExitFullscreen();
+      }
+    }
+
+    function isFullScreen() {
+      return !!document.fullscreenElement;
+    }
+
+    function getEditor() {
+        return document.querySelector('[data-type="wnd"].layout__wnd--active .protyle:not(.fn__none) .protyle-wysiwyg.protyle-wysiwyg--attr')||document.querySelector('[data-type="wnd"] .protyle:not(.fn__none) .protyle-wysiwyg.protyle-wysiwyg--attr');
     }
 
     function generateReward(node) {
