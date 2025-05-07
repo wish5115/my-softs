@@ -1,12 +1,15 @@
-// 代码块添加折叠/展开/全屏/悬浮横向滚动条
+// name 代码块添加折叠/展开/全屏/悬浮横向滚动条
 // see https://ld246.com/article/1744373698945
 // 支持在块上添加auto-height自定义属性，使块不受最大高度限制
-// version 0.0.5
-// 0.0.1 支持代码块的折叠和展开，全屏和悬浮横向滚动条
-// 0.0.2 美化滚动条样式
-// 0.0.3 修复全屏后代码块显示不全问题
-// 0.0.4 改进仅代码块有滚动条且内容高度大于codeMaxHeight时才显示
+// version 0.0.6
+// updateDesc 0.0.6 增加预览功能，仅支持html和js
 // 0.0.5 修复动态创建的代码块无法添加图标问题
+// 0.0.4 改进仅代码块有滚动条且内容高度大于codeMaxHeight时才显示
+// 0.0.3 修复全屏后代码块显示不全问题
+// 0.0.2 美化滚动条样式
+// 0.0.1 支持代码块的折叠和展开，全屏和悬浮横向滚动条
+// updateUrl https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/%E4%BB%A3%E7%A0%81%E5%9D%97%E4%BC%98%E5%8C%96%E4%B9%8B%E6%8A%98%E5%8F%A0%E5%85%A8%E5%B1%8F%E5%92%8C%E6%A8%AA%E5%90%91%E6%BB%9A%E5%8A%A8%E6%9D%A1.js
+
 (() => {
     // 当代码块内容最大高度，注意：这里的高度是指.hljs元素的高度，默认是500px
     // 支持在块上添加auto-height自定义属性，使块不受最大高度限制
@@ -18,6 +21,10 @@
     // 是否显示模拟滚动条 true 显示 false 不显示
     // 该功能在代码块底部超出可视区域时自动在底部显示滚动条
     const isEnableScrollbar = true;
+
+    // 是否显示预览 true 显示 false 不显示
+    // 目前仅支持HTML和JavaScript
+    const isEnablePreview = true;
     
     // 不支持手机版（因为手机版不需要）
     if (isMobile()) return;
@@ -69,6 +76,43 @@
           pointer-events: none; /* 禁用鼠标交互 */
           height: 0;
         }
+        /* 模态框样式 */
+        #modal-preview {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--b3-mask-background);;
+            z-index: 999;
+            border-radus: 5px;
+        }
+        #modal-preview-content {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px;
+            width: 80%;
+            height: 80%;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            border-radius: 5px;
+        }
+        #modal-preview-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #333;
+        }
+        #modal-preview-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
     `);
 
     // 监听代码块被加载
@@ -102,6 +146,38 @@
             });
         });
     });
+
+    setTimeout(()=>{
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="modal-preview">
+                <div id="modal-preview-content">
+                    <span id="modal-preview-close">❌</span>
+                    <iframe id="modal-preview-iframe" sandbox="allow-scripts allow-same-origin allow-modals"></iframe>
+                </div>
+            </div>
+        `);
+        // 点击遮罩层关闭
+        window.onclick = function(event) {
+            if (event.target.matches('#modal-preview') || event.target.matches('#modal-preview-close')) {
+                closePreviewModal();
+            }
+        }
+    }, 1000);
+
+    function openPrevieModal(code) {
+        const iframe = document.getElementById("modal-preview-iframe");
+        // 设置 iframe 的内容
+        iframe.srcdoc = code;
+        // 显示模态框
+        document.getElementById("modal-preview").style.display = "block";
+    }
+
+    function closePreviewModal() {
+        // 隐藏模态框
+        document.getElementById("modal-preview").style.display = "none";
+        // 可选：清空 iframe 内容
+        document.getElementById("modal-preview-iframe").srcdoc = "";
+    }
 
     // 添加扩展按钮
     let runing = false;
@@ -140,37 +216,59 @@
             });
 
             // 添加全屏按钮
-            if (!isEnableFullscreen) return;
-            if (code.querySelector('.protyle-icon--fullscreen')) return;
-            let fullscreenAriaLabel = '全屏';
-            let fullscreenStatus = 'iconFullscreen';
-            const fullscreenBtnHtml = `<span class="b3-tooltips__nw b3-tooltips protyle-icon protyle-icon--fullscreen protyle-action__fullscreen protyle-custom" aria-label="${fullscreenAriaLabel}"><svg><use xlink:href="#${fullscreenStatus}"></use></svg></span>`;
-            expandBtn.insertAdjacentHTML('beforebegin', fullscreenBtnHtml);
-            const fullscreenBtn = code.querySelector('.protyle-icon--fullscreen');
-            let oldCodeMaxHeight;
-            fullscreenBtn.addEventListener('click', () => {
-                if (fullscreenStatus === 'iconFullscreen') {
-                    oldCodeMaxHeight = hljs.style.maxHeight;
-                    requestFullScreen(code);
-                    fullscreenStatus = 'iconFullscreenExit';
-                    fullscreenAriaLabel = '退出全屏';
-                    hljs.style.maxHeight = 'calc(100vh - 58px)';
-                    expandBtn.style.display = 'none';
-                    if (scrollbarContainer) scrollbarContainer.classList.add('f__hidden');
-                } else {
-                    exitFullScreen(code);
-                    fullscreenStatus = 'iconFullscreen';
-                    fullscreenAriaLabel = '全屏';
-                    if (oldCodeMaxHeight !== undefined) hljs.style.maxHeight = oldCodeMaxHeight;
-                    expandBtn.style.display = '';
-                    setTimeout(() => {
+            let fullscreenBtn;
+            if (isEnableFullscreen) {
+                if (code.querySelector('.protyle-icon--fullscreen')) return;
+                let fullscreenAriaLabel = '全屏';
+                let fullscreenStatus = 'iconFullscreen';
+                const fullscreenBtnHtml = `<span class="b3-tooltips__nw b3-tooltips protyle-icon protyle-icon--fullscreen protyle-action__fullscreen protyle-custom" aria-label="${fullscreenAriaLabel}"><svg><use xlink:href="#${fullscreenStatus}"></use></svg></span>`;
+                expandBtn.insertAdjacentHTML('beforebegin', fullscreenBtnHtml);
+                fullscreenBtn = code.querySelector('.protyle-icon--fullscreen');
+                let oldCodeMaxHeight;
+                fullscreenBtn.addEventListener('click', () => {
+                    if (fullscreenStatus === 'iconFullscreen') {
+                        oldCodeMaxHeight = hljs.style.maxHeight;
+                        requestFullScreen(code);
+                        fullscreenStatus = 'iconFullscreenExit';
+                        fullscreenAriaLabel = '退出全屏';
+                        hljs.style.maxHeight = 'calc(100vh - 58px)';
+                        expandBtn.style.display = 'none';
                         if (scrollbarContainer) scrollbarContainer.classList.add('f__hidden');
-                    }, 300);
-                }
-                const useEl = fullscreenBtn.querySelector('svg > use');
-                useEl.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#' + fullscreenStatus);
-                fullscreenBtn.setAttribute('aria-label', fullscreenAriaLabel);
-            });
+                    } else {
+                        exitFullScreen(code);
+                        fullscreenStatus = 'iconFullscreen';
+                        fullscreenAriaLabel = '全屏';
+                        if (oldCodeMaxHeight !== undefined) hljs.style.maxHeight = oldCodeMaxHeight;
+                        expandBtn.style.display = '';
+                        setTimeout(() => {
+                            if (scrollbarContainer) scrollbarContainer.classList.add('f__hidden');
+                        }, 300);
+                    }
+                    const useEl = fullscreenBtn.querySelector('svg > use');
+                    useEl.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#' + fullscreenStatus);
+                    fullscreenBtn.setAttribute('aria-label', fullscreenAriaLabel);
+                });
+            }
+
+            if (isEnablePreview) {
+                if (code.querySelector('.protyle-icon--preview')) return;
+                const lang = code.querySelector('.protyle-action__language')?.textContent?.trim();
+                let previewAriaLabel = '预览';
+                let previewIcon = 'iconPreview';
+                const previewBtnHtml = `<span class="b3-tooltips__nw b3-tooltips protyle-icon protyle-icon--preview protyle-action__preview protyle-custom" aria-label="${previewAriaLabel}"><svg><use xlink:href="#${previewIcon}"></use></svg></span>`;
+                (fullscreenBtn||expandBtn).insertAdjacentHTML('beforebegin', previewBtnHtml);
+                previewBtn = code.querySelector('.protyle-icon--preview');
+                previewBtn.addEventListener('click', () => {
+                    const lang = code.querySelector('.protyle-action__language')?.textContent?.trim();
+                    if(!['html','js','javascript'].includes(lang.toLowerCase())) {
+                        showMessage('目前仅支持HTML和JavaScript', true);
+                        return;
+                    }
+                    let codeText = hljs.querySelector('[contenteditable="true"]').textContent;
+                    if(['js','javascript'].includes(lang.toLowerCase()) && (codeText?.toLowerCase()?.indexOf('<script') === -1 || codeText?.toLowerCase()?.indexOf('</script>') === -1)) codeText = `<script>${codeText}</script>`;
+                    openPrevieModal(codeText);
+                });
+            }
 
             // 添加模拟滚动条
             if (!isEnableScrollbar) return;
@@ -367,6 +465,13 @@
 
     function isMobile() {
         return !!document.getElementById("sidebar");
+    }
+
+    function showMessage(message, isError = false, delay = 7000) {
+        return fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
+            "method": "POST",
+            "body": JSON.stringify({"msg": message, "timeout": delay})
+        });
     }
 
     function isElementBottomInViewport(el) {
