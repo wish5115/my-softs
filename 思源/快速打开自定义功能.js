@@ -1,8 +1,10 @@
-// 快速打开自定义功能
+// name 快速打开自定义功能
 // see https://ld246.com/article/1745488922117
-// version 0.0.3
-// 0.0.2 增加快捷键支持，把思源命令面板的命令移植过来
-// 0.0.3 增加 刷新页面，全屏，宽屏，断点调试，打开网页版等功能
+// version 0.0.3.1
+// updateDesc 0.0.3.1 增加eruda调试工具
+// updateDesc 0.0.3 增加 刷新页面，全屏，宽屏，断点调试，打开网页版等功能
+// updateDesc 0.0.2 增加快捷键支持，把思源命令面板的命令移植过来
+// updateUrl https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/%E5%BF%AB%E9%80%9F%E6%89%93%E5%BC%80%E8%87%AA%E5%AE%9A%E4%B9%89%E5%8A%9F%E8%83%BD.js
 // 使用帮助
 // 建议把代码放到runjs插件的代码块中方便修改和添加菜单项（当然直接把该代码放到js代码片段中也行，代码片段修改后需要刷新页面）
 // 然后，把下面的这行代码放到js代码片段中加载时运行即可（注意，外部调用runjs代码块，先要给块命名，然后保存为可调用的方法）
@@ -115,6 +117,32 @@
     addMenu('debugger', (event, {}) => {
         setTimeout('debugger', 5000);
     });
+
+    // eruda see https://eruda.liriliri.io/zh/docs/
+    addMenu('eruda console', (event, {}) => {
+        const shouldLoad = event?.isLoading ? localStorage.getItem('eruda_running') === 'true' : !window.eruda;
+        if(shouldLoad) {
+            const src = 'https://cdn.bootcdn.net/ajax/libs/eruda/3.4.1/eruda.js';
+            const script = document.createElement('script');
+            script.onload = () => {
+                window.eruda.init();
+                window.eruda.position({x: window.innerWidth-40, y: window.innerHeight-80});
+                localStorage.setItem('eruda_running', true);
+            }
+            script.src = src;
+            document.head.appendChild(script);
+        } else {
+            if(event?.isLoading) return;
+            if(window.eruda._isInit) {
+                window.eruda.destroy();
+                localStorage.setItem('eruda_running', false);
+            } else {
+                window.eruda.init();
+                window.eruda.position({x: window.innerWidth-40, y: window.innerHeight-80});
+                localStorage.setItem('eruda_running', true);
+            }
+        }
+    }, '', '', '', '', true);
 
     // vConsole
     addMenu('vConsole', (event, {}) => {
