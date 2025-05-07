@@ -57,7 +57,7 @@
           cursor: pointer;
           border-radius: 5px;
           /*transition: opacity 0.3s ease;*/
-          z-index: ${++siyuan.zIndex || 9999};
+          z-index: ${++window.siyuan.zIndex || 9999};
         }
         /* 滚动条滑块 */
         .scrollbar-thumb {
@@ -85,7 +85,7 @@
             width: 100%;
             height: 100%;
             background-color: var(--b3-mask-background);;
-            z-index: 999;
+            z-index: ${++window.siyuan.zIndex || 9999};
             border-radus: 5px;
         }
         #modal-preview-content {
@@ -169,7 +169,9 @@
         // 设置 iframe 的内容
         iframe.srcdoc = code;
         // 显示模态框
-        document.getElementById("modal-preview").style.display = "block";
+        const modalPreview = document.getElementById("modal-preview");
+        modalPreview.style.zIndex = ++window.siyuan.zIndex;
+        modalPreview.style.display = "block";
     }
 
     function closePreviewModal() {
@@ -273,7 +275,7 @@
             // 添加模拟滚动条
             if (!isEnableScrollbar) return;
             if (code.querySelector('.scrollbar-container')) return;
-            const scrollbarHtml = `<div class="scrollbar-container protyle-custom"><div class="scrollbar-thumb"></div></div>`;
+            const scrollbarHtml = `<div class="scrollbar-container protyle-custom" style="${++window.siyuan.zIndex}"><div class="scrollbar-thumb"></div></div>`;
             code.insertAdjacentHTML('beforeend', scrollbarHtml);
             const scrollbarContainer = code.querySelector('.scrollbar-container');
             const protyleContent = protyle.querySelector(".protyle-content");
