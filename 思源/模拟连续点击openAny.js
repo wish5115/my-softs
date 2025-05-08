@@ -1026,13 +1026,12 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
         }
     }
     async function showMessageWithButton(message, isError = false, delay = 7000, text='',callback='', type='a') {
-        fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
+        const result = fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
             "method": "POST", "body": JSON.stringify({"msg": message, "timeout": delay})
         });
         if(text && callback) {
             if(typeof callback === 'string') {const link=callback; callback = async () => window.open(link);}
-           var whenElementExist = typeof whenElementExist === 'function' ? whenElementExist : 
-            (selector, node, timeout=5000) => { return new Promise(resolve => {
+           const whenElementExist = (selector, node, timeout=5000) => { return new Promise(resolve => {
                 const startTime = Date.now(); const check = () => {
                     const el = typeof selector==='function'?selector():(node||document).querySelector(selector);
                     if (el || Date.now() - startTime >= timeout) {resolve(el||null);return} requestAnimationFrame(check);
@@ -1045,12 +1044,13 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             button.textContent = text; if(typeof callback === 'function') button.onclick = callback;
             msgContent.appendChild(br); msgContent.appendChild(button);
         }
+        return result;
     }
     function showMessage(message, delay = 7000, isError = false, text='', callback='', type='a') {
-        showMessageWithButton(message, isError, delay, text, callback, type);
+        return showMessageWithButton(message, isError, delay, text, callback, type);
     }
     function showErrorMessage(message, delay = 7000, isError = true, text='', callback='', type='a') {
-        showMessageWithButton(message, isError, delay, text, callback, type);
+        return showMessageWithButton(message, isError, delay, text, callback, type);
     }
     async function querySql(sql) {
         const result = await fetchSyncPost('/api/query/sql', { "stmt": sql });
