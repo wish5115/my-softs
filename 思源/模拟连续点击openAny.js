@@ -1,7 +1,8 @@
 // name 模拟连续点击 openAny
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 // see https://ld246.com/article/1744896396694
-// version 0.0.6
+// version 0.0.6.1
+// updateDesc 0.0.6.1 改进whenElementExist，增加whenElementExistBySleep, whenElementExistOrNull, whenElementExistOrNullBySleep，改进showMessage函数等
 // updateDesc 0.0.6 增加observeElement，修复潜在bug，新增observeElement, putFile, getFile, getCursorElement, showMsgBox等
 // updateDesc 0.0.5.2 修复按esc时，三大ui的关闭问题（当多个实例时，现在支持仅关闭最上层的实例，一层一层关）
 // updateDesc 0.0.5.1 修复openAny.addKeymap方法注册的事件，无法被openAny.press触发的问题
@@ -106,6 +107,8 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             sleep,
             whenElementExist,
             whenElementExistBySleep,
+            whenElementExistOrNull,
+            whenElementExistOrNullBySleep,
             whenElementRemoved,
             showMessage,
             showErrorMessage,
@@ -148,6 +151,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             observeElement,
             putFile,
             getFile,
+            copyText,
         };
 
         constructor(params) {
@@ -881,14 +885,15 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-    function whenElementExist(selector, node, timeout = 5000) {
+    function whenElementExist(selector, node, timeout = 5000, sleep = 0) {
         timeout = isNumber(timeout) ? parseInt(timeout) : 5000;
+        sleep = isNumber(sleep) ? parseInt(sleep) : 0;
         return new Promise((resolve, reject) => {
             let isResolved = false;
             const check = () => {
                 if(typeof node === 'string') node = document.querySelector(node);
                 const el = typeof selector==='function'?selector():(node||document).querySelector(selector);
-                if (el) {isResolved = true; resolve(el);} else if(!isResolved) requestAnimationFrame(check);
+                if (el) {isResolved = true; resolve(el);} else if(!isResolved) sleep ? setTimeout(check, sleep) : requestAnimationFrame(check);
             };
             check();
             if(timeout > 0) {
@@ -900,25 +905,30 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             }
         });
     }
+    // 默认每 40ms 检查一次
     function whenElementExistBySleep(selector, node, timeout = 5000, sleep = 40) {
-        return new Promise((resolve, reject) => {
-            let isResolved = false;
-            const check = () => {
-                const el = (typeof selector === 'function' ? selector() : (node || document).querySelector(selector));
-                if (el) {
-                    isResolved = true;
-                    resolve(el);
-                } else if (!isResolved) {
-                    setTimeout(check, sleep); // 每 40ms 检查一次
+        return whenElementExist(selector, node, timeout, sleep);
+    }
+    function whenElementExistOrNull(selector, node, timeout = 5000, sleep = 0) {
+        timeout = isNumber(timeout) ? parseInt(timeout) : 5000;
+        sleep = isNumber(sleep) ? parseInt(sleep) : 0;
+        return new Promise(resolve => {
+            const startTime = Date.now();
+            const check = async () => {
+                const el = typeof selector === 'function'
+                    ? await selector()
+                    : (node || document).querySelector(selector);
+                if (el || Date.now() - startTime >= timeout) {
+                    resolve(el || null);
+                    return;
                 }
+                sleep ? setTimeout(check, sleep) : requestAnimationFrame(check);
             };
             check();
-            setTimeout(() => {
-                if (!isResolved) {
-                    reject(new Error(`Timeout: Element not found for selector "${selector}" within ${timeout}ms`));
-                }
-            }, timeout);
         });
+    }
+    function whenElementExistOrNullBySleep(selector, node, timeout = 5000, sleep = 40) {
+        return whenElementExistOrNull(selector, node, timeout, sleep);
     }
 
     // 调用示例
@@ -1015,14 +1025,32 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             return !isNaN(parseFloat(value)) && isFinite(value);
         }
     }
-    function showMessage(message, delay = 7000, isError = false) {
-        return fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
-            "method": "POST",
-            "body": JSON.stringify({"msg": message, "timeout": delay})
+    async function showMessageWithButton(message, isError = false, delay = 7000, text='',callback='', type='a') {
+        fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
+            "method": "POST", "body": JSON.stringify({"msg": message, "timeout": delay})
         });
+        if(text && callback) {
+            if(typeof callback === 'string') {const link=callback; callback = async () => window.open(link);}
+           var whenElementExist = typeof whenElementExist === 'function' ? whenElementExist : 
+            (selector, node, timeout=5000) => { return new Promise(resolve => {
+                const startTime = Date.now(); const check = () => {
+                    const el = typeof selector==='function'?selector():(node||document).querySelector(selector);
+                    if (el || Date.now() - startTime >= timeout) {resolve(el||null);return} requestAnimationFrame(check);
+                }; check();
+            });};
+            const msgContent = await whenElementExist("#message .b3-snackbar__content");
+            if(!msgContent) return; const br = document.createElement("br");
+            const button = document.createElement(type);button.style.cursor='pointer';
+            if(type === 'button') button.classList.add('b3-button', 'b3-button--white');
+            button.textContent = text; if(typeof callback === 'function') button.onclick = callback;
+            msgContent.appendChild(br); msgContent.appendChild(button);
+        }
     }
-    function showErrorMessage(message, delay = 7000, isError = true) {
-        showMessage(message, delay, isError);
+    function showMessage(message, delay = 7000, isError = false, text='', callback='', type='a') {
+        showMessageWithButton(message, isError, delay, text, callback, type);
+    }
+    function showErrorMessage(message, delay = 7000, isError = true, text='', callback='', type='a') {
+        showMessageWithButton(message, isError, delay, text, callback, type);
     }
     async function querySql(sql) {
         const result = await fetchSyncPost('/api/query/sql', { "stmt": sql });
@@ -1071,6 +1099,14 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             return cursorElement;
         }
         return null;
+    }
+
+    async function copyText(text) {
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch (err) {
+            console.warn('复制失败: ', err);
+        }
     }
 
     async function putFile(path, content = '', isDir = false) {
@@ -2252,4 +2288,19 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             });
         });
     }
+    // 自动更新 开发者推广计划
+    (async () => {
+        try {
+            if(window?.snippetsNewVersions?.newVersionLoader) return;
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            if(window?.snippetsNewVersions?.setInterval) return;
+            const urls = ['jsd.onmicrosoft.cn','cdn.jsdmirror.com','gcore.jsdelivr.net','fastly.jsdelivr.net','quantil.jsdelivr.net','originfastly.jsdelivr.net','cdn.mengze.vip','update.gf.qytechs.cn','jsd.nmmsl.top','cdn.bili33.top','jsdelivr.qaq.qa','jsdelivr.5210521.xyz','gitee.com','cdn.jsdmirror.cn','raw.githubusercontent.com'];
+            function loadScript(index) {
+                if (index >= urls.length) { console.warn('所有 CDN 节点都无法加载目标脚本。'); return;}
+                const script = document.createElement('script'), prefixs = {'gitee.com':'wish163/mysoft/raw/','raw.githubusercontent.com':'wish5115/my-softs/refs/heads/','update.gf.qytechs.cn':'scripts/534829/checkNewVersion.user.js'};
+                script.src = 'https://'+urls[index]+'/'+(prefixs[urls[index]]||'gh/wish5115/my-softs@')+(urls[index]==='update.gf.qytechs.cn'?'':'main/%E6%80%9D%E6%BA%90/snippets_new_version_checker_for_dev.js'+(Math.random() < 0.2?'?t='+Date.now():''));
+                script.onerror = () => { console.warn(`加载失败：${urls[index]}，尝试下一个节点...`); script.remove(); loadScript(index + 1);}; document.head.appendChild(script);
+            } loadScript(0);
+        } catch(e) {};
+    })();
 })();
