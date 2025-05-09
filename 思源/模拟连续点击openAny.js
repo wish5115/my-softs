@@ -1,7 +1,8 @@
 // name 模拟连续点击 openAny
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 // see https://ld246.com/article/1744896396694
-// version 0.0.6.1
+// version 0.0.6.2
+// updateDesc 0.0.6.1 增加showMyStatusMsg
 // updateDesc 0.0.6.1 改进whenElementExist，增加whenElementExistBySleep, whenElementExistOrNull, whenElementExistOrNullBySleep，改进showMessage函数等
 // updateDesc 0.0.6 增加observeElement，修复潜在bug，新增observeElement, putFile, getFile, getCursorElement, showMsgBox等
 // updateDesc 0.0.5.2 修复按esc时，三大ui的关闭问题（当多个实例时，现在支持仅关闭最上层的实例，一层一层关）
@@ -152,6 +153,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             putFile,
             getFile,
             copyText,
+            showMyStatusMsg,
         };
 
         constructor(params) {
@@ -694,7 +696,6 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     function pressWithMouse(keys = [], element) {
         if (typeof keys === 'string') keys = keys.split('+');
         keys = keys.map(item => item.trim().toLowerCase());
-    
         // 分离鼠标事件类型和修饰键
         const mouseEvents = ['mouseleft', 'mouseclick', 'mouseright', 'mousemiddle', 'mousedblclick', 'mouseover'];
         const hasMouseEvent = keys.some(k => mouseEvents.includes(k));
@@ -702,14 +703,12 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             press(keys, element);
             return;
         }
-    
         // 获取元素位置
         if (typeof element === 'string') element = document.querySelector(element);
         element = element || document.body;
         const rect = element.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
-    
         // 事件配置
         const initConfig = {
             bubbles: true,
@@ -722,7 +721,6 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             clientY: centerY,
             view: window
         };
-    
         // 确定事件类型和按钮
         let eventType = 'mousedown';
         const buttonMap = {
@@ -733,11 +731,9 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             mousedblclick: { eventType: 'dblclick', detail: 2 },
             mouseover: { eventType: 'mouseover', relatedTarget: null }
         };
-    
         // 处理多个鼠标事件（取第一个）
         const mainEvent = keys.find(k => mouseEvents.includes(k));
         Object.assign(initConfig, buttonMap[mainEvent]);
-    
         // 派发事件序列
         if (mainEvent === 'mousedblclick') {
             // 双击需要两次点击事件
@@ -786,13 +782,10 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
         const allText = container.textContent;
         const startGlobalIndex = allText.indexOf(targetText);
         if (startGlobalIndex === -1) return;
-      
         let currentIndex = 0;
         const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
-      
         let startNode, startOffset, endNode, endOffset;
         let node;
-      
         while ((node = walker.nextNode())) {
           const nodeLength = node.nodeValue.length;
           // 判断起始位置是否在此节点
@@ -809,7 +802,6 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
           }
           currentIndex += nodeLength;
         }
-      
         if (startNode && endNode) {
           const range = document.createRange();
           range.setStart(startNode, startOffset);
@@ -1107,6 +1099,26 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
         } catch (err) {
             console.warn('复制失败: ', err);
         }
+    }
+
+    // 自定义状态栏输出
+    function showMyStatusMsg(html, delay = 0, append = false) {
+        let myStatus = document.querySelector('#status .my_status__msg');
+        if(!myStatus) {
+            const status = document.querySelector('#status');
+            const statusMsg = status.querySelector('.status__msg');
+            if(!statusMsg) return;
+            const style = `
+                color: var(--b3-theme-on-surface); white-space: nowrap;
+                text-overflow: ellipsis; overflow: hidden;
+                padding-left: 5px; padding-right: 5px; font-size: 12px;
+            `;
+            const myStatusHtml = `<div class="my_status__msg" style="${style}"></div>`;
+            statusMsg.insertAdjacentHTML('afterend', myStatusHtml);
+            myStatus = status.querySelector('.my_status__msg');
+        }
+        if(myStatus) append ? myStatus.innerHTML += html : myStatus.innerHTML = html;
+        if(delay > 0) setTimeout(()=>myStatus.innerHTML = '', delay);
     }
 
     async function putFile(path, content = '', isDir = false) {
