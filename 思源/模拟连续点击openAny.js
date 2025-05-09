@@ -1102,23 +1102,26 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     }
 
     // 自定义状态栏输出
-    function showMyStatusMsg(html, delay = 0, append = false) {
+    function showMyStatusMsg(html, delay = 7000, append = false) {
         let myStatus = document.querySelector('#status .my_status__msg');
         if(!myStatus) {
             const status = document.querySelector('#status');
-            const statusMsg = status.querySelector('.status__msg');
-            if(!statusMsg) return;
+            const statusCounter = status.querySelector('.status__counter');
+            if(!statusCounter) return;
             const style = `
                 color: var(--b3-theme-on-surface); white-space: nowrap;
                 text-overflow: ellipsis; overflow: hidden;
                 padding-left: 5px; padding-right: 5px; font-size: 12px;
             `;
             const myStatusHtml = `<div class="my_status__msg" style="${style}"></div>`;
-            statusMsg.insertAdjacentHTML('afterend', myStatusHtml);
+            statusCounter.insertAdjacentHTML('beforebegin', myStatusHtml);
             myStatus = status.querySelector('.my_status__msg');
         }
         if(myStatus) append ? myStatus.innerHTML += html : myStatus.innerHTML = html;
-        if(delay > 0) setTimeout(()=>myStatus.innerHTML = '', delay);
+        if(myStatus && delay > 0)  {
+            if(myStatus.timer) clearTimeout(myStatus.timer);
+            myStatus.timer = setTimeout(()=>myStatus.innerHTML = '', delay);
+        }
     }
 
     async function putFile(path, content = '', isDir = false) {
