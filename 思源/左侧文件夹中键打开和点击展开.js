@@ -1,6 +1,8 @@
 // 左侧文件夹中键打开和点击展开
 // pc版 中键打开，单击展开
 // 触屏版 长按打开 点击展开
+// version 0.0.2
+// 0.0.2 改进在没有功能键的时候才生效，防止影响功能键的操作
 // see https://ld246.com/article/1736401552973
 (()=>{
 
@@ -16,12 +18,13 @@
     // 思源默认图标，首先读取用户自定义的默认图标，没有用官方默认图标，也可在这里写死
     const defaultIconCode = siyuan?.storage["local-images"]?.folder || '1f4d1';
     
-    whenElementsExist(':is(.file-tree, [data-type="sidebar-file"]) .b3-list.b3-list--background').then((trees) => {
+    whenElementsExist(':is(.sy__file, [data-type="sidebar-file"]) .b3-list.b3-list--background').then((trees) => {
         trees.forEach(tree => {
             //////// pc版 中键打开，单击展开 ///////////
             if(!isTouchDevice()) {
                 // 绑定鼠标单击
                 tree.addEventListener('click', async (event) => {
+                    if(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
                     const {toggleBtn, li} = isTreeFolder(event.target);
                     if(!toggleBtn) return;
                     if (event.target.classList.contains("b3-list-item__text")){
@@ -37,6 +40,7 @@
                 // 绑定中键单击，无论文件夹或文件都打开
                 if(openFolderBy === 'midclick') {
                     tree.addEventListener('mousedown', (event) => {
+                        if(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
                         if (event.button === 1) {
                             event.preventDefault();
                             //const {li} = isTreeFolder(event.target);
@@ -49,6 +53,7 @@
                 // 绑定双击事件，无论文件夹或文件都打开
                 if(openFolderBy === 'dblclick') {
                     tree.addEventListener('dblclick', (event) => {
+                        if(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
                         event.preventDefault();
                         //const {li} = isTreeFolder(event.target);
                         const li = event.target.closest('li[data-type="navigation-file"]:not([data-type="navigation-root"])');
