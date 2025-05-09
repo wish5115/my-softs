@@ -68,7 +68,7 @@
         const protyle = document.querySelector('[data-type="wnd"].layout__wnd--active .protyle:not(.fn__none)')||document.querySelector('[data-type="wnd"] .protyle:not(.fn__none)');
         if(isTitleMenu) {
             // 添加文档块到数据库
-            const docTitleEl = protyle?.querySelector('.protyle-title');
+            const docTitleEl = (protyle||document)?.querySelector('.protyle-title');
             const docId = docTitleEl?.dataset?.nodeId;
             const docTitle = docTitleEl?.querySelector('.protyle-title__input')?.textContent;
             blocks = [{
@@ -77,7 +77,7 @@
             }];
         } else {
             // 添加普通块到数据库
-            blocks = protyle?.querySelectorAll('.protyle-wysiwyg--select');
+            blocks = (protyle||document)?.querySelectorAll('.protyle-wysiwyg--select');
         }
         // 绑定块
         if(isBindBlock){
