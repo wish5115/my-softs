@@ -434,7 +434,7 @@
     const tabSpace = window.siyuan?.config?.editor?.codeTabSpaces || 4;
     document.addEventListener('keydown', (event) => {
         const ctrlKey = isMac() ? event.metaKey : event.ctrlKey;
-        if (event.key === 'Enter') {
+        if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
             // 自动缩进事件
             if(!isEnableAutoIndent) return;
             // 非代码块返回
