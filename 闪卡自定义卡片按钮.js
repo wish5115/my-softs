@@ -1,5 +1,5 @@
 // 闪卡自定义卡片按钮（支持手机版）
-// see 
+// see https://ld246.com/article/1746869253046
 (()=>{
     // 自定义卡片按钮
     const cardButtons = [
