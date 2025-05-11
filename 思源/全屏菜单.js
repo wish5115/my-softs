@@ -61,7 +61,7 @@ left:auto;top:auto">
             const fullScreenIcon = isFullScreen() ? '#iconFullscreenExit' : '#iconFullscreen';
             const btnString = `<button data-id="fullScreen" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="${fullScreenIcon}"></use></svg><span class="b3-menu__label">${fullScreenText}</span></button>`;
             setTimeout(() => {
-                if(!sp2 || !sp2.parentElement) return;
+                if(!sp2 || !sp2.parentElement) {hasToggle = false;return;}
                 sp2.insertAdjacentHTML('beforebegin', btnString);
                 const button = mainMenu.querySelector('button[data-id="fullScreen"]');
                 button.onclick = (event) => {
