@@ -18,7 +18,7 @@
 (async (menus = [], pressKey = '' /* 👈修改快捷键可在这里修改pressKey，默认ctrl+; 修改后pressKey后需要刷新页面 */)=>{
     ///////////////////////////////// 自定义菜单区 开始 /////////////////////////////////
     // 打开本代码片编辑窗口
-    addMenu('打开本代码片编辑窗口', (event, {getProtyleEl, showErrorMessage}) => {
+    addMenu('打开本代码编辑窗口', (event, {getProtyleEl, showErrorMessage}) => {
         // 如果在runjs代码块中，设置这个代码块的可调用方法名，如果不在runjs中保持空或注释即可
         const runjsCallableName = 'quickOpen';
   
