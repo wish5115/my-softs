@@ -1,10 +1,9 @@
 // name 检查代码片段是否需要更新（用户端）
-// version 0.0.3
+// version 0.0.4
 // updateUrl https://gitee.com/wish163/mysoft/raw/main/%E6%80%9D%E6%BA%90/snippets_new_version_checker.js
-// updateDesc 检查前先检查当前的代码是否已更新，当已更新时，清除新版本记录；监听代码更新事件，已更新的清除新版本记录。
-// 更新记录
-// 0.0.2 修复bug；把匹配到最后一个为准改为匹配到第一个为准以尽早结束查找。
-// 0.0.3 检查前先检查当前的代码是否已更新，当已更新时，清除新版本记录；监听代码更新事件，已更新的清除新版本记录。
+// updateDesc 0.0.4 增加手动检查更新
+// updateDesc 0.0.3 检查前先检查当前的代码是否已更新，当已更新时，清除新版本记录；监听代码更新事件，已更新的清除新版本记录。
+// updateDesc 0.0.2 修复bug；把匹配到最后一个为准改为匹配到第一个为准以尽早结束查找。
 // author Wilsons
 // see https://ld246.com/article/1746326048445
 
@@ -51,14 +50,14 @@
     };
     // 开始检查版本更新状态
     const checkNewVersionOnInterval = () => {
-        Object.entries(window?.snippetsNewVersions?.versionList).forEach(([key, snippet]) => {
+        Object.entries(window?.snippetsNewVersions?.versionList).forEach(async ([key, snippet]) => {
             if (snippet.lastCheck + snippet.checkDelay < Date.now()) {
                 const snippetEl = document.getElementById(snippet.id);
                 if(snippetEl?.textContent) {
                     const version = getVersionFromTextContent(snippetEl.textContent);
                     snippet.version = version;
                 }
-                checkAndUpdateNewVersion(snippet.name, snippet.version, snippet.url);
+                await checkAndUpdateNewVersion(snippet.name, snippet.version, snippet.url);
                 snippet.lastCheck = Date.now();
             }
         });
@@ -91,40 +90,52 @@
 
     // 功能函数
     // 检查并更新版本号
-    function checkAndUpdateNewVersion(currentName, currentVersion, updateUrl) {
-        fetch(updateUrl + (updateUrl.indexOf('?') !== -1 ? '&' : '?') + 't=' + Date.now()).then(response => response.text()).then(text => {
+    async function checkAndUpdateNewVersion(currentName, currentVersion, updateUrl) {
+        try {
+            const response = await fetch(updateUrl + (updateUrl.includes('?') ? '&' : '?') + 't=' + Date.now());
+            const text = await response.text();
             let remoteVersion = '', remoteUpdateUrl = '', remoteUpdateDesc = '';
             let matchVersion, matchUrl, matchDesc;
-            let remoteLines = text.split('\n');
-            remoteLines = remoteLines.slice(0, 200); // 默认扫描200行
+            const remoteLines = text.split('\n').slice(0, 200); // 默认扫描前200行
             for (const line of remoteLines) {
-                if(!matchVersion) {
+                if (!matchVersion) {
                     matchVersion = line.match(/^(?:\/\*| \*|\/\/)\s*version[ :：]\s*(.+?)(?:\*\/)?\r*$/i);
                     if (matchVersion) remoteVersion = matchVersion[1]?.trim();
                 }
-                if(!matchUrl) {
+                if (!matchUrl) {
                     matchUrl = line.match(/^(?:\/\*| \*|\/\/)\s*updateUrl[ :：]\s*(.+?)(?:\*\/)?\r*$/i);
                     if (matchUrl) remoteUpdateUrl = matchUrl[1]?.trim();
                 }
-                if(!matchDesc) {
+                if (!matchDesc) {
                     matchDesc = line.match(/^(?:\/\*| \*|\/\/)\s*updateDesc[ :：]\s*(.+?)(?:\*\/)?\r*$/i);
                     if (matchDesc) remoteUpdateDesc = matchDesc[1]?.trim();
                 }
                 if (matchVersion && matchUrl && matchDesc) break;
             }
-            if (!remoteVersion) {console.warn('没有获取到远程版本信息'); return;}
+            if (!remoteVersion) {
+                console.warn('没有获取到远程版本信息');
+                return;
+            }
             if (!window.snippetsNewVersions) window.snippetsNewVersions = {};
             if (!window.snippetsNewVersions.versionList) window.snippetsNewVersions.versionList = {};
             if (isNewerVersion(currentVersion, remoteVersion)) {
-                if (!window.snippetsNewVersions.versionList[currentName + updateUrl]) window.snippetsNewVersions.versionList[currentName + updateUrl] = {};
+                if (!window.snippetsNewVersions.versionList[currentName + updateUrl]) {
+                    window.snippetsNewVersions.versionList[currentName + updateUrl] = {};
+                }
                 window.snippetsNewVersions.versionList[currentName + updateUrl].newVersion = remoteVersion;
-                if(remoteUpdateUrl) window.snippetsNewVersions.versionList[currentName + updateUrl].scriptUrl = remoteUpdateUrl;
+                if (remoteUpdateUrl) {
+                    window.snippetsNewVersions.versionList[currentName + updateUrl].scriptUrl = remoteUpdateUrl;
+                }
                 window.snippetsNewVersions.versionList[currentName + updateUrl].updateDesc = remoteUpdateDesc;
             } else {
                 // 无更新时，清空新版本
-                window.snippetsNewVersions.versionList[currentName + updateUrl].newVersion = '';
+                if (window.snippetsNewVersions.versionList[currentName + updateUrl]) {
+                    window.snippetsNewVersions.versionList[currentName + updateUrl].newVersion = '';
+                }
             }
-        }).catch(err => { console.warn(err); });
+        } catch (err) {
+            console.warn(err);
+        }
     }
     // 监听代码片段窗口被打开
     function observeSnippetsChange() {
@@ -135,13 +146,60 @@
                     mutation.addedNodes.forEach(node => {
                         // 监听代码片段窗口被打开
                         if (node.nodeType === Node.ELEMENT_NODE && mutation.target.tagName === 'BODY' && node.matches('[data-key="dialog-snippets"]')) {
-                            const container = node.querySelector('.b3-dialog__body');
-                            if (container && window?.snippetsNewVersions?.versionList) {
-                                let snippetsNewVersionList = '';
-                                Object.entries(window?.snippetsNewVersions?.versionList).forEach(([key, snippet]) => {
-                                    if (snippet.newVersion) snippetsNewVersionList += `<div style="padding:2px 10px;">[${snippet.type}] ${snippet.name} 有新版本 V${snippet.newVersion}${snippet.updateDesc.replace(/(.+)/, '，$1')} <a href="${snippet.scriptUrl||snippet.url}" target="_blank">查看</a></div>`;
+                            // 获取新版本
+                            const updateNewVersion = () => {
+                                const container = node.querySelector('.b3-dialog__body');
+                                if (container && window?.snippetsNewVersions?.versionList) {
+                                    let newVersionList = node.querySelector('.code-new-version-list');
+                                    if(newVersionList) newVersionList.remove();
+                                    let snippetsNewVersionList = '';
+                                    Object.entries(window?.snippetsNewVersions?.versionList).forEach(([key, snippet]) => {
+                                        if (snippet.newVersion) snippetsNewVersionList += `<div style="padding:2px 10px;">[${snippet.type}] ${snippet.name} 有新版本 V${snippet.newVersion}${snippet.updateDesc.replace(/(.+)/, '，$1')} <a href="${snippet.scriptUrl||snippet.url}" target="_blank">查看</a></div>`;
+                                    });
+                                    if (snippetsNewVersionList) container.insertAdjacentHTML('afterbegin', `<div class="code-new-version-list" style="max-height:200px;overflow:auto;">${snippetsNewVersionList}</div>`);
+                                }
+                            };
+                            updateNewVersion();
+                            // 增加手动更新按钮
+                            const action = node.querySelector('.b3-dialog__action');
+                            if(action) {
+                                const checkBtnHtml = `<button class="b3-button b3-button--text code-check-button" style="position:absolute;left:16px;" title="仅遵循代码片段自动更新协议1.0的代码才支持检查更新">检查更新</button>`;
+                                action.insertAdjacentHTML('afterbegin', checkBtnHtml);
+                                const checkBtn = action.querySelector('.code-check-button');
+                                checkBtn.addEventListener('click', async () => {
+                                    event.stopPropagation();
+                                    checkBtn.textContent = '正在检查更新...';
+                                    checkBtn.disabled = true;
+                                    setTimeout(()=>{
+                                        if(checkBtn.disabled) {
+                                            checkBtn.textContent = '检查更新';
+                                            checkBtn.disabled = false;
+                                        }
+                                    }, 60000);
+                                    // 扫描代码片段
+                                    if(!window?.snippetsNewVersions?.versionList) {
+                                        const allSnippets = document.querySelectorAll('[id^="snippetCSS"],[id^="snippetJS"]');
+                                        for (const snippet of allSnippets) {
+                                            generateVersionList(snippet);
+                                        }
+                                    }
+                                    // 开始检查更新（串行执行）
+                                    const versionList = window?.snippetsNewVersions?.versionList;
+                                    const entries = Object.entries(versionList);
+                                    for (const [key, snippet] of entries) {
+                                        const snippetEl = document.getElementById(snippet.id);
+                                        if (snippetEl?.textContent) {
+                                            const version = getVersionFromTextContent(snippetEl.textContent);
+                                            snippet.version = version;
+                                        }
+                                        await checkAndUpdateNewVersion(snippet.name, snippet.version, snippet.url);
+                                        snippet.lastCheck = Date.now();
+                                    }
+                                    // 更新ui
+                                    updateNewVersion();
+                                    checkBtn.textContent = '检查更新';
+                                    checkBtn.disabled = false;
                                 });
-                                if (snippetsNewVersionList) container.insertAdjacentHTML('afterbegin', `<div style="max-height:200px;overflow:auto;">${snippetsNewVersionList}</div>`);
                             }
                         }
                         // 监听代码片段被更新
