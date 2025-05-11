@@ -80,7 +80,7 @@ left:auto;top:auto">
                     }
                 };
                 setTimeout(()=>hasToggle = false, 200);
-            }, 40);
+            }, 10);
         });
     });
     // 监听全屏变化
