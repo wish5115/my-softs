@@ -1,7 +1,8 @@
 // name 代码块添加折叠/展开/预览/全屏/悬浮横向滚动条
 // see https://ld246.com/article/1744373698945
 // 支持在块上添加auto-height自定义属性，使块不受最大高度限制
-// version 0.0.6.1
+// version 0.0.6.2
+// updateDesc 0.0.6.2 修复潜在的bug
 // updateDesc 0.0.6.1 修复更改块名称时引起的bug
 // updateDesc 0.0.6 增加预览功能，仅支持html和js
 // 0.0.5 修复动态创建的代码块无法添加图标问题
@@ -276,7 +277,7 @@
             // 添加模拟滚动条
             if (!isEnableScrollbar) return;
             if (code.querySelector('.scrollbar-container')) return;
-            const scrollbarHtml = `<div class="scrollbar-container protyle-custom" style="${++window.siyuan.zIndex}"><div class="scrollbar-thumb"></div></div>`;
+            const scrollbarHtml = `<div class="scrollbar-container protyle-custom" style="z-index:${++window.siyuan.zIndex}"><div class="scrollbar-thumb"></div></div>`;
             hljs.insertAdjacentHTML('afterend', scrollbarHtml);
             const scrollbarContainer = code.querySelector('.scrollbar-container');
             const protyleContent = protyle.querySelector(".protyle-content");
