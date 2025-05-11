@@ -1,7 +1,8 @@
 // name 模拟连续点击 openAny
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 // see https://ld246.com/article/1744896396694
-// version 0.0.6.2
+// version 0.0.6.3
+// updateDesc 0.0.6.3 增加on once off emit方法，可以绑定思源事件总线
 // updateDesc 0.0.6.1 增加showMyStatusMsg
 // updateDesc 0.0.6.1 改进whenElementExist，增加whenElementExistBySleep, whenElementExistOrNull, whenElementExistOrNullBySleep，改进showMessage函数等
 // updateDesc 0.0.6 增加observeElement，修复潜在bug，新增observeElement, putFile, getFile, getCursorElement, showMsgBox等
@@ -597,6 +598,34 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                     }
                 }
             }
+        }
+
+        on(eventName, callback) {
+            this._chain = this._chain.then(async () => {
+                getMyPlugin().eventBus.on(eventName, callback);
+            });
+            return this;
+        }
+
+        off(eventName, callback) {
+            this._chain = this._chain.then(async () => {
+                getMyPlugin().eventBus.off(eventName, callback);
+            });
+            return this;
+        }
+
+        once(eventName, callback) {
+            this._chain = this._chain.then(async () => {
+                getMyPlugin().eventBus.once(eventName, callback);
+            });
+            return this;
+        }
+
+        emit(eventName, data) {
+            this._chain = this._chain.then(async () => {
+                getMyPlugin().eventBus.emit(eventName, data);
+            });
+            return this;
         }
 
         openFile(path) {
@@ -1239,6 +1268,70 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
         observer.observe(parentElement || document.body, config);
     }
 
+    function getMyPlugin(pluginName = "open-any-plugin-none") {
+        let myPlugin = window.siyuan.ws.app.plugins.find(item=>item.name === pluginName);
+        if(myPlugin) return myPlugin;
+        class EventBus {
+            constructor(name = "") {
+                this.eventTarget = document.createComment(name);
+                document.appendChild(this.eventTarget);
+            }
+            on(type, listener) {
+                this.eventTarget.addEventListener(type, listener);
+            }
+            once(type, listener) {
+                this.eventTarget.addEventListener(type, listener, { once: true });
+            }
+            off(type, listener) {
+                this.eventTarget.removeEventListener(type, listener);
+            }
+            emit(type, detail) {
+                return this.eventTarget.dispatchEvent(new CustomEvent(type, { detail, cancelable: true }));
+            }
+        }
+        class Plugin {
+            constructor(options) {
+                this.app = options.app||window.siyuan.ws.app.appId;
+                this.i18n = options.i18n;
+                this.displayName = options.displayName;
+                this.name = options.name;
+                this.eventBus = new EventBus(options.name);
+                this.protyleSlash = [];
+                this.customBlockRenders = {};
+                this.topBarIcons = [];
+                this.statusBarIcons = [];
+                this.commands = [];
+                this.models = {};
+                this.docks = {};
+                this.data = {};
+                this.protyleOptionsValue = null;
+            }
+            onload() {}
+            onunload() {}
+            uninstall() {}
+            async updateCards(options) { return {}; } // 返回空对象或其他默认值
+            onLayoutReady() {}
+            addCommand(command) {}
+            addIcons(svg) {}
+            addTopBar(options) { return {}; } // 模拟返回一个空元素对象
+            addStatusBar(options) { return {}; } // 模拟返回一个空元素对象
+            openSetting() {}
+            loadData(storageName) { return Promise.resolve(null); }
+            saveData(storageName, data) { return Promise.resolve(); }
+            removeData(storageName) { return Promise.resolve(); }
+            getOpenedTab() { return {}; } // 返回空对象
+            addTab(options) { return () => {}; } // 返回空函数模拟模型
+            addDock(options) { return {}; } // 返回空对象模拟 dock
+            addFloatLayer(options) {}
+            updateProtyleToolbar(toolbar) { return []; } // 返回空数组
+            set protyleOptions(options) {}
+            get protyleOptions() { return this.protyleOptionsValue; }
+        }
+        myPlugin = new Plugin({name:pluginName});
+        window.siyuan.ws.app.plugins.push(myPlugin);
+        return myPlugin;
+    }
+
     /**
      * 
      * @param {*} hotkeyStr 思源hotkey格式 Refer: https://github.com/siyuan-note/siyuan/blob/d0f011b1a5b12e5546421f8bd442606bf0b5ad86/app/src/protyle/util/hotKey.ts#L4
@@ -1870,7 +1963,8 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             float: right;
         }
    `);
-   const setMenuItemStyle = newSetStyle();
+    const setMenuItemStyle = newSetStyle();
+
     /**
      * 显示选项菜单并返回用户选择的结果
      * @param {Array<{label: string, value: any}>} options - 选项列表
@@ -2107,7 +2201,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                 }
             };
             document.addEventListener('keydown', handleKeyDown, true);
-    
+
             // 关闭菜单时清理事件监听器
             function closeMenu() {
                 if(!overlay.matches('&:last-child')) return;
@@ -2115,7 +2209,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                 overlay?.remove();
                 document.removeEventListener('keydown', handleKeyDown, true);
             }
-    
+
             // 点击遮罩层外部关闭菜单
             overlay.addEventListener('click', (event) => {
                 if (event.target === overlay) {
