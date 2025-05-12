@@ -291,8 +291,9 @@
         });
         // 显示菜单前回调
         menus.forEach(menu => menu.runOnShow && menu.callback({isWillShow: true}, functions, menu, {selectedText, selection, range}));
-        // 显示菜单        
-        const selectedOption = await functions.showOptionsMenu(menus, {width:'min(800px, 100%)',maxWidth:'min(1000px, 100%)', height:'min(800px, calc(100% - 80px))', maxHeight:'min(800px, calc(100% - 80px))', search:true, menuItemStyle: 'text-align:left'});
+        // 显示菜单
+        const searchFocus = isMobile() ? false : true;
+        const selectedOption = await functions.showOptionsMenu(menus, {width:'min(800px, 100%)',maxWidth:'min(1000px, 100%)', height:'min(800px, calc(100% - 80px))', maxHeight:'min(800px, calc(100% - 80px))', search:true, menuItemStyle: 'text-align:left', searchFocus});
         if (selectedOption !== null) {
             if(typeof selectedOption.callback === 'function') {
                 selectedOption.callback(event, functions, selectedOption, {selectedText, selection, range});
