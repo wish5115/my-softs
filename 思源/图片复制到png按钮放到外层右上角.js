@@ -19,7 +19,7 @@
         const copyPngBtn = img.querySelector('.cst-copy-png');
         copyPngBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            copyPNGByLink(img.querySelector('img')?.src||'');
+            copyPNGByLink(img.querySelector('img')?.getAttribute("src")||'');
         });
     });
     // see https://github.com/siyuan-note/siyuan/blob/e47b8efc2f2611163beca9fad4ee5424001515ff/app/src/menus/util.ts#L175
