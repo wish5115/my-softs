@@ -14,7 +14,7 @@
             actionIcon.style.borderTopLeftRadius = '0';
             actionIcon.style.borderBottomLeftRadius = '0';
         }
-        const copyPngHtml = `<span class="protyle-icon protyle-icon--only protyle-custom cst-copy-png" style="border-top-right-radius:0;border-bottom-right-radius:0"><svg class="svg protyle-custom cst-copy-png"><use xlink:href="#iconImage"></use></svg></span>`;
+        const copyPngHtml = `<span class="protyle-icon protyle-icon--only protyle-custom cst-copy-png" style="border-top-right-radius:0;border-bottom-right-radius:0"><svg class="svg"><use xlink:href="#iconImage"></use></svg></span>`;
         action.insertAdjacentHTML('afterbegin', copyPngHtml);
         const copyPngBtn = img.querySelector('.cst-copy-png');
         copyPngBtn.addEventListener('click', (e) => {
