@@ -1,7 +1,8 @@
 // name 模拟连续点击 openAny
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 // see https://ld246.com/article/1744896396694
-// version 0.0.6.3
+// version 0.0.6.4
+// updateDesc 0.0.6.4 增加选项菜单配置参数
 // updateDesc 0.0.6.3 增加on once off emit方法，可以绑定思源事件总线
 // updateDesc 0.0.6.1 增加showMyStatusMsg
 // updateDesc 0.0.6.1 改进whenElementExist，增加whenElementExistBySleep, whenElementExistOrNull, whenElementExistOrNullBySleep，改进showMessage函数等
@@ -2001,6 +2002,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             if (config?.maxHeight) menu.style.maxHeight = config.maxHeight;
             if (config?.minWidth) menu.style.minWidth = config.minWidth;
             if (config?.minHeight) menu.style.minHeight = config.minHeight;
+            if (typeof config.searchFocus === 'undefined') config.searchFocus = true;
             // 清空菜单内容
             let title = config?.title || '';
             if (typeof config === 'string') title = config;
@@ -2088,7 +2090,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             // 监听搜索事件
             if (config?.search) {
                 const menuSearchInput = menuTitle.querySelector('.open-any-menu-search-input');
-                setTimeout(()=>menuSearchInput.focus(), 50);
+                if(config?.searchFocus) setTimeout(()=>menuSearchInput.focus(), 50);
                 let isComposing = false; // 新增输入法状态标志
                 const handleSearch = (event) => {
                     event.preventDefault();
