@@ -2,7 +2,7 @@
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 // see https://ld246.com/article/1744896396694
 // version 0.0.6.4
-// updateDesc 0.0.6.4 增加选项菜单配置参数
+// updateDesc 0.0.6.4 增加选项菜单配置参数，input() text参数支持回调，parentElement参数支持回调
 // updateDesc 0.0.6.3 增加on once off emit方法，可以绑定思源事件总线
 // updateDesc 0.0.6.1 增加showMyStatusMsg
 // updateDesc 0.0.6.1 改进whenElementExist，增加whenElementExistBySleep, whenElementExistOrNull, whenElementExistOrNullBySleep，改进showMessage函数等
@@ -100,6 +100,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     class OpenAny {
         prev = null;
 		prevSelecor = '';
+        parentElement = null;
         keymaps=[];
         keymapKeydownBound = false;
         keymapMousedownBound = false;
@@ -238,6 +239,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                     // 如果是选择符
                     selector = selector.trim();
                     try {
+                        parentElement = typeof parentElement === 'function' ? await parentElement(this.parentElement, this.prev) : parentElement;
                         this.prev = await whenElementExist(selector, parentElement, timeout || this.timeout);
                     } catch (e) {
 						this.throwError('元素 ' + selector + ' 等待超时，' + e.message);
@@ -296,6 +298,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                 // 如果是选择符
                 selector = selector.trim();
                 try {
+                    parentElement = typeof parentElement === 'function' ? await parentElement(this.parentElement, this.prev) : parentElement;
                     this.prev = await whenElementExist(selector, parentElement, timeout || this.timeout);
                 } catch (e) {
                     this.throwError('元素 ' + selector + ' 等待超时，' + e.message);
@@ -308,6 +311,15 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
 			this.prevSelecor = selector;
             this._chain = this._chain.then(async () => {
                 await this.#getElement(selector, parentElement, timeout);
+            });
+            return this;
+        }
+
+        parentEl(selector, parentElement, timeout) {
+			if(!selector) this.throwError('选择符不能为空');
+			this.prevSelecor = selector;
+            this._chain = this._chain.then(async () => {
+                this.parentElement = await this.#getElement(selector, parentElement, timeout);
             });
             return this;
         }
@@ -349,6 +361,17 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             });
         }
 
+        getParentEl(selector, parentElement, timeout) {
+			return this._chain = this._chain.then(async () => {
+                if(this.parentElement) return this.parentElement;
+                if(selector) {
+                    this.parentElement = await this.#getElement(selector, parentElement, timeout);
+                    return this.parentElement;
+                }
+                return this.parentElement;
+            });
+        }
+
         queryEl(selector, parentElement) {
             if(selector?.nodeType === 1) return selector;
             if(typeof selector === 'string') {
@@ -376,6 +399,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             this._chain = this._chain.then(async () => {
                 if(selector) await this.#getElement(selector, parentElement, timeout);
                 if(this.prev?.nodeType !== 1) this.throwError('元素 ' + this.prev + ' 不是有效的元素');
+                text = typeof text === 'function' ? await text(this.prev) : text;
                 sendTextToEditable(this.prev, text);
             });
             return this;
@@ -385,6 +409,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             this._chain = this._chain.then(async () => {
                 if(selector) await this.#getElement(selector, parentElement, timeout);
                 if(this.prev?.nodeType !== 1) this.throwError('元素 ' + this.prev + ' 不是有效的元素');
+                text = typeof text === 'function' ? await text(this.prev) : text;
                 selectText(text, this.prev, parentElement);
             });
             return this;
@@ -404,7 +429,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             this._chain = this._chain.then(async () => {
                 if(selector) await this.#getElement(selector, parentElement, timeout);
                 if(this.prev?.nodeType !== 1) this.throwError('元素 ' + this.prev + ' 不是有效的元素');
-                this.prev.value = text;
+                this.prev.value = typeof text === 'function' ? await text(this.prev) : text;
                 // 触发 input 事件
                 const inputEvent = new Event('input', { bubbles: true });
                 this.prev.dispatchEvent(inputEvent);
@@ -631,6 +656,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
 
         openFile(path) {
             this._chain = this._chain.then(async () => {
+                path = typeof path === 'function' ? await path(this.prev) : path;
                 openFile(path);
             });
             return this;
@@ -638,6 +664,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
 
         showFileInFolder(path) {
             this._chain = this._chain.then(async () => {
+                path = typeof path === 'function' ? await path(this.prev) : path;
                 showFileInFolder(path);
             });
             return this;
@@ -645,6 +672,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
 
         runCmd(cmd) {
             this._chain = this._chain.then(async () => {
+                cmd = typeof cmd === 'function' ? await cmd(this.prev) : cmd;
                 runCmd(cmd, (result)=>{
                     this._cmdReturn = result;
                     this.prev = result;
@@ -690,6 +718,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             // 如果是选择符
             selector = selector.trim();
             try {
+                parentElement = typeof parentElement === 'function' ? await parentElement(this.parentElement, this.prev) : parentElement;
                 return await whenElementExist(selector, parentElement, timeout || 5000);
             } catch (e) {
                 return null;
@@ -907,9 +936,10 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-    function whenElementExist(selector, node, timeout = 5000, sleep = 0) {
+    async function whenElementExist(selector, node, timeout = 5000, sleep = 0) {
         timeout = isNumber(timeout) ? parseInt(timeout) : 5000;
         sleep = isNumber(sleep) ? parseInt(sleep) : 0;
+        node = typeof node === 'function' ? await node() : node;
         return new Promise((resolve, reject) => {
             let isResolved = false;
             const check = () => {
@@ -931,9 +961,10 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     function whenElementExistBySleep(selector, node, timeout = 5000, sleep = 40) {
         return whenElementExist(selector, node, timeout, sleep);
     }
-    function whenElementExistOrNull(selector, node, timeout = 5000, sleep = 0) {
+    async function whenElementExistOrNull(selector, node, timeout = 5000, sleep = 0) {
         timeout = isNumber(timeout) ? parseInt(timeout) : 5000;
         sleep = isNumber(sleep) ? parseInt(sleep) : 0;
+        node = typeof node === 'function' ? await node() : node;
         return new Promise(resolve => {
             const startTime = Date.now();
             const check = async () => {
