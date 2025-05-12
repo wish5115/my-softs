@@ -1,6 +1,7 @@
 // name 快速打开自定义功能
 // see https://ld246.com/article/1745488922117
-// version 0.0.3.1
+// version 0.0.4
+// updateDesc 0.0.4 增加移动端支持
 // updateDesc 0.0.3.1 增加eruda调试工具
 // updateDesc 0.0.3 增加 刷新页面，全屏，宽屏，断点调试，打开网页版等功能
 // updateDesc 0.0.2 增加快捷键支持，把思源命令面板的命令移植过来
@@ -63,6 +64,8 @@
   
     // 打开查词
     addMenu('打开查词', (event, {getSelectedText}) => {
+        fdddfff
+        gfffgfgfgfgff
         const url = 'https://www.iciba.com/word?w=%s%';
         window.open(url.replace('%s%', getSelectedText()));
     });
@@ -266,8 +269,8 @@
     await waitFor(() => typeof openAny !== 'undefined');
 
     // 生成菜单列表
-    const handler = async (event, functions)=>{
-        event.preventDefault();
+    const handler = async (event, functions=openAny.fn)=>{
+        if(event) event.preventDefault();
         const selection = window.getSelection();
         const range = selection.getRangeAt(0);
         const selectedText = selection.toString();
@@ -299,9 +302,24 @@
             }
         }
     };
-    pressKey = pressKey || (openAny.fn.isMac() ? 'meta+;' : 'ctrl+;');
-    openAny.removeKeymap(pressKey); // 注意，这里未提供callback时，会删除同名的所有监听
-    openAny.addKeymap(pressKey, handler);
+    if (isMobile()) {
+        openAny.fn.whenElementExist('#menu #menuSearch').then((search) => {
+            const quickOpenMenuHtml = `<div id="menuQuickOpen" class="b3-menu__item">
+                <svg class="b3-menu__icon"><use xlink:href="#iconOpen"></use></svg><span class="b3-menu__label">快速打开</span>
+            </div>`;
+            search.insertAdjacentHTML('afterend', quickOpenMenuHtml);
+            const quickOpenMenu = search.parentElement.querySelector('#menuQuickOpen');
+            quickOpenMenu.addEventListener('click', (event)=>{
+                event.stopPropagation();
+                closePanel();
+                handler(event, openAny.fn);
+            });
+        });
+    } else {
+        pressKey = pressKey || (openAny.fn.isMac() ? 'meta+;' : 'ctrl+;');
+        openAny.removeKeymap(pressKey); // 注意，这里未提供callback时，会删除同名的所有监听
+        openAny.addKeymap(pressKey, handler);
+    }
 
     // 把命令面板的命令移植过来
     // see https://github.com/siyuan-note/siyuan/blob/e47b8efc2f2611163beca9fad4ee5424001515ff/app/src/boot/globalEvent/command/panel.ts#L49
@@ -559,6 +577,16 @@
 
     function getEditor() {
         return document.querySelector('[data-type="wnd"].layout__wnd--active .protyle:not(.fn__none) .protyle-wysiwyg.protyle-wysiwyg--attr')||document.querySelector('[data-type="wnd"] .protyle:not(.fn__none) .protyle-wysiwyg.protyle-wysiwyg--attr');
+    }
+
+    function closePanel() {
+        document.getElementById("menu").style.transform = "";
+        document.getElementById("sidebar").style.transform = "";
+        document.getElementById("model").style.transform = "";
+        const maskElement = document.querySelector(".side-mask");
+        maskElement.classList.add("fn__none");
+        maskElement.style.opacity = "";
+        window.siyuan.menus.menu.remove();
     }
 
     function generateReward(node) {
