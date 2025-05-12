@@ -15,6 +15,7 @@
 // 如何添加新菜单？
 // 只需要“自定义菜单区 开始”和“自定义菜单区 结束”直接添加 addMenu('菜单名', ()=>{})即可
 // 比如：addMenu('demo1', (event, functions, option, selection)=>{alert('demo1')}, 'D', 'shortcut'); 这里第三个参数D代表当菜单出现时按D键直接选中demo1这个菜单
+// 第4个参数快捷键字符（需要自己实现按键功能）；第5个参数是否支持手机端；第6个参数是菜单value；第7个参数是否显示前回调；第8个参数是否加载时回调
 // 注意，弹出菜单可能使编辑器失去焦点，有些操作可能需要编辑器聚焦才有效，如果有问题，可以试试用setTimeout(()=>{},0)来延迟下。
 (async (menus = [], pressKey = '' /* 👈修改快捷键可在这里修改pressKey，默认ctrl+; 修改后pressKey后需要刷新页面 */)=>{
     ///////////////////////////////// 自定义菜单区 开始 /////////////////////////////////
@@ -34,7 +35,7 @@
         } else {
             openAny.clicks('#barWorkspace', '[data-id="config"]', '[data-name="appearance"]', '#codeSnippet', '[data-key="dialog-setting"] svg.b3-dialog__close', '[data-type="js"]').input(typeof snippetName === 'undefined' ? '' : snippetName, '[data-action="search"][data-type="js"]');
         }
-    }, 'E');
+    }, 'E', '', false);
 
     // 移动当前文档到
     addMenu('移动当前文档到', (event, {getProtyleEl}) => {
@@ -72,7 +73,7 @@
     
     // 刷新页面
     addMenu('刷新页面', (event, {}) => {
-        window.reload();
+        location.reload();
     }, 'R');
 
     // 全屏
@@ -90,7 +91,7 @@
         } else {
             requestFullScreen(document.querySelector('html'));
         }
-    }, 'F', '', '', true);
+    }, 'F', '', false, '', true);
     
     // 宽屏
     addMenu('宽屏', async (event, {showMsgBox}, menuItem) => {
@@ -109,7 +110,7 @@
             return;
         }
         openAny.click('.dock__item[aria-label$="宽屏风格"]');
-    }, 'W', '', '', true);
+    }, 'W', '', false, '', true);
     
     // 打开网页版
     addMenu('打开网页版', (event, {}) => {
@@ -145,7 +146,7 @@
                 localStorage.setItem('eruda_running', true);
             }
         }
-    }, '', '', '', '', true);
+    }, '', '', true, '', '', true);
 
     // vConsole
     addMenu('vConsole', (event, {}) => {
@@ -169,57 +170,98 @@
                 localStorage.setItem('vconsole_running', true);
             }
         }
-    }, '', '', '', '', true);
+    }, '', '', true, '', '', true);
     
     // 打开设置
     addMenu('打开设置', (event, {}) => {
         openAny.pressByKeymap('config');
-    });
+    }, '', '', false);
   
     // 打开日记
-    addMenu('打开日记', (event, {}) => {
+    addMenu('打开日记', async (event, {}) => {
         // 在这里输入你想在哪个笔记本中打开今日日记
         const noteBookName = '我的笔记';
-        // 这里用wwhenExist先等待指定元素出现，否则需要在do内调用 await new OpenAny().whenExist()等待目标出现
-        openAny.click('#barWorkspace').whenExist('[data-name="barWorkspace"]').do(()=>{
-            const subMenuItems = [...openAny.queryElAll('[data-id="dailyNote"] .b3-menu__label')];
-            const notebutton = subMenuItems.find(item => item.textContent === noteBookName)?.closest('button.b3-menu__item');
-            // 返回链元素，供下一个链click调用，也可以直接在这里click，不用再次调用下一个链click
-            return notebutton;
-        }).click();
+        if(isMobile()) {
+            openAny.click('#menuNewDaily').el('.b3-dialog__content .b3-select')
+            //.input((el)=>[...el?.children].find(item=>item.textContent.trim()==='demo')?.value); // 0.0.6.4+ 支持回到
+            .input([...(await openAny.fn.whenElementExist('.b3-dialog__content .b3-select'))?.children].find(item=>item.textContent.trim()===noteBookName)?.value)
+            .click('.b3-dialog__action .b3-button--text');
+        } else {
+            // 这里用wwhenExist先等待指定元素出现，否则需要在do内调用 await new OpenAny().whenExist()等待目标出现
+            openAny.click('#barWorkspace').whenExist('[data-name="barWorkspace"]').do(()=>{
+                const subMenuItems = [...openAny.queryElAll('[data-id="dailyNote"] .b3-menu__label')];
+                const notebutton = subMenuItems.find(item => item.textContent === noteBookName)?.closest('button.b3-menu__item');
+                // 返回链元素，供下一个链click调用，也可以直接在这里click，不用再次调用下一个链click
+                return notebutton;
+            }).click();
+        }
     });
   
     // 打开集市
     addMenu('打开集市', (event, {}) => {
         openAny.clicks('#barWorkspace', '[data-id="config"]', '[data-name="bazaar"]');
-    });
+    }, '', '', false);
   
     // 打开代码片段
     addMenu('打开代码片段', (event, {}) => {
         openAny.clicks('#barWorkspace', '[data-id="config"]', '[data-name="appearance"]', '#codeSnippet', '[data-key="dialog-setting"] svg.b3-dialog__close');
-    }, 'S');
+    }, 'S', '', false);
   
     // 打开快捷键设置
     addMenu('打开快捷键设置', (event, {}) => {
         openAny.clicks('#barWorkspace', '[data-id="config"]', '[data-name="keymap"]');
-    });
+    }, '', '', false);
   
     // 打开搜索
     addMenu('打开思源搜索', (event, {}) => {
-        openAny.press('alt+p');
+        isMobile() ? openAny.click('#menuSearch') : openAny.press('alt+p');
     });
   
     // 打开仅搜索文档
     addMenu('打开仅搜索文档', (event, {}) => {
-        // 请参考 ctrl+shif+p 全局搜索仅搜文档，然后把这个快捷键填进来
-        const pressKey = openAny.fn.isMac() ? 'meta+shift+p' : 'ctrl+shift+p'
-        openAny.press(pressKey);
+        if(isMobile()){
+            openAny.clicks('#toolbarMore', '#menu #menuSearch', '#modelMain .toolbar:not(.fn__none) [data-type="more"]', '#commonMenu .b3-menu__items > button:nth-child(3)')
+            .invoke(async ({sleep}) => {debugger;
+              // 【注意】invoke内部建议用新的OpenAny对象，防止用await时与上层链相互等待造成死锁
+              const openAny = new OpenAny();
+              // 获取当前的文档类型
+              const oldTypes = window.siyuan?.storage['local-searchdata']?.types;
+              // 查询所有文档类型，仅保留文档类型打开，其他全关闭
+              openAny
+                .queryElAll('[data-key="dialog-searchtype"] [type="checkbox"]')
+                .forEach(async (checkbox) =>
+                  checkbox.matches('[data-type="document"]')
+                    ? !checkbox.checked && checkbox.click()
+                    : checkbox.checked && checkbox.click()
+                );
+              // 点击确定按钮
+              openAny.click('[data-key="dialog-searchtype"] .b3-dialog__action .b3-button--text')
+              await sleep(100); // 等待100ms
+              openAny.focus("#toolbarSearch"); // 聚焦搜索框
+              // placehoder
+              openAny.queryEl('#toolbarSearch').placeholder = '请输入文档标题';
+              // 等待搜索对话框被关闭
+              await openAny.fn.whenElementExist(()=>openAny.queryEl('#model').style.transform==='', null, 0);
+              // 恢复原本的文档类型
+               if(oldTypes) window.siyuan.storage['local-searchdata'].types = oldTypes;
+            });
+        } else {
+            // 请参考 ctrl+shif+p 全局搜索仅搜文档，然后把这个快捷键填进来
+            const pressKey = openAny.fn.isMac() ? 'meta+shift+p' : 'ctrl+shift+p'
+            openAny.press(pressKey);
+        }
     }, 'P');
 
     // 模式切换
     addMenu('模式切换', (event, {}) => {
         const isPreview = document.querySelector('.protyle-preview:not(.fn__none) .protyle-preview__action');
-        if(!isPreview) openAny.press('alt+meta+9'); else openAny.press('alt+meta+7');
+        if(isMobile()){
+            openAny.click('.protyle-breadcrumb [data-type="more"]');
+            if(!isPreview) openAny.click('#commonMenu [data-id="preview"]');
+            else openAny.click('#commonMenu [data-id="wysiwyg"]');
+        } else  {
+            if(!isPreview) openAny.press('alt+meta+9'); else openAny.press('alt+meta+7');
+        }
     }, '7');
   
     // 打开链滴
@@ -235,14 +277,14 @@
     // 打开思源工作空间
     addMenu('打开思源工作空间', (event, {showFileInFolder}) => {
         showFileInFolder(window.siyuan.config.system.workspaceDir);
-    });
+    }, '', '', false);
   
     // 打开计算器
     addMenu('打开计算器', (event, {runCmd, isMac}) => {
         let cmd = `start calc`;
         if(isMac()) cmd = `open -a Calculator`;
         runCmd(cmd);
-    }, 'C');
+    }, 'C', '', false);
   
     // 字母大小写转换
     addMenu('字母大小写转换', (event, {getEditor}, option, {selectedText, selection, range}) => {
@@ -404,7 +446,8 @@
     }, 0);
 
     // 添加菜单函数
-    function addMenu(name, callback, key, shortcut, value, runOnShow = false, runOnLoad = false) {
+    function addMenu(name, callback, key, shortcut, isShowInMobile = true, value, runOnShow = false, runOnLoad = false) {
+        if(isMobile() && !isShowInMobile) return;
         menus.push({ label: name, value: value||name, key: key || '', shortcut: shortcut, callback: callback, runOnShow, runOnLoad });
     }
 
@@ -418,6 +461,10 @@
         } else {
             // 这里有些操作可能需要编辑器聚焦才有效，因此使用setTimeout(()=>{},0)来延迟下
             setTimeout(()=>{
+                if(isMobile()) {
+                    openAny.click('#menuCommand').click(`#commands [data-command="${command}"]`);
+                    return;
+                }
                 openAny.click('#barCommand').click(`#commands [data-command="${command}"]`);
             }, 0);
         }
