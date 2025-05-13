@@ -1163,7 +1163,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     }
 
     // 自定义状态栏输出
-    function showMyStatusMsg(html, delay = 7000, append = false) {
+    function showMyStatusMsg(html, delay = 7000, append = false, clearEvent='mouseenter') {
         let myStatus = document.querySelector('#status .my_status__msg');
         if(!myStatus) {
             const status = document.querySelector('#status');
@@ -1177,6 +1177,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             const myStatusHtml = `<div class="my_status__msg" style="${style}"></div>`;
             statusCounter.insertAdjacentHTML('beforebegin', myStatusHtml);
             myStatus = status.querySelector('.my_status__msg');
+            myStatus.addEventListener(clearEvent||'mouseenter', ()=>myStatus.innerHTML = '');
         }
         if(myStatus) append ? myStatus.innerHTML += html : myStatus.innerHTML = html;
         if(myStatus && delay > 0)  {
