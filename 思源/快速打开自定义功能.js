@@ -221,7 +221,7 @@
     addMenu('打开仅搜索文档', (event, {}) => {
         if(isMobile()){
             openAny.clicks('#toolbarMore', '#menu #menuSearch', '#modelMain .toolbar:not(.fn__none) [data-type="more"]', '#commonMenu .b3-menu__items > button:nth-child(3)')
-            .invoke(async ({sleep}) => {debugger;
+            .invoke(async ({sleep}) => {
               // 【注意】invoke内部建议用新的OpenAny对象，防止用await时与上层链相互等待造成死锁
               const openAny = new OpenAny();
               // 获取当前的文档类型
