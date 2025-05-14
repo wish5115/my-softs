@@ -1,28 +1,49 @@
 // 思源编辑器自定义光标
 // 顺滑光标+是否闪烁+自定义样式
+// 目前仅支持在编辑器中使用
 // see https://ld246.com/article/1747200651209
 (() => {
-    // 是否使用光标顺滑动画效果
+    // 是否使用光标顺滑动画效果 true 使用顺滑光标 false 不使用顺滑光标
     const isCursorSmoothEnabled = true;
 
-    // 是否使用光标闪烁动画效果
-    const isCursorBlinkEnabled = true;
+    // 是否使用光标闪烁动画效果 true 闪动 false 不闪动
+    const isCursorBlinkEnabled = false;
 
-    // 其他光标样式，可以在这里改，颜色大小什么的
+    // 是否也应用于文档标题中 true 应用 false不应用
+    const isApplyToTitle = true;
+
+    // 设置光标是光标所在元素行高的多少倍，相当于按光标所在文本行高百分比设置光标高度
+    const cursorHeightRelativeToLineHeight = 0.88;
+
+    // 其他光标样式，可以在这里改，颜色，宽高什么的
     addStyle(`
-        .protyle-wysiwyg{ caret-color: transparent; }
+        .protyle-wysiwyg{ caret-color: transparent; } /* 隐藏编辑器默认光标 */
+        ${isApplyToTitle ? `.protyle-title__input{caret-color: transparent;}`: ''} /* 隐藏标题默认光标 */
+        /* 新光标样式 */
         #custom-cursor {
-          position: fixed;
-          width: 2px;
-          /* height: 26px; */ /* 默认会自动获取行高，也可以这里写死 */
+          /* 光标宽度 */
+          width: 1.5px;
+          
+          /* 预设光标高度，也可以这里写死，但写死不同的元素可能有差异（这里优先级高于动态计算） */
+          /* 这里行高仍然受cursorHeightRelativeToLineHeight的影响，如果想不受影响，把倍数设为1 */
+          /* height: 26px; */
+
+          /* 光标颜色 */
           background: var(--b3-theme-on-background);
+
+          /* 以下样式，非必要勿改动 */
+          position: fixed;
           pointer-events: none;
           transition: ${isCursorSmoothEnabled?'transform 0.1s linear':'none'};
           z-index: ${++window.siyuan.zIndex};
           transform: translate(0, 0);
+          will-change: transform; /* 启用 GPU 加速 */
+          backface-visibility: hidden; /* 避免重绘闪烁 */
         }
         #custom-cursor.hidden {
           opacity: 0;
+          animation: none;
+          transition: none;
         }
         #custom-cursor.no-transition {
           transition: none !important;
@@ -30,9 +51,12 @@
         }
         /* 添加闪烁动画 */
         ${isCursorBlinkEnabled ? `
-            #custom-cursor{animation: blink 1s infinite;}
-            @keyframes blink {
-              50% { opacity: 0 }
+            #custom-cursor {
+              animation: cursor-blink 1s steps(2, jump-none) infinite;
+            }
+            @keyframes cursor-blink {
+              from { opacity: 1; }
+              to { opacity: 0; }
             }
         `:''}
     `);
@@ -58,7 +82,6 @@
         const handleScroll = () => {
             cursor.classList.add('hidden', 'no-transition');
             clearTimeout(scrollTimeout);
-            
             scrollTimeout = setTimeout(() => {
                 requestAnimationFrame(() => {
                     if (!isScrolling()) {
@@ -92,7 +115,7 @@
                 return {
                     x: rect.left + parseFloat(style.paddingLeft),
                     y: rect.top + parseFloat(style.paddingTop),
-                    height: presetHeight || parseFloat(style.lineHeight) || 20
+                    height: (presetHeight || parseFloat(style.lineHeight) || 26) * cursorHeightRelativeToLineHeight
                 };
             }
 
@@ -106,7 +129,7 @@
 
             // 最终高度逻辑：优先使用光标预设高度，否则用实际测量高度
             return rect.width + rect.height > 0 ? 
-                { x: rect.left, y: rect.top, height: presetHeight || rect.height } : 
+                { x: rect.left, y: rect.top, height: (presetHeight || rect.height)*cursorHeightRelativeToLineHeight } : 
                 null;
         };
 
@@ -117,7 +140,7 @@
             requestAnimationFrame(() => {
                 const pos = getStablePosition();
                 
-                if (!pos || !isInProtyleContent(pos)) {
+                if (!pos || !isInAllowElements(pos)) {
                     cursor.classList.add('hidden');
                     isUpdating = false;
                     return;
@@ -133,6 +156,7 @@
                 cursor.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
                 cursor.style.height = `${pos.height}px`;
                 cursor.classList.remove('hidden');
+                cursor.style.zIndex = ++window.siyuan.zIndex;
 
                 // 强制布局同步
                 void cursor.offsetHeight;
@@ -147,6 +171,7 @@
             });
         };
 
+        // 暂未用到
         const isInViewport = (pos) => {
             return pos.y >= 0 && 
                    pos.y <= window.innerHeight && 
@@ -154,15 +179,13 @@
                    pos.x <= window.innerWidth;
         };
 
-        const isInProtyleContent = (pos) => {
+        const isInAllowElements = (pos) => {
+            const cursorElement = getCursorElement();
             // 动态获取当前活动编辑区域
-            const protyleContent = document.querySelector(
-                '[data-type="wnd"].layout__wnd--active .protyle:not(.fn__none) .protyle-content'
-            ) || document.querySelector(
-                '[data-type="wnd"] .protyle:not(.fn__none) .protyle-content'
-            );
-            
-            if (!protyleContent) return isInViewport(pos);
+            const protyleContent = cursorElement?.closest('.protyle-content');
+            if (!protyleContent) return false;
+            // 如果不应用于标题返回
+            if(cursorElement.closest('.protyle-title__input') && !isApplyToTitle) return;
         
             // 获取编辑区域可视范围
             const editorRect = protyleContent.getBoundingClientRect();
@@ -183,7 +206,8 @@
             ['input', () => requestAnimationFrame(updateCursor)],
             ['click', updateCursor],
             ['compositionend', updateCursor],
-            ['mouseup', updateCursor]
+            ['mouseup', updateCursor],
+            ['resize', updateCursor]
         ];
 
         events.forEach(([e, h, opts]) => {
@@ -196,6 +220,22 @@
         while (current && current !== document.body) {
             if (current.dataset?.type === 'NodeParagraph') return current;
             current = current.parentElement;
+        }
+        return null;
+    }
+
+    function getCursorElement() {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            // 获取选择范围的起始位置所在的节点
+            const startContainer = range.startContainer;
+            // 如果起始位置是文本节点，返回其父元素节点
+            const cursorElement = startContainer.nodeType === Node.TEXT_NODE
+                ? startContainer.parentElement
+                : startContainer;
+    
+            return cursorElement;
         }
         return null;
     }
