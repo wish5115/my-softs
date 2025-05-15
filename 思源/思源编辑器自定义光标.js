@@ -1,6 +1,8 @@
 // 思源编辑器自定义光标
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
+// version 0.0.2
+// 0.0.2 修复打开块等菜单时，光标显示在菜单之上的问题
 // see https://ld246.com/article/1747269101239
 // see https://ld246.com/article/1747200651209
 (() => {
@@ -36,7 +38,7 @@
           position: fixed;
           pointer-events: none;
           transition: ${isCursorSmoothEnabled?'transform 0.1s linear':'none'};
-          z-index: ${++window.siyuan.zIndex};
+          z-index: 1; /* 这个会实时动态计算，这里设置并不起作用 */
           transform: translate(0, 0);
           will-change: transform; /* 启用 GPU 加速 */
           backface-visibility: hidden; /* 避免重绘闪烁 */
@@ -140,8 +142,9 @@
 
             requestAnimationFrame(() => {
                 const pos = getStablePosition();
+                const output={cursorElement:null};
                 
-                if (!pos || !isInAllowElements(pos)) {
+                if (!pos || !isInAllowElements(pos, output)) {
                     cursor.classList.add('hidden');
                     isUpdating = false;
                     return;
@@ -157,7 +160,7 @@
                 cursor.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
                 cursor.style.height = `${pos.height}px`;
                 cursor.classList.remove('hidden');
-                cursor.style.zIndex = ++window.siyuan.zIndex;
+                cursor.style.zIndex = output.cursorElement ? getEffectiveZIndex(output.cursorElement) + 1 : ++window.siyuan.zIndex;
 
                 // 强制布局同步
                 void cursor.offsetHeight;
@@ -180,8 +183,9 @@
                    pos.x <= window.innerWidth;
         };
 
-        const isInAllowElements = (pos) => {
+        const isInAllowElements = (pos, output={cursorElement:null}) => {
             const cursorElement = getCursorElement();
+            if(typeof output === 'object') output.cursorElement = cursorElement;
             // 动态获取当前活动编辑区域
             const protyleContent = cursorElement?.closest('.protyle-content');
             if (!protyleContent) return false;
@@ -245,5 +249,38 @@
         const style = document.createElement('style');
         style.innerHTML = css;
         document.head.appendChild(style);
+    }
+
+    // 获取实际生效的z-index
+    function getEffectiveZIndex(element) {
+        let current = element;
+        while (current) {
+            const style = window.getComputedStyle(current);
+            const zIndex = style.zIndex;
+            const position = style.position;
+    
+            // 如果是根元素，直接返回 0
+            if (current === document.documentElement) return 0;
+    
+            // 判断当前元素是否创建了层叠上下文
+            let isStackingContext = false;
+            // 条件1: position 是 fixed 或 sticky（自动创建层叠上下文，即使 z-index 是 auto）
+            if (position === 'fixed' || position === 'sticky') {
+                isStackingContext = true;
+            }
+            // 条件2: position 是 absolute/relative 且 z-index 非 auto
+            else if ((position === 'absolute' || position === 'relative') && zIndex !== 'auto') {
+                isStackingContext = true;
+            }
+            // 其他条件（如 opacity < 1、transform 等）需要额外判断，此处暂未实现
+    
+            // 如果当前元素是层叠上下文，返回其 z-index（auto 视为 0）
+            if (isStackingContext) {
+                return zIndex === 'auto' ? 0 : parseInt(zIndex, 10);
+            }
+    
+            current = current.parentElement;
+        }
+        return 0; // 理论上不会执行到此处
     }
 })();
