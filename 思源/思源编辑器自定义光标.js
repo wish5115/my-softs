@@ -2,7 +2,7 @@
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
 // version 0.0.3
-// 0.0.3 修复手动拖动滚动条的bug和改变尺寸编辑器和拖动悬浮窗口光标刷新延后问题
+// 0.0.3 修复手动拖动滚动条的bug和改变尺寸编辑器和拖动悬浮窗口光标刷新延后问题和光标位置及可见区域细节调整
 // 0.0.2 修复打开块等菜单时，光标显示在菜单之上的问题
 // see https://ld246.com/article/1747269101239 发布帖
 // see https://ld246.com/article/1747200651209 需求贴
@@ -116,10 +116,12 @@
             if (paragraph && !paragraph.textContent.trim()) {
                 const rect = paragraph.getBoundingClientRect();
                 const style = window.getComputedStyle(paragraph);
+                const height = (presetHeight || parseFloat(style.lineHeight) || 26) * cursorHeightRelativeToLineHeight;
+                const topGap = (parseFloat(style.lineHeight) - height) / 2;
                 return {
                     x: rect.left + parseFloat(style.paddingLeft),
-                    y: rect.top + parseFloat(style.paddingTop),
-                    height: (presetHeight || parseFloat(style.lineHeight) || 26) * cursorHeightRelativeToLineHeight
+                    y: rect.top + parseFloat(style.paddingTop) + topGap,
+                    height: height
                 };
             }
 
@@ -132,8 +134,10 @@
             marker.remove();
 
             // 最终高度逻辑：优先使用光标预设高度，否则用实际测量高度
+            const height = (presetHeight || rect.height)*cursorHeightRelativeToLineHeight;
+            const topGap = (rect.height - height) / 2;
             return rect.width + rect.height > 0 ? 
-                { x: rect.left, y: rect.top, height: (presetHeight || rect.height)*cursorHeightRelativeToLineHeight } : 
+                { x: rect.left, y: rect.top + topGap, height: height } : 
                 null;
         };
 
@@ -193,20 +197,31 @@
             if (!protyleContent) return false;
             // 如果不应用于标题返回
             if(cursorElement.closest('.protyle-title__input') && !isApplyToTitle) return;
-
-            //获取滚动元素
-            const scrollEl = findClosestScrollableElement(cursorElement);
-            if(!isSelfOrDescendant(protyleContent, scrollEl)) return;
-            protyleContent = scrollEl || protyleContent;
         
             // 获取编辑区域可视范围
             const editorRect = protyleContent.getBoundingClientRect();
             
             // 检查坐标是否在编辑区域可视范围内
-            return pos.x >= editorRect.left && 
+            const isInEditor = pos.x >= editorRect.left && 
                    pos.x <= editorRect.right && 
                    pos.y >= editorRect.top && 
                    pos.y <= editorRect.bottom;
+
+            //获取滚动元素
+            const scrollEl = findClosestScrollableElement(cursorElement);
+            // 不是滚动元素直接返回编辑器区域
+            if(protyleContent === scrollEl || !isSelfOrDescendant(protyleContent, scrollEl)) {
+                return isInEditor;
+            }
+            // 获取滚动元素区域
+            const scrollElRect = scrollEl.getBoundingClientRect();
+            const isInScrollEl = pos.x >= scrollElRect.left && 
+                   pos.x <= scrollElRect.right && 
+                   pos.y >= scrollElRect.top && 
+                   pos.y <= scrollElRect.bottom;
+            
+            // 必须在滚动元素内且编辑器内
+            return isInScrollEl && isInEditor;
         };
 
         // 给元素添加绑定事件
