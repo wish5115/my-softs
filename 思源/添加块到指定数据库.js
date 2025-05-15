@@ -1,30 +1,58 @@
 // 添加块到指定数据库（支持绑定块和不绑定块，支持文档块和普通块）
 // see https://ld246.com/article/1746153210116
 // 注意：只能在块菜单中操作（你的右键可能不是块菜单）
-// version 0.0.5
+// 本应用已全部用完Achuan-2大佬提供的所有api see https://ld246.com/article/1733365731025
+// version 0.0.6
 // 0.0.2 （已废弃）
 // 0.0.3 修改参数配置方式
 // 0.0.4 修复仅对当前文档中的选中块起作用
 // 0.0.5 支持叶归等第三方非标准思源dom结构
+// 0.0.6 增加附加字段功能
 (()=>{
+    // 是否开启，同时添加其他字段 true 开启 false 不开启
+    // 开启时，需要配置menus中的otherCols字段信息（可参考下面的示例）
+    const isEnableMoreCols = false;
+
     // 块菜单配置
     const menus = [
         {
             // 菜单名，显示在块或文档右键菜单上
             name: "添加到数据库A",
             // 添加到的数据库块id列表（必填），注意是数据库所在块id，如果移动了数据库位置需要更改
-            toAvBlockId: "20250501223635-2hu6d9z",
+            toAvBlockId: "20241127231309-ws4tojt",
             // 指定数据库的列名，不填默认是添加到主键列，该参数仅对不绑定块菜单有效，如果多个列名一样的则取第一个
             // 注意，目前仅支持文本列
             toAvColName: "",
             // 是否绑定块菜单，true 绑定，false 不绑定
             isBindBlock: true,
+            // 其他扩展字段（需要时把注释打开后配置即可）
+            // getColValue回调函数可动态计算字段值返回
+            otherCols: [
+                {
+                    colName: '状态',
+                    // 对于绑定块，块/文档id === rowID
+                    getColValue: (keyID, rowID, cellID, avID) => {
+                        return {"mSelect": [{"content":"今天"}]};
+                    },
+                }
+            ],
         },
         {
             name: "添加到数据库B",
-            toAvBlockId: "20250502120433-a7o0ahx",
+            toAvBlockId: "20241127231309-ws4tojt",
             toAvColName: "",
             isBindBlock: false,
+            // 其他扩展字段（需要时把注释打开后配置即可）
+            // getColValue回调函数可动态计算字段值返回
+            otherCols: [
+                {
+                    colName: '状态',
+                    // 对于绑定块，块/文档id === rowID
+                    getColValue: (keyID, rowID, cellID, avID) => {
+                        return {"mSelect": [{"content":"今天"}]};
+                    },
+                }
+            ],
         },
         {
             name: "添加到数据库C",
@@ -53,13 +81,13 @@
                 // 块菜单点击事件
                 menuBtn.onclick = async () => {
                     window.siyuan.menus.menu.remove();
-                    menuItemClick(menu.toAvBlockId, menu.toAvColName, menu.isBindBlock, isTitleMenu);
+                    menuItemClick(menu.toAvBlockId, menu.toAvColName, menu.isBindBlock, menu.otherCols, isTitleMenu);
                 };
             });
         });
     });
     // 菜单点击事件
-    async function menuItemClick(toAvBlockId, toAvColName, isBindBlock, isTitleMenu) {
+    async function menuItemClick(toAvBlockId, toAvColName, isBindBlock, otherCols, isTitleMenu) {
         const avId = await getAvIdByAvBlockId(toAvBlockId);
         if(!avId) {
             showMessage('未找到块ID'+toAvBlockId+'所在的数据库，请检查数据库块ID配置是否正确', true);
@@ -83,7 +111,21 @@
         // 绑定块
         if(isBindBlock){
             const blockIds = [...blocks].map(block => block.dataset.nodeId);
-            addBlocksToAv(blockIds, avId, toAvBlockId);
+            // 绑定块（要用await等待插入完成，否则后面的读取操作可能读不到数据）
+            await addBlocksToAv(blockIds, avId, toAvBlockId);
+            // 添加属性
+            if(isEnableMoreCols && otherCols && otherCols.length > 0) {
+                // 通过字段名获取keyID
+                const keys = await requestApi("/api/av/getAttributeViewKeysByAvID", {avID:avId});
+                otherCols.forEach(col => {
+                    if(!col.colName) return;
+                    const keyID = keys?.data?.find(item=>item.name === col.colName.trim())?.id;
+                    if(!keyID) return;
+                    col.keyID = keyID;
+                });
+                // 添加属性到数据库
+                addColsToAv(blockIds, otherCols, avId);
+            }
         }
         // 非绑定块
         else {
@@ -99,7 +141,16 @@
             if(toAvColName) {
                 keyID = keys?.data?.find(item=>item.name === toAvColName.trim())?.id;
             }
-            addBlocksToAvNoBind(blocks, avId, pkKeyID, keyID);
+            // 其他扩展字段
+            if(isEnableMoreCols && otherCols && otherCols.length > 0) {
+                otherCols.forEach(col => {
+                    if(!col.colName) return;
+                    const keyID = keys?.data?.find(item=>item.name === col.colName.trim())?.id;
+                    if(!keyID) return;
+                    col.keyID = keyID;
+                });
+            }
+            addBlocksToAvNoBind(blocks, avId, pkKeyID, keyID, otherCols);
         }
     }
     // 通过块id获取数据库id
@@ -142,10 +193,44 @@
         const result = await requestApi('/api/av/addAttributeViewBlocks', input);
         if(!result || result.code !== 0) console.error(result);
     }
+    // 添加数据库属性
+    // 对于绑定块，块/文档id === rowID
+    async function addColsToAv(blockIds, cols, avID) {
+        blockIds = typeof blockIds === 'string' ? [blockIds] : blockIds;
+        for(const blockId of blockIds) {
+            for(const col of cols) {
+                if(!col.keyID) return;
+                const cellID = await getCellIdByRowIdAndKeyId(blockId, col.keyID, avID);
+                if(!cellID) return;
+                let colData = {avID: avID, keyID: col.keyID, rowID: blockId, cellID};
+                if(typeof col.getColValue !== 'function') return;
+                const colValue = await col.getColValue(col.keyID, blockId, cellID, avID);
+                if(typeof colValue !== 'object') return;
+                colData.value = colValue;
+                const result = await requestApi("/api/av/setAttributeViewBlockAttr", colData);
+                if(!result || result.code !== 0) console.error(result);
+            }
+        }
+    }
+    // 获取cellID
+    // 对于绑定块，块/文档id === rowID
+    async function getCellIdByRowIdAndKeyId(rowID, keyID, avID) {
+        let res = await requestApi("/api/av/getAttributeViewKeys", {id: rowID });
+        const foundItem = res.data.find(item => item.avID === avID); //avid
+        if (foundItem && foundItem.keyValues) {
+            // 步骤2：在 keyValues 中查找特定 key.id 的项
+            const specificKey = foundItem.keyValues.find(kv => kv.key.id === keyID); // keyid
+            // 步骤3：获取 values 数组的第一个元素的 id
+            if (specificKey && specificKey.values && specificKey.values.length > 0) {
+                //console.log(specificKey.values[0].id)
+                return specificKey.values[0].id;
+            }
+        }
+    }
 
     // 插入块到数据库(非绑定)
-    async function addBlocksToAvNoBind(blocks, avId, pkKeyID, keyID) {
-        const values = [...blocks].map(block => {
+    async function addBlocksToAvNoBind(blocks, avId, pkKeyID, keyID, otherCols) {
+        const values = await Promise.all([...blocks].map(async block => {
             // 必须添加主键列
             const rowValues = [{
                 "keyID": pkKeyID,
@@ -161,8 +246,19 @@
                     }
                 });
             }
+            if(isEnableMoreCols && otherCols && otherCols.length > 0) {
+                for(const col of otherCols){
+                    if(!col.keyID) continue;
+                    let colData = {"keyID": col.keyID};
+                    if(typeof col.getColValue !== 'function') continue;
+                    const colValue = await col.getColValue(col.keyID);
+                    if(typeof colValue !== 'object') continue;
+                    colData = {...colData, ...colValue};
+                    rowValues.push(colData);
+                }
+            }
             return rowValues;
-        });
+        }));
         const input = {
           "avID": avId,
           "blocksValues": values,
@@ -236,7 +332,7 @@
             check();
         });
     }
-
+    
     function showMessage(message, isError = false, delay = 7000) {
         return fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
             "method": "POST",
