@@ -1,7 +1,8 @@
 // 思源编辑器自定义光标
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
-// version 0.0.2
+// version 0.0.3
+// 0.0.3 修复手动拖动滚动条bug和在代码块等可滚动元素内的bug问题
 // 0.0.2 修复打开块等菜单时，光标显示在菜单之上的问题
 // see https://ld246.com/article/1747269101239
 // see https://ld246.com/article/1747200651209
@@ -186,11 +187,17 @@
         const isInAllowElements = (pos, output={cursorElement:null}) => {
             const cursorElement = getCursorElement();
             if(typeof output === 'object') output.cursorElement = cursorElement;
+            
             // 动态获取当前活动编辑区域
-            const protyleContent = cursorElement?.closest('.protyle-content');
+            let protyleContent = cursorElement?.closest('.protyle-content');
             if (!protyleContent) return false;
             // 如果不应用于标题返回
             if(cursorElement.closest('.protyle-title__input') && !isApplyToTitle) return;
+
+            //获取滚动元素
+            const scrollEl = findClosestScrollableElement(cursorElement);
+            if(!isSelfOrDescendant(protyleContent, scrollEl)) return;
+            protyleContent = scrollEl || protyleContent;
         
             // 获取编辑区域可视范围
             const editorRect = protyleContent.getBoundingClientRect();
@@ -202,6 +209,19 @@
                    pos.y <= editorRect.bottom;
         };
 
+        // 给内部带有滚动条的元素添加滚动事件
+        const checkScrollElement = () => {
+            const cursorElement = getCursorElement();
+            if(!cursorElement) return;
+            const scrollEl = findClosestScrollableElement(cursorElement);
+            if(!scrollEl) return;
+            if(scrollEl && !scrollEl.handleClick) {
+                scrollEl.handleClick = handleScroll;
+                scrollEl.addEventListener('scroll', scrollEl.handleClick);
+                scrollEl.addEventListener('wheel', scrollEl.handleClick, { passive: true });
+            }
+        };
+
         const events = [
             ['scroll', handleScroll],
             ['wheel', handleScroll, { passive: true }],
@@ -209,10 +229,11 @@
             ['selectionchange', updateCursor],
             ['keydown', () => requestAnimationFrame(updateCursor)],
             ['input', () => requestAnimationFrame(updateCursor)],
-            ['click', updateCursor],
+            ['click', () => {updateCursor();checkScrollElement();}],
             ['compositionend', updateCursor],
             ['mouseup', updateCursor],
-            ['resize', updateCursor]
+            ['resize', updateCursor],
+            ['keyup', () => {checkScrollElement();}],
         ];
 
         events.forEach(([e, h, opts]) => {
@@ -282,5 +303,34 @@
             current = current.parentElement;
         }
         return 0; // 理论上不会执行到此处
+    }
+
+    function hasScroll(el) {
+      const style = getComputedStyle(el);
+      const canScrollY = (style.overflowY === 'scroll' || style.overflowY === 'auto') 
+        && el.scrollHeight > el.clientHeight;
+      const canScrollX = (style.overflowX === 'scroll' || style.overflowX === 'auto') 
+        && el.scrollWidth > el.clientWidth;
+      return canScrollY || canScrollX;
+    }
+    
+    function findClosestScrollableElement(element) {
+      while (element && element !== document.documentElement) {
+        if (hasScroll(element)) return element;
+        element = element.parentNode;
+      }
+      
+      // 显式检查根元素
+      const roots = [document.body, document.documentElement];
+      for (const root of roots) {
+        if (hasScroll(root)) return root;
+      }
+      
+      return null;
+    }
+
+    // 检查是否自身或后代
+    function isSelfOrDescendant(protyleContent, scrollEl) {
+      return protyleContent === scrollEl || protyleContent.contains(scrollEl);
     }
 })();
