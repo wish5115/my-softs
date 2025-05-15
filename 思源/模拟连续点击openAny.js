@@ -1163,7 +1163,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
     }
 
     // 自定义状态栏输出
-    function showMyStatusMsg(html, delay = 7000, append = false, clearEvent='mouseenter') {
+    function showMyStatusMsg(html, delay = 7000, append = false, enterClearDelay = 3000) {
         let myStatus = document.querySelector('#status .my_status__msg');
         if(!myStatus) {
             const status = document.querySelector('#status');
@@ -1177,12 +1177,21 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             const myStatusHtml = `<div class="my_status__msg" style="${style}"></div>`;
             statusCounter.insertAdjacentHTML('beforebegin', myStatusHtml);
             myStatus = status.querySelector('.my_status__msg');
-            myStatus.addEventListener(clearEvent||'mouseenter', ()=>myStatus.innerHTML = '');
+            myStatus.addEventListener('mouseenter', ()=>{
+                if(myStatus.enterTimer) clearTimeout(myStatus.enterTimer);
+                myStatus.enterTimer = setTimeout(()=>myStatus.innerHTML = '', myStatus.enterClearDelay||enterClearDelay);
+            });
+            myStatus.addEventListener('mouseleave', ()=>{
+                if(myStatus.enterTimer) clearTimeout(myStatus.enterTimer);
+            });
         }
+        if(enterClearDelay >= 0) myStatus.enterClearDelay = enterClearDelay;
         if(myStatus) append ? myStatus.innerHTML += html : myStatus.innerHTML = html;
         if(myStatus && delay > 0)  {
             if(myStatus.timer) clearTimeout(myStatus.timer);
             myStatus.timer = setTimeout(()=>myStatus.innerHTML = '', delay);
+        } else {
+            if(myStatus.timer) clearTimeout(myStatus.timer);
         }
     }
 
