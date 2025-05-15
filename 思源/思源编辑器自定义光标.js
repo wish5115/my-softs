@@ -2,10 +2,10 @@
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
 // version 0.0.3
-// 0.0.3 修复手动拖动滚动条bug和在代码块等可滚动元素内的bug问题
+// 0.0.3 修复手动拖动滚动条的bug和改变尺寸编辑器和拖动悬浮窗口光标刷新延后问题
 // 0.0.2 修复打开块等菜单时，光标显示在菜单之上的问题
-// see https://ld246.com/article/1747269101239
-// see https://ld246.com/article/1747200651209
+// see https://ld246.com/article/1747269101239 发布帖
+// see https://ld246.com/article/1747200651209 需求贴
 (() => {
     // 是否使用光标顺滑动画效果 true 使用顺滑光标 false 不使用顺滑光标
     const isCursorSmoothEnabled = true;
@@ -209,16 +209,40 @@
                    pos.y <= editorRect.bottom;
         };
 
-        // 给内部带有滚动条的元素添加滚动事件
-        const checkScrollElement = () => {
+        // 给元素添加绑定事件
+        const checkElementEvents = () => {
             const cursorElement = getCursorElement();
             if(!cursorElement) return;
+            // 给内部带有滚动条的元素添加滚动事件
             const scrollEl = findClosestScrollableElement(cursorElement);
             if(!scrollEl) return;
             if(scrollEl && !scrollEl.handleClick) {
                 scrollEl.handleClick = handleScroll;
                 scrollEl.addEventListener('scroll', scrollEl.handleClick);
                 scrollEl.addEventListener('wheel', scrollEl.handleClick, { passive: true });
+            }
+            // 给protyle-content绑定改变尺寸事件
+            const protyleContent = cursorElement?.closest('.protyle-content');
+            if (protyleContent && !protyleContent.handleResize) {
+                new ResizeObserver(entries => {
+                    updateCursor();
+                }).observe(protyleContent);
+            }
+            // 给block__popover绑定拖动事件
+            const blockPopover = cursorElement?.closest('.block__popover');
+            if (blockPopover && !blockPopover.handleDrag) {
+                const dragEl = blockPopover.querySelector('.resize__move');
+                if(!dragEl) return;
+                let isDragging = false;
+                dragEl.addEventListener('mousedown', function(e) {
+                    isDragging = true;
+                });
+                dragEl.addEventListener('mousemove', function(e) {
+                    if(isDragging) updateCursor();
+                });
+                dragEl.addEventListener('mouseup', function(e) {
+                    isDragging = false;
+                });
             }
         };
 
@@ -229,11 +253,11 @@
             ['selectionchange', updateCursor],
             ['keydown', () => requestAnimationFrame(updateCursor)],
             ['input', () => requestAnimationFrame(updateCursor)],
-            ['click', () => {updateCursor();checkScrollElement();}],
+            ['click', () => {updateCursor();checkElementEvents();}],
             ['compositionend', updateCursor],
             ['mouseup', updateCursor],
             ['resize', updateCursor],
-            ['keyup', () => {checkScrollElement();}],
+            ['keyup', () => {checkElementEvents();}],
         ];
 
         events.forEach(([e, h, opts]) => {
