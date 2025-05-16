@@ -1,7 +1,8 @@
 // 思源编辑器自定义光标
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
-// version 0.0.4
+// version 0.0.5
+// 0.0.5 改进在光标闪烁时，当移动/输入/点击时的不自然，有光标突然消失感的问题
 // 0.0.4 优化滑动鼠标动画，更加丝滑
 // 0.0.3 修复手动拖动滚动条的bug和改变尺寸编辑器和拖动悬浮窗口光标刷新延后问题和光标位置及可见区域细节调整
 // 0.0.2 修复打开块等菜单时，光标显示在菜单之上的问题
@@ -12,7 +13,7 @@
     const isCursorSmoothEnabled = true;
 
     // 是否使用光标闪烁动画效果 true 闪动 false 不闪动
-    const isCursorBlinkEnabled = false;
+    const isCursorBlinkEnabled = true;
 
     // 是否也应用于文档标题中 true 应用 false不应用
     const isApplyToTitle = true;
@@ -44,24 +45,25 @@
           transform: translate(0, 0);
           will-change: transform; /* 启用 GPU 加速 */
           backface-visibility: hidden; /* 避免重绘闪烁 */
+          opacity: 1; /* 默认不透明 */
         }
         #custom-cursor.hidden {
           opacity: 0;
-          animation: none;
+          /*animation: none;*/
           transition: none;
         }
         #custom-cursor.no-transition {
           transition: none !important;
-          animation: none !important;
+          /*animation: none !important;*/
         }
         /* 添加闪烁动画 */
         ${isCursorBlinkEnabled ? `
-            #custom-cursor {
+            #custom-cursor.blinking {
               animation: cursor-blink 1s steps(2, jump-none) infinite;
             }
             @keyframes cursor-blink {
-              from { opacity: 1; }
-              to { opacity: 0; }
+              from { opacity: 0; }
+              to { opacity: 1; }
             }
         `:''}
     `);
@@ -78,6 +80,8 @@
         let lastValidPos = null;
         let lastScrollPos = { x: window.scrollX, y: window.scrollY };
         let isFirstMove = true; // 新增首次移动标记
+        let blinkTimeout;
+        const BLINK_DELAY = 500; // 静止后开始闪烁的延迟时间
 
         // 优先获取光标元素自身预设行高
         const cursorElement = document.getElementById('custom-cursor');
@@ -85,6 +89,9 @@
         const presetHeight = cursorStyle ? parseFloat(cursorStyle.height) : null;
 
         const handleScroll = () => {
+             // 清除闪烁并停止后续闪烁
+            cursor.classList.remove('blinking');
+            clearTimeout(blinkTimeout);
             cursor.classList.add('hidden', 'no-transition');
             clearTimeout(scrollTimeout);
             scrollTimeout = setTimeout(() => {
@@ -151,10 +158,18 @@
                 const output={cursorElement:null};
                 
                 if (!pos || !isInAllowElements(pos, output)) {
+                    // 隐藏时移除闪烁
+                    cursor.classList.remove('blinking');
+                    clearTimeout(blinkTimeout);
                     cursor.classList.add('hidden');
                     isUpdating = false;
                     return;
                 }
+
+                // 清除之前的闪烁定时器
+                clearTimeout(blinkTimeout);
+                // 移除闪烁效果
+                cursor.classList.remove('blinking');
 
                 // 处理首次移动
                 if (isFirstMove) {
@@ -175,6 +190,11 @@
                 requestAnimationFrame(() => {
                     cursor.classList.remove('no-transition');
                 });
+
+                // 延迟添加闪烁效果
+                blinkTimeout = setTimeout(() => {
+                    cursor.classList.add('blinking');
+                }, BLINK_DELAY);
 
                 lastValidPos = pos;
                 isUpdating = false;
