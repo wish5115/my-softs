@@ -1,7 +1,8 @@
 // name 模拟连续点击 openAny
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 // see https://ld246.com/article/1744896396694
-// version 0.0.6.4
+// version 0.0.6.5
+// updateDesc 0.0.6.5 改进press，element参数可以传回调函数，新增getCurrTabEl函数
 // updateDesc 0.0.6.4 增加选项菜单配置参数，input() text参数支持回调，parentElement参数支持回调
 // updateDesc 0.0.6.3 增加on once off emit方法，可以绑定思源事件总线
 // updateDesc 0.0.6.1 增加showMyStatusMsg
@@ -121,6 +122,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             fetchSyncGet,
             requestApi,
             getProtyle,
+            getCurrTabEl,
             getCurrentDocId,
             getCurrentNotebookId,
             newSetStyle,
@@ -497,6 +499,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
                 return this.pressByFnName(keys.split('.').slice(1).join('.'));
             }
             this._chain = this._chain.then(async () => {
+                element = typeof element === 'function' ? await element(this.prev) : element;
                 press(keys, element);
             });
             return this;
@@ -819,6 +822,9 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
         }
     }
 
+    function getCurrTabEl() {
+        return document.querySelector('[data-type="wnd"].layout__wnd--active .layout-tab-bar li.item--focus')||document.querySelector('[data-type="wnd"] .layout-tab-bar li.item--focus');
+    }
     function getProtyleEl() {
         return document.querySelector('[data-type="wnd"].layout__wnd--active .protyle:not(.fn__none)')||document.querySelector('[data-type="wnd"] .protyle:not(.fn__none)');
     }
