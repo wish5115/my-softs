@@ -2,16 +2,20 @@
 // see https://ld246.com/article/1746153210116
 // 注意：只能在块菜单中操作（你的右键可能不是块菜单）
 // 本应用已全部用完Achuan-2大佬提供的所有api see https://ld246.com/article/1733365731025
-// version 0.0.6
+// version 0.0.7
 // 0.0.2 （已废弃）
 // 0.0.3 修改参数配置方式
 // 0.0.4 修复仅对当前文档中的选中块起作用
 // 0.0.5 支持叶归等第三方非标准思源dom结构
 // 0.0.6 增加附加字段功能
+// 0.0.7 增加可同时对选中块增加自定义属性
 (()=>{
     // 是否开启，同时添加其他字段 true 开启 false 不开启
     // 开启时，需要配置menus中的otherCols字段信息（可参考下面的示例）
     const isEnableMoreCols = false;
+
+    // 是否同时对选中块添加自定义属性（需要在menus中配置customAttrs，每个菜单可以添加不同的自定义属性）
+    const isEnableCustomAttrsInSelectedBlock = false;
 
     // 块菜单配置
     const menus = [
@@ -19,12 +23,15 @@
             // 菜单名，显示在块或文档右键菜单上
             name: "添加到数据库A",
             // 添加到的数据库块id列表（必填），注意是数据库所在块id，如果移动了数据库位置需要更改
-            toAvBlockId: "20241127231309-ws4tojt",
+            toAvBlockId: "20241127231309-wo80aza",
             // 指定数据库的列名，不填默认是添加到主键列，该参数仅对不绑定块菜单有效，如果多个列名一样的则取第一个
             // 注意，目前仅支持文本列
             toAvColName: "",
             // 是否绑定块菜单，true 绑定，false 不绑定
             isBindBlock: true,
+            // 给选中块添加自定义属性，可以按key:value形式添加多组
+            // 注意，自定义属性需要添加custom-前缀
+            customAttrs: {"custom-st-event": "今天"},
             // 其他扩展字段（需要时把注释打开后配置即可）
             // getColValue回调函数可动态计算字段值返回
             otherCols: [
@@ -39,9 +46,12 @@
         },
         {
             name: "添加到数据库B",
-            toAvBlockId: "20241127231309-ws4tojt",
+            toAvBlockId: "20241127231309-wo80aza",
             toAvColName: "",
             isBindBlock: false,
+            // 给选中块添加自定义属性，可以按key:value形式添加多组
+            // 注意，自定义属性需要添加custom-前缀
+            customAttrs: {"custom-st-event": "今天"},
             // 其他扩展字段（需要时把注释打开后配置即可）
             // getColValue回调函数可动态计算字段值返回
             otherCols: [
@@ -81,13 +91,13 @@
                 // 块菜单点击事件
                 menuBtn.onclick = async () => {
                     window.siyuan.menus.menu.remove();
-                    menuItemClick(menu.toAvBlockId, menu.toAvColName, menu.isBindBlock, menu.otherCols, isTitleMenu);
+                    menuItemClick(menu.toAvBlockId, menu.toAvColName, menu.isBindBlock, menu.otherCols, menu.customAttrs, isTitleMenu);
                 };
             });
         });
     });
     // 菜单点击事件
-    async function menuItemClick(toAvBlockId, toAvColName, isBindBlock, otherCols, isTitleMenu) {
+    async function menuItemClick(toAvBlockId, toAvColName, isBindBlock, otherCols, customAttrs, isTitleMenu) {
         const avId = await getAvIdByAvBlockId(toAvBlockId);
         if(!avId) {
             showMessage('未找到块ID'+toAvBlockId+'所在的数据库，请检查数据库块ID配置是否正确', true);
@@ -113,7 +123,7 @@
             const blockIds = [...blocks].map(block => block.dataset.nodeId);
             // 绑定块（要用await等待插入完成，否则后面的读取操作可能读不到数据）
             await addBlocksToAv(blockIds, avId, toAvBlockId);
-            // 添加属性
+            // 添加数据库其他属性
             if(isEnableMoreCols && otherCols && otherCols.length > 0) {
                 // 通过字段名获取keyID
                 const keys = await requestApi("/api/av/getAttributeViewKeysByAvID", {avID:avId});
@@ -126,6 +136,8 @@
                 // 添加属性到数据库
                 addColsToAv(blockIds, otherCols, avId);
             }
+            // 给选中块添加自定义属性
+            if(isEnableCustomAttrsInSelectedBlock) setBlocksAttrs(blockIds, customAttrs);
         }
         // 非绑定块
         else {
@@ -151,6 +163,10 @@
                 });
             }
             addBlocksToAvNoBind(blocks, avId, pkKeyID, keyID, otherCols);
+
+            // 给选中块添加自定义属性
+            const blockIds = [...blocks].map(block => block.dataset.nodeId);
+            if(isEnableCustomAttrsInSelectedBlock) setBlocksAttrs(blockIds, customAttrs);
         }
     }
     // 通过块id获取数据库id
@@ -265,6 +281,18 @@
         }
         const result = await requestApi('/api/av/appendAttributeViewDetachedBlocksWithValues', input);
         if(!result || result.code !== 0) console.error(result);
+    }
+
+    // 给块添加自定义属性
+    async function setBlocksAttrs(blockIds, attrs) {
+        for(const blockId of blockIds) {
+            if(!blockId || typeof attrs !== 'object') continue;
+            const result = await requestApi('/api/attr/setBlockAttrs', {
+                "id": blockId,
+                "attrs": attrs
+            });
+            if(!result || result.code !== 0) console.error(result);
+        }
     }
 
     // 请求api
