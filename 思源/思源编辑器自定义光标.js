@@ -91,6 +91,7 @@
         const handleScroll = () => {
              // 清除闪烁并停止后续闪烁
             cursor.classList.remove('blinking');
+            cursor.style.animation = 'none';
             clearTimeout(blinkTimeout);
             cursor.classList.add('hidden', 'no-transition');
             clearTimeout(scrollTimeout);
@@ -160,6 +161,7 @@
                 if (!pos || !isInAllowElements(pos, output)) {
                     // 隐藏时移除闪烁
                     cursor.classList.remove('blinking');
+                    cursor.style.animation = 'none';
                     clearTimeout(blinkTimeout);
                     cursor.classList.add('hidden');
                     isUpdating = false;
@@ -170,6 +172,7 @@
                 clearTimeout(blinkTimeout);
                 // 移除闪烁效果
                 cursor.classList.remove('blinking');
+                cursor.style.animation = 'none';
 
                 // 处理首次移动
                 if (isFirstMove) {
@@ -194,6 +197,7 @@
                 // 延迟添加闪烁效果
                 blinkTimeout = setTimeout(() => {
                     cursor.classList.add('blinking');
+                    cursor.style.animation = '';
                 }, BLINK_DELAY);
 
                 lastValidPos = pos;
