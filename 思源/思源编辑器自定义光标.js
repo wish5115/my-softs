@@ -13,7 +13,7 @@
     const isCursorSmoothEnabled = true;
 
     // 是否使用光标闪烁动画效果 true 闪动 false 不闪动
-    const isCursorBlinkEnabled = true;
+    const isCursorBlinkEnabled = false;
 
     // 是否也应用于文档标题中 true 应用 false不应用
     const isApplyToTitle = true;
@@ -58,7 +58,7 @@
         }
         /* 添加闪烁动画 */
         ${isCursorBlinkEnabled ? `
-            #custom-cursor.blinking {
+            #custom-cursor {
               animation: cursor-blink 1s steps(2, jump-none) infinite;
             }
             @keyframes cursor-blink {
@@ -90,7 +90,6 @@
 
         const handleScroll = () => {
              // 清除闪烁并停止后续闪烁
-            cursor.classList.remove('blinking');
             cursor.style.animation = 'none';
             clearTimeout(blinkTimeout);
             cursor.classList.add('hidden', 'no-transition');
@@ -160,7 +159,6 @@
                 
                 if (!pos || !isInAllowElements(pos, output)) {
                     // 隐藏时移除闪烁
-                    cursor.classList.remove('blinking');
                     cursor.style.animation = 'none';
                     clearTimeout(blinkTimeout);
                     cursor.classList.add('hidden');
@@ -171,7 +169,6 @@
                 // 清除之前的闪烁定时器
                 clearTimeout(blinkTimeout);
                 // 移除闪烁效果
-                cursor.classList.remove('blinking');
                 cursor.style.animation = 'none';
 
                 // 处理首次移动
@@ -196,7 +193,6 @@
 
                 // 延迟添加闪烁效果
                 blinkTimeout = setTimeout(() => {
-                    cursor.classList.add('blinking');
                     cursor.style.animation = '';
                 }, BLINK_DELAY);
 
