@@ -38,7 +38,7 @@
           /* 以下样式，非必要勿改动 */
           position: fixed;
           pointer-events: none;
-          transition: ${isCursorSmoothEnabled?'transform 0.1s linear':'none'};
+          transition: ${isCursorSmoothEnabled?'transform 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)':'none'};
           z-index: 1; /* 这个会实时动态计算，这里设置并不起作用 */
           transform: translate(0, 0);
           will-change: transform; /* 启用 GPU 加速 */
