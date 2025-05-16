@@ -285,8 +285,9 @@
 
     // 给块添加自定义属性
     async function setBlocksAttrs(blockIds, attrs) {
+        if(typeof attrs !== 'object') return;
         for(const blockId of blockIds) {
-            if(!blockId || typeof attrs !== 'object') continue;
+            if(!blockId) continue;
             const result = await requestApi('/api/attr/setBlockAttrs', {
                 "id": blockId,
                 "attrs": attrs
