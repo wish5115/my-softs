@@ -1,7 +1,8 @@
 // 思源编辑器自定义光标
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
-// version 0.0.6
+// version 0.0.7
+// 0.0.7 修复侧边栏拖动时，光标只能临时被隐藏的问题；增加手机版支持开关
 // 0.0.6 修复侧边栏拖动后光标定位不准和悬浮窗拖动时不能实时定位光标问题
 // 0.0.5 改进在光标闪烁时，当移动/输入/点击时的不自然，有光标突然消失感的问题；改进滚动时光标有闪烁的问题；取消选择文本是的顺滑效果
 // 0.0.4 优化滑动鼠标动画，更加丝滑
@@ -16,11 +17,17 @@
     // 是否使用光标闪烁动画效果 true 闪动 false 不闪动
     const isCursorBlinkEnabled = false;
 
-    // 是否也应用于文档标题中 true 应用 false不应用
+    // 是否也应用于文档标题中 true 应用 false 不应用
     const isApplyToTitle = true;
 
     // 设置光标是光标所在元素行高的多少倍，相当于按光标所在文本行高百分比设置光标高度
     const cursorHeightRelativeToLineHeight = 0.88;
+
+    // 是否在手机端使用，如果手机端出现不兼容问时可以禁用手机端
+    // true 使用 false 不使用
+    const isUseInMobile = true;
+
+    if(!isUseInMobile && isMobile()) return;
 
     // 其他光标样式，可以在这里改，颜色，宽高什么的
     addStyle(`
@@ -72,6 +79,8 @@
               to { opacity: 1; }
             }
         `:''}
+        /* 侧边栏拖动手柄禁止选择，防止拖动时，被误插入marker标记（用于计算光标位置） */
+        .layout__resize{user-select: none;}
     `);
 
     // 插入光标元素并开启光标监听事件
@@ -128,19 +137,19 @@
             const range = sel.getRangeAt(0).cloneRange();
             range.collapse(true);
 
-            // 使用优先级：光标预设高度 > 段落行高 > 默认20px
-            const paragraph = findParentParagraph(range.startContainer);
-            if (paragraph && !paragraph.textContent.trim()) {
-                const rect = paragraph.getBoundingClientRect();
-                const style = window.getComputedStyle(paragraph);
-                const height = (presetHeight || parseFloat(style.lineHeight) || 26) * cursorHeightRelativeToLineHeight;
-                const topGap = (parseFloat(style.lineHeight) - height) / 2;
-                return {
-                    x: rect.left + parseFloat(style.paddingLeft),
-                    y: rect.top + parseFloat(style.paddingTop) + topGap,
-                    height: height
-                };
-            }
+            // （暂没用这个方案）使用优先级：光标预设高度 > 段落行高 > 默认20px
+            // const paragraph = findParentParagraph(range.startContainer);
+            // if (paragraph && !paragraph.textContent.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()) {
+            //     const rect = paragraph.getBoundingClientRect();
+            //     const style = window.getComputedStyle(paragraph);
+            //     const height = (presetHeight || parseFloat(style.lineHeight) || 26) * cursorHeightRelativeToLineHeight;
+            //     const topGap = (parseFloat(style.lineHeight) - height) / 2;
+            //     return {
+            //         x: rect.left + parseFloat(style.paddingLeft),
+            //         y: rect.top + parseFloat(style.paddingTop) + topGap,
+            //         height: height
+            //     };
+            // }
 
             const marker = document.createElement('span');
             marker.textContent = '\u200b';
@@ -203,6 +212,8 @@
                 // 更新位置前强制清除过渡
                 const protyleContent = output.cursorElement?.closest('.protyle-content');
                 const editorRect = protyleContent.getBoundingClientRect();
+                // 兼容拖动侧边栏，鼠标位置+编辑器被移动距离（移动距离=当前编辑器left-上次编辑器left）
+                // 这里还有其他的算法，比如在或者光标位置时用 编辑器left-marker left得出相对距离，然后用pos.x+相对距离
                 const realX = pos.x + (editorRect.left - (editorLastLeft||editorRect.left));
                 editorLastLeft = editorRect.left;
                 cursor.style.transform = `translate(${realX}px, ${pos.y}px)`;
@@ -423,5 +434,9 @@
     // 检查是否自身或后代
     function isSelfOrDescendant(protyleContent, scrollEl) {
       return protyleContent === scrollEl || protyleContent.contains(scrollEl);
+    }
+
+    function isMobile() {
+        return !!document.getElementById("sidebar");
     }
 })();
