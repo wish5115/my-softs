@@ -1,7 +1,8 @@
 // 思源编辑器自定义光标
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
-// version 0.0.8
+// version 0.0.9
+// 0.0.9 优化光标插入性能
 // 0.0.8 优化拖动时计算光标算法
 // 0.0.7 修复侧边栏拖动时，光标只能临时被隐藏的问题；增加手机版支持开关
 // 0.0.6 修复侧边栏拖动后光标定位不准和悬浮窗拖动时不能实时定位光标问题
@@ -105,6 +106,14 @@
         const cursorStyle = cursorElement ? window.getComputedStyle(cursorElement) : null;
         const presetHeight = cursorStyle ? parseFloat(cursorStyle.height) : null;
 
+        // 创建全局唯一 marker
+        const globalMarker = (() => {
+            const marker = document.createElement('span');
+            marker.textContent = '\u200b';
+            marker.style.cssText = 'position: absolute; visibility: hidden; pointer-events: none;';
+            return marker;
+        })();
+
         const handleScroll = () => {
             // 清除闪烁并停止后续闪烁(滚动时必须停止动画，不然动画效果会让光标悬浮固定不动)
             if(blinkTimeout) clearTimeout(blinkTimeout);
@@ -152,13 +161,16 @@
             //     };
             // }
 
-            const marker = document.createElement('span');
-            marker.textContent = '\u200b';
-            marker.style.cssText = 'position: absolute; visibility: hidden; pointer-events: none;';
-            
-            range.insertNode(marker);
-            const rect = marker.getBoundingClientRect();
-            marker.remove();
+            // const marker = document.createElement('span');
+            // marker.textContent = '\u200b';
+            // marker.style.cssText = 'position: absolute; visibility: hidden; pointer-events: none;';
+            // range.insertNode(marker);
+            // const rect = marker.getBoundingClientRect();
+            // marker.remove();
+
+            range.insertNode(globalMarker);
+            const rect = globalMarker.getBoundingClientRect();
+            globalMarker.remove();
 
             // 最终高度逻辑：优先使用光标预设高度，否则用实际测量高度
             const height = (presetHeight || rect.height)*cursorHeightRelativeToLineHeight;
