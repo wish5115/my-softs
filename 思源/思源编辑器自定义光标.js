@@ -1,7 +1,8 @@
 // 思源编辑器自定义光标
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
-// version 0.0.5
+// version 0.0.6
+// 0.0.6 修复侧边栏拖动后光标定位不准和悬浮窗拖动时不能实时定位光标问题
 // 0.0.5 改进在光标闪烁时，当移动/输入/点击时的不自然，有光标突然消失感的问题；改进滚动时光标有闪烁的问题；取消选择文本是的顺滑效果
 // 0.0.4 优化滑动鼠标动画，更加丝滑
 // 0.0.3 修复手动拖动滚动条的bug和改变尺寸编辑器和拖动悬浮窗口光标刷新延后问题和光标位置及可见区域细节调整
@@ -87,6 +88,7 @@
         let isFirstMove = true; // 新增首次移动标记
         let blinkTimeout;
         const BLINK_DELAY = 500; // 静止后开始闪烁的延迟时间
+        let editorLastLeft = 0;
 
         // 优先获取光标元素自身预设行高
         const cursorElement = document.getElementById('custom-cursor');
@@ -160,14 +162,15 @@
             if (isUpdating) return;
             isUpdating = true;
 
+            // 强制同步布局（解决元素尺寸变化后的布局延迟问题）
+            //document.body.clientWidth; 
+
             //requestAnimationFrame(() => {
                 const pos = getStablePosition();
-                const output={cursorElement:null};
+                const output={cursorElement:null, isOuterElement: false};
                 
                 if (!pos || !isInAllowElements(pos, output)) {
-                    // 隐藏时移除闪烁(hidden中已包含隐藏动画，这里不需要了)
-                    //if(blinkTimeout) clearTimeout(blinkTimeout);
-                    //cursor.classList.add('no-transition');
+                    // 编辑器内的元素，但超出编辑器范围了隐藏
                     cursor.classList.add('hidden');
                     isUpdating = false;
                     return;
@@ -184,7 +187,7 @@
                     isFirstMove = false;
                 }
 
-                // 当选择文本时，不需要动画
+                // 当选择文本时，不需要顺滑动画
                 if(eventType === 'selectionchange') {
                     const selection = window.getSelection();
                     if (selection.rangeCount > 0 && selection.toString()) {
@@ -192,8 +195,17 @@
                     }
                 }
 
+                // 悬浮窗拖动窗口时，取消顺滑动画
+                if(['blockPopoverMove', 'protyleResize'].includes(eventType)) {
+                    cursor.classList.add('no-transition');
+                }
+
                 // 更新位置前强制清除过渡
-                cursor.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
+                const protyleContent = output.cursorElement?.closest('.protyle-content');
+                const editorRect = protyleContent.getBoundingClientRect();
+                const realX = pos.x + (editorRect.left - (editorLastLeft||editorRect.left));
+                editorLastLeft = editorRect.left;
+                cursor.style.transform = `translate(${realX}px, ${pos.y}px)`;
                 cursor.style.height = `${pos.height}px`;
                 cursor.classList.remove('hidden');
                 cursor.style.zIndex = output.cursorElement ? getEffectiveZIndex(output.cursorElement) + 1 : ++window.siyuan.zIndex;
@@ -230,7 +242,11 @@
             
             // 动态获取当前活动编辑区域
             let protyleContent = cursorElement?.closest('.protyle-content');
-            if (!protyleContent) return false;
+            // 非编辑器内的元素返回
+            if (!protyleContent) {
+                output.isOuterElement = true;
+                return false;
+            }
             // 如果不应用于标题返回
             if(cursorElement.closest('.protyle-title__input') && !isApplyToTitle) return;
         
@@ -266,7 +282,6 @@
             if(!cursorElement) return;
             // 给内部带有滚动条的元素添加滚动事件
             const scrollEl = findClosestScrollableElement(cursorElement);
-            if(!scrollEl) return;
             if(scrollEl && !scrollEl.handleClick) {
                 scrollEl.handleClick = handleScroll;
                 scrollEl.addEventListener('scroll', scrollEl.handleClick);
@@ -276,7 +291,7 @@
             const protyleContent = cursorElement?.closest('.protyle-content');
             if (protyleContent && !protyleContent.handleResize) {
                 new ResizeObserver(entries => {
-                    updateCursor();
+                    updateCursor('protyleResize');
                 }).observe(protyleContent);
             }
             // 给block__popover绑定拖动事件
@@ -284,12 +299,13 @@
             if (blockPopover && !blockPopover.handleDrag) {
                 const dragEl = blockPopover.querySelector('.resize__move');
                 if(!dragEl) return;
+                blockPopover.handleDrag = true;
                 let isDragging = false;
                 dragEl.addEventListener('mousedown', function(e) {
                     isDragging = true;
                 });
                 dragEl.addEventListener('mousemove', function(e) {
-                    if(isDragging) updateCursor();
+                    if(isDragging) updateCursor('blockPopoverMove');
                 });
                 dragEl.addEventListener('mouseup', function(e) {
                     isDragging = false;
