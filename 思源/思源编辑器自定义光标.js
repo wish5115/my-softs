@@ -1,7 +1,8 @@
 // 思源编辑器自定义光标
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
-// version 0.0.7
+// version 0.0.8
+// 0.0.8 优化拖动时计算光标算法
 // 0.0.7 修复侧边栏拖动时，光标只能临时被隐藏的问题；增加手机版支持开关
 // 0.0.6 修复侧边栏拖动后光标定位不准和悬浮窗拖动时不能实时定位光标问题
 // 0.0.5 改进在光标闪烁时，当移动/输入/点击时的不自然，有光标突然消失感的问题；改进滚动时光标有闪烁的问题；取消选择文本是的顺滑效果
@@ -97,7 +98,7 @@
         let isFirstMove = true; // 新增首次移动标记
         let blinkTimeout;
         const BLINK_DELAY = 500; // 静止后开始闪烁的延迟时间
-        let editorLastLeft = 0;
+        //let editorLastLeft = 0;
 
         // 优先获取光标元素自身预设行高
         const cursorElement = document.getElementById('custom-cursor');
@@ -210,13 +211,13 @@
                 }
 
                 // 更新位置前强制清除过渡
-                const protyleContent = output.cursorElement?.closest('.protyle-content');
-                const editorRect = protyleContent.getBoundingClientRect();
+                //const protyleContent = output.cursorElement?.closest('.protyle-content');
+                //const editorRect = protyleContent.getBoundingClientRect();
                 // 兼容拖动侧边栏，鼠标位置+编辑器被移动距离（移动距离=当前编辑器left-上次编辑器left）
                 // 这里还有其他的算法，比如在或者光标位置时用 编辑器left-marker left得出相对距离，然后用pos.x+相对距离
-                const realX = pos.x + (editorRect.left - (editorLastLeft||editorRect.left));
-                editorLastLeft = editorRect.left;
-                cursor.style.transform = `translate(${realX}px, ${pos.y}px)`;
+                //const realX = pos.x + (editorRect.left - (editorLastLeft||editorRect.left));
+                //editorLastLeft = editorRect.left;
+                cursor.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
                 cursor.style.height = `${pos.height}px`;
                 cursor.classList.remove('hidden');
                 cursor.style.zIndex = output.cursorElement ? getEffectiveZIndex(output.cursorElement) + 1 : ++window.siyuan.zIndex;
