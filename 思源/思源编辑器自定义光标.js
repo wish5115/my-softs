@@ -2,7 +2,7 @@
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
 // version 0.0.5
-// 0.0.5 改进在光标闪烁时，当移动/输入/点击时的不自然，有光标突然消失感的问题
+// 0.0.5 改进在光标闪烁时，当移动/输入/点击时的不自然，有光标突然消失感的问题；改进滚动时光标有闪烁的问题；取消选择文本是的顺滑效果
 // 0.0.4 优化滑动鼠标动画，更加丝滑
 // 0.0.3 修复手动拖动滚动条的bug和改变尺寸编辑器和拖动悬浮窗口光标刷新延后问题和光标位置及可见区域细节调整
 // 0.0.2 修复打开块等菜单时，光标显示在菜单之上的问题
@@ -47,14 +47,19 @@
           backface-visibility: hidden; /* 避免重绘闪烁 */
           opacity: 1; /* 默认不透明 */
         }
+        /* 隐藏光标 */
         #custom-cursor.hidden {
-          opacity: 0;
-          /*animation: none;*/
-          transition: none;
+          opacity: 0 !important;
+          animation: none !important;
+          transition: none !important;
         }
+        /* 停止光标闪动 */
+        #custom-cursor.no-animation {
+            animation: none !important;
+        }
+        /* 停止顺滑光标效果 */
         #custom-cursor.no-transition {
           transition: none !important;
-          /*animation: none !important;*/
         }
         /* 添加闪烁动画 */
         ${isCursorBlinkEnabled ? `
@@ -89,18 +94,20 @@
         const presetHeight = cursorStyle ? parseFloat(cursorStyle.height) : null;
 
         const handleScroll = () => {
-             // 清除闪烁并停止后续闪烁
-            cursor.style.animation = 'none';
-            clearTimeout(blinkTimeout);
-            cursor.classList.add('hidden', 'no-transition');
-            clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(() => {
-                requestAnimationFrame(() => {
-                    if (!isScrolling()) {
-                        updateCursor();
-                    }
-                });
-            }, 200);
+            // 清除闪烁并停止后续闪烁(滚动时必须停止动画，不然动画效果会让光标悬浮固定不动)
+            if(blinkTimeout) clearTimeout(blinkTimeout);
+            cursor.classList.add('no-animation');
+            // 清除顺滑效果，防止滚动时上下跳动
+            cursor.classList.add('no-transition');
+            updateCursor();
+            // clearTimeout(scrollTimeout);
+            // scrollTimeout = setTimeout(() => {
+            //     requestAnimationFrame(() => {
+            //         if (!isScrolling()) {
+            //             updateCursor();
+            //         }
+            //     });
+            // }, 200);
         };
 
         const isScrolling = () => {
@@ -149,32 +156,40 @@
                 null;
         };
 
-        const updateCursor = () => {
+        const updateCursor = (eventType) => {
             if (isUpdating) return;
             isUpdating = true;
 
-            requestAnimationFrame(() => {
+            //requestAnimationFrame(() => {
                 const pos = getStablePosition();
                 const output={cursorElement:null};
                 
                 if (!pos || !isInAllowElements(pos, output)) {
-                    // 隐藏时移除闪烁
-                    cursor.style.animation = 'none';
-                    clearTimeout(blinkTimeout);
+                    // 隐藏时移除闪烁(hidden中已包含隐藏动画，这里不需要了)
+                    //if(blinkTimeout) clearTimeout(blinkTimeout);
+                    //cursor.classList.add('no-transition');
                     cursor.classList.add('hidden');
                     isUpdating = false;
                     return;
                 }
 
                 // 清除之前的闪烁定时器
-                clearTimeout(blinkTimeout);
-                // 移除闪烁效果
-                cursor.style.animation = 'none';
+                if(blinkTimeout) clearTimeout(blinkTimeout);
+                // 移除闪烁效果（当光标移动/输入/点击时不需要闪烁，不然会有突然消失感）
+                cursor.classList.add('no-animation');
 
                 // 处理首次移动
                 if (isFirstMove) {
                     cursor.classList.add('no-transition');
                     isFirstMove = false;
+                }
+
+                // 当选择文本时，不需要动画
+                if(eventType === 'selectionchange') {
+                    const selection = window.getSelection();
+                    if (selection.rangeCount > 0 && selection.toString()) {
+                        cursor.classList.add('no-transition');
+                    }
                 }
 
                 // 更新位置前强制清除过渡
@@ -186,19 +201,19 @@
                 // 强制布局同步
                 void cursor.offsetHeight;
 
-                // 延迟恢复过渡效果
+                // 延迟恢复顺滑效果
                 requestAnimationFrame(() => {
                     cursor.classList.remove('no-transition');
                 });
 
-                // 延迟添加闪烁效果
+                // 延迟添加闪烁效果（待光标静止后恢复闪烁）
                 blinkTimeout = setTimeout(() => {
-                    cursor.style.animation = '';
+                    cursor.classList.remove('no-animation');
                 }, BLINK_DELAY);
 
                 lastValidPos = pos;
                 isUpdating = false;
-            });
+            //});
         };
 
         // 暂未用到
@@ -286,7 +301,7 @@
             ['scroll', handleScroll],
             ['wheel', handleScroll, { passive: true }],
             ['touchmove', handleScroll, { passive: true }],
-            ['selectionchange', updateCursor],
+            ['selectionchange', ()=>updateCursor('selectionchange')],
             ['keydown', () => requestAnimationFrame(updateCursor)],
             ['input', () => requestAnimationFrame(updateCursor)],
             ['click', () => {updateCursor();checkElementEvents();}],
