@@ -1,7 +1,8 @@
 // 思源编辑器自定义光标
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
-// version 0.0.9
+// version 0.0.9.1
+// 0.0.9.1 优化滚动性能
 // 0.0.9 优化光标插入性能
 // 0.0.8 优化拖动时计算光标算法
 // 0.0.7 修复侧边栏拖动时，光标只能临时被隐藏的问题；增加手机版支持开关
@@ -338,7 +339,7 @@
         };
 
         const events = [
-            ['scroll', handleScroll],
+            ['scroll', handleScroll, { passive: true }],
             ['wheel', handleScroll, { passive: true }],
             ['touchmove', handleScroll, { passive: true }],
             ['selectionchange', ()=>updateCursor('selectionchange')],
