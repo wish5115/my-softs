@@ -339,16 +339,16 @@
         };
 
         const events = [
-            ['scroll', handleScroll, { passive: true }],
-            ['wheel', handleScroll, { passive: true }],
-            ['touchmove', handleScroll, { passive: true }],
-            ['selectionchange', ()=>updateCursor('selectionchange')],
+            ['scroll', () => requestAnimationFrame(handleScroll), { passive: true }],
+            ['wheel', () => requestAnimationFrame(handleScroll), { passive: true }],
+            ['touchmove', () => requestAnimationFrame(handleScroll), { passive: true }],
+            ['selectionchange', ()=>updateCursor('selectionchange'), { passive: true }],
             ['keydown', () => requestAnimationFrame(updateCursor)],
             ['input', () => requestAnimationFrame(updateCursor)],
             ['click', () => {updateCursor();checkElementEvents();}],
             ['compositionend', updateCursor],
             ['mouseup', updateCursor],
-            ['resize', updateCursor],
+            ['resize', () => requestAnimationFrame(updateCursor), { passive: true }],
             ['keyup', () => {checkElementEvents();}],
         ];
 
