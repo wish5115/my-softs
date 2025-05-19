@@ -1,7 +1,9 @@
 // 思源编辑器自定义光标
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
-// version 0.0.9.1
+// todo 修复光标在行内公式下行向前删除时定位不准的问题；改进光标在非可视范围时不计算位置，提高性能
+// version 0.0.9.2
+// 0.0.9.2 修改多层滚动条嵌套下的滚动延迟问题；
 // 0.0.9.1 优化滚动性能
 // 0.0.9 优化光标插入性能
 // 0.0.8 优化拖动时计算光标算法
@@ -101,6 +103,7 @@
         let blinkTimeout;
         const BLINK_DELAY = 500; // 静止后开始闪烁的延迟时间
         //let editorLastLeft = 0;
+        let hidePos = null;
 
         // 优先获取光标元素自身预设行高
         const cursorElement = document.getElementById('custom-cursor');
@@ -146,7 +149,7 @@
 
             document.body.clientWidth; // 强制重绘
             const range = sel.getRangeAt(0).cloneRange();
-            range.collapse(true);
+            //range.collapse(true);
 
             // （暂没用这个方案）使用优先级：光标预设高度 > 段落行高 > 默认20px
             // const paragraph = findParentParagraph(range.startContainer);
@@ -189,11 +192,19 @@
             //document.body.clientWidth; 
 
             //requestAnimationFrame(() => {
-                const pos = getStablePosition();
+                const pos = hidePos ? hidePos : getStablePosition();
                 const output={cursorElement:null, isOuterElement: false};
                 
                 if (!pos || !isInAllowElements(pos, output)) {
                     // 编辑器内的元素，但超出编辑器范围了隐藏
+                    cursor.classList.add('hidden');
+                    isUpdating = false;
+                    //hidePos = pos;
+                    return;
+                }
+
+                // 点击非可编辑区域时不做任何操作，直接返回
+                if(output.cursorElement && !output.cursorElement.closest('[data-node-id] [contenteditable="true"]')) {
                     cursor.classList.add('hidden');
                     isUpdating = false;
                     return;
@@ -233,6 +244,7 @@
                 cursor.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
                 cursor.style.height = `${pos.height}px`;
                 cursor.classList.remove('hidden');
+                //hidePos = null;
                 cursor.style.zIndex = output.cursorElement ? getEffectiveZIndex(output.cursorElement) + 1 : ++window.siyuan.zIndex;
 
                 // 强制布局同步
@@ -254,12 +266,12 @@
         };
 
         // 暂未用到
-        const isInViewport = (pos) => {
-            return pos.y >= 0 && 
-                   pos.y <= window.innerHeight && 
-                   pos.x >= 0 && 
-                   pos.x <= window.innerWidth;
-        };
+        // const isInViewport = (pos) => {
+        //     return pos.y >= 0 && 
+        //            pos.y <= window.innerHeight && 
+        //            pos.x >= 0 && 
+        //            pos.x <= window.innerWidth;
+        // };
 
         const isInAllowElements = (pos, output={cursorElement:null}) => {
             const cursorElement = getCursorElement();
@@ -306,12 +318,14 @@
             const cursorElement = getCursorElement();
             if(!cursorElement) return;
             // 给内部带有滚动条的元素添加滚动事件
-            const scrollEl = findClosestScrollableElement(cursorElement);
-            if(scrollEl && !scrollEl.handleClick) {
-                scrollEl.handleClick = handleScroll;
-                scrollEl.addEventListener('scroll', scrollEl.handleClick);
-                scrollEl.addEventListener('wheel', scrollEl.handleClick, { passive: true });
-            }
+            const scrollEls = findClosestScrollableElements(cursorElement);
+            scrollEls.forEach(scrollEl => {
+                if(scrollEl && !scrollEl.handleClick) {
+                    scrollEl.handleClick = handleScroll;
+                    scrollEl.addEventListener('scroll', scrollEl.handleClick);
+                    scrollEl.addEventListener('wheel', scrollEl.handleClick);
+                }
+            });
             // 给protyle-content绑定改变尺寸事件
             const protyleContent = cursorElement?.closest('.protyle-content');
             if (protyleContent && !protyleContent.handleResize) {
@@ -339,9 +353,9 @@
         };
 
         const events = [
-            ['scroll', () => requestAnimationFrame(handleScroll), { passive: true }],
-            ['wheel', () => requestAnimationFrame(handleScroll), { passive: true }],
-            ['touchmove', () => requestAnimationFrame(handleScroll), { passive: true }],
+            ['scroll', () => handleScroll],
+            ['wheel', () => handleScroll],
+            ['touchmove', () => handleScroll],
             ['selectionchange', ()=>updateCursor('selectionchange'), { passive: true }],
             ['keydown', () => requestAnimationFrame(updateCursor)],
             ['input', () => requestAnimationFrame(updateCursor)],
@@ -429,11 +443,24 @@
         && el.scrollWidth > el.clientWidth;
       return canScrollY || canScrollX;
     }
+
+    // 检查有滚动条的父元素，返回所有
+    function findClosestScrollableElements(element) {
+      const scrollableElements = [];
+      while (element) {
+        if (hasScroll(element)) {
+          scrollableElements.push(element);
+        }
+        element = element.parentElement;
+      }
+      return scrollableElements;
+    }
     
+    // 检查有滚动条的父元素，只返回最近一个
     function findClosestScrollableElement(element) {
       while (element && element !== document.documentElement) {
         if (hasScroll(element)) return element;
-        element = element.parentNode;
+        element = element.parentElement;
       }
       
       // 显式检查根元素
