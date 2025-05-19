@@ -1,6 +1,8 @@
 // 思源编辑器自定义光标
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
+// todo 极致性能优化，太复杂暂时不实现(可参考下文优化说明)
+// see https://pipe.b3log.org/blogs/wilsons/%E6%80%9D%E6%BA%90/%E5%AE%9E%E6%97%B6%E8%8E%B7%E5%8F%96%E5%85%89%E6%A0%87%E4%BD%8D%E7%BD%AE%E4%BC%98%E5%8C%96%E6%80%9D%E8%B7%AF
 // version 0.0.10
 // 0.0.10 重构光标获取算法；修复光标在行内公式等特殊情况时定位不准的问题；改进光标获取性能；改进标签切换等出现意外光标
 // 0.0.9.2 修改多层滚动条嵌套下的滚动延迟问题；
@@ -143,8 +145,6 @@
             lastScrollPos = currentScrollPos;
             return isMoving;
         };
-
-        
 
         // 获取光标位置，新方案
         function getStablePosition() {
