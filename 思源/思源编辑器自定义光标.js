@@ -1,8 +1,8 @@
 // 思源编辑器自定义光标
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
-// todo 修复光标在行内公式下行向前删除时定位不准的问题；改进光标在非可视范围时不计算位置，提高性能
-// version 0.0.9.2
+// version 0.0.10
+// 0.0.10 重构光标获取算法；修复光标在行内公式等特殊情况时定位不准的问题；改进光标获取性能
 // 0.0.9.2 修改多层滚动条嵌套下的滚动延迟问题；
 // 0.0.9.1 优化滚动性能
 // 0.0.9 优化光标插入性能
@@ -143,46 +143,103 @@
             return isMoving;
         };
 
-        const getStablePosition = () => {
+        
+
+        // 获取光标位置，新方案
+        function getStablePosition() {
             const sel = window.getSelection();
             if (!sel.rangeCount) return null;
-
-            document.body.clientWidth; // 强制重绘
+        
+            // 克隆并 collapse Range
             const range = sel.getRangeAt(0).cloneRange();
             range.collapse(true);
+        
+            // 找到可编辑容器，用于取行高
+            let hitNode = sel.focusNode;
+            if (hitNode.nodeType === Node.TEXT_NODE) hitNode = hitNode.parentElement;
+            const editableEl = hitNode.closest('[contenteditable="true"]');
+            const style = editableEl ? window.getComputedStyle(editableEl) : null;
+            // 优先用 line-height，否则 fallback 到 font-size * 1.625 或 26px
+            const rawLineH = style && parseFloat(style.lineHeight)
+                || (style && parseFloat(style.fontSize) * 1.625)
+                || 26;
+            const lineH = rawLineH;
+            const paddingLeft = style ? parseFloat(style.paddingLeft) || 0 : 0;
+        
+            // 尝试浏览器原生的 clientRects
+            const rects = Array.from(range.getClientRects());
+            let baseRect, x;
+            if (rects.length) {
+                baseRect = rects[rects.length - 1];
+            } else {
+               // 先判断是否是段落空行，段落空行直接通过段落获取
+               const paragraph = findParentParagraph(range.startContainer);
+                if (paragraph && !paragraph.textContent.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()) {
+                    baseRect = paragraph.getBoundingClientRect();
+                    const style = window.getComputedStyle(paragraph);
+                    x = baseRect.left + parseFloat(style.paddingLeft);
+                } else {
+                    // 回退：插 marker 测一次
+                    range.insertNode(globalMarker);
+                    baseRect = globalMarker.getBoundingClientRect();
+                    globalMarker.remove();
+                }
+            }
+        
+            // 计算高度：统一用行高 * 比例
+            const height = lineH * cursorHeightRelativeToLineHeight;
+        
+            // 计算 y：把原生/marker 获取的 rect.top 对齐到行高
+            // rectTop + (rect.height - height)/2  可能让光标在垂直居中
+            const gap = (baseRect.height - height) / 2;
+            const y = baseRect.top + gap;
+        
+            // x 贴在文字末尾
+            x = x ? x : baseRect.right;
+        
+            return baseRect.width + baseRect.height > 0 ? { x, y, height } : null;
+        }
 
-            // （暂没用这个方案）使用优先级：光标预设高度 > 段落行高 > 默认20px
-            // const paragraph = findParentParagraph(range.startContainer);
-            // if (paragraph && !paragraph.textContent.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()) {
-            //     const rect = paragraph.getBoundingClientRect();
-            //     const style = window.getComputedStyle(paragraph);
-            //     const height = (presetHeight || parseFloat(style.lineHeight) || 26) * cursorHeightRelativeToLineHeight;
-            //     const topGap = (parseFloat(style.lineHeight) - height) / 2;
-            //     return {
-            //         x: rect.left + parseFloat(style.paddingLeft),
-            //         y: rect.top + parseFloat(style.paddingTop) + topGap,
-            //         height: height
-            //     };
-            // }
+        // const getStablePosition = () => {
+        //     const sel = window.getSelection();
+        //     if (!sel.rangeCount) return null;
 
-            // const marker = document.createElement('span');
-            // marker.textContent = '\u200b';
-            // marker.style.cssText = 'position: absolute; visibility: hidden; pointer-events: none;';
-            // range.insertNode(marker);
-            // const rect = marker.getBoundingClientRect();
-            // marker.remove();
+        //     document.body.clientWidth; // 强制重绘
+        //     const range = sel.getRangeAt(0).cloneRange();
+        //     range.collapse(true);
 
-            range.insertNode(globalMarker);
-            const rect = globalMarker.getBoundingClientRect();
-            globalMarker.remove();
+        //     // （暂没用这个方案）使用优先级：光标预设高度 > 段落行高 > 默认20px
+        //     // const paragraph = findParentParagraph(range.startContainer);
+        //     // if (paragraph && !paragraph.textContent.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()) {
+        //     //     const rect = paragraph.getBoundingClientRect();
+        //     //     const style = window.getComputedStyle(paragraph);
+        //     //     const height = (presetHeight || parseFloat(style.lineHeight) || 26) * cursorHeightRelativeToLineHeight;
+        //     //     const topGap = (parseFloat(style.lineHeight) - height) / 2;
+        //     //     return {
+        //     //         x: rect.left + parseFloat(style.paddingLeft),
+        //     //         y: rect.top + parseFloat(style.paddingTop) + topGap,
+        //     //         height: height
+        //     //     };
+        //     // }
 
-            // 最终高度逻辑：优先使用光标预设高度，否则用实际测量高度
-            const height = (presetHeight || rect.height)*cursorHeightRelativeToLineHeight;
-            const topGap = (rect.height - height) / 2;
-            return rect.width + rect.height > 0 ? 
-                { x: rect.left, y: rect.top + topGap, height: height } : 
-                null;
-        };
+        //     // const marker = document.createElement('span');
+        //     // marker.textContent = '\u200b';
+        //     // marker.style.cssText = 'position: absolute; visibility: hidden; pointer-events: none;';
+        //     // range.insertNode(marker);
+        //     // const rect = marker.getBoundingClientRect();
+        //     // marker.remove();
+
+        //     range.insertNode(globalMarker);
+        //     const rect = globalMarker.getBoundingClientRect();
+        //     globalMarker.remove();
+
+        //     // 最终高度逻辑：优先使用光标预设高度，否则用实际测量高度
+        //     const height = (presetHeight || rect.height)*cursorHeightRelativeToLineHeight;
+        //     const topGap = (rect.height - height) / 2;
+        //     return rect.width + rect.height > 0 ? 
+        //         { x: rect.left, y: rect.top + topGap, height: height } : 
+        //         null;
+        // };
 
         const updateCursor = (eventType) => {
             if (isUpdating) return;
