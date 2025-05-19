@@ -149,7 +149,7 @@
 
             document.body.clientWidth; // 强制重绘
             const range = sel.getRangeAt(0).cloneRange();
-            //range.collapse(true);
+            range.collapse(true);
 
             // （暂没用这个方案）使用优先级：光标预设高度 > 段落行高 > 默认20px
             // const paragraph = findParentParagraph(range.startContainer);
