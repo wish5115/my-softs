@@ -2,7 +2,7 @@
 // 顺滑光标+是否闪烁+自定义样式
 // 目前仅支持在编辑器中使用
 // version 0.0.10
-// 0.0.10 重构光标获取算法；修复光标在行内公式等特殊情况时定位不准的问题；改进光标获取性能
+// 0.0.10 重构光标获取算法；修复光标在行内公式等特殊情况时定位不准的问题；改进光标获取性能；改进标签切换等出现意外光标
 // 0.0.9.2 修改多层滚动条嵌套下的滚动延迟问题；
 // 0.0.9.1 优化滚动性能
 // 0.0.9 优化光标插入性能
@@ -103,6 +103,7 @@
         let blinkTimeout;
         const BLINK_DELAY = 500; // 静止后开始闪烁的延迟时间
         //let editorLastLeft = 0;
+        let firstProtyleIds = [];
         let hidePos = null;
 
         // 优先获取光标元素自身预设行高
@@ -241,12 +242,9 @@
         //         null;
         // };
 
-        const updateCursor = (eventType) => {
+        const updateCursor = (event, eventType) => {
             if (isUpdating) return;
             isUpdating = true;
-
-            // 强制同步布局（解决元素尺寸变化后的布局延迟问题）
-            //document.body.clientWidth; 
 
             //requestAnimationFrame(() => {
                 const pos = hidePos ? hidePos : getStablePosition();
@@ -258,6 +256,17 @@
                     isUpdating = false;
                     //hidePos = pos;
                     return;
+                }
+
+                // 如果不是编辑器区域则隐藏光标(防止标签切换等出现意外光标)
+                if(eventType === 'selectionchange') {
+                    const protyleId = output.cursorElement?.closest('.protyle:not(.fn__none)')?.dataset?.id;
+                    if(!firstProtyleIds.includes(protyleId)){
+                        if(protyleId) firstProtyleIds.push(protyleId);
+                        cursor.classList.add('hidden');
+                        isUpdating = false;
+                        return;
+                    }
                 }
 
                 // 点击非可编辑区域时不做任何操作，直接返回
@@ -292,7 +301,7 @@
                 }
 
                 // 更新位置前强制清除过渡
-                //const protyleContent = output.cursorElement?.closest('.protyle-content');
+                //const protyleContent = output.cursorElement?.closest('.protyle:not(.fn__none) .protyle-content');
                 //const editorRect = protyleContent.getBoundingClientRect();
                 // 兼容拖动侧边栏，鼠标位置+编辑器被移动距离（移动距离=当前编辑器left-上次编辑器left）
                 // 这里还有其他的算法，比如在或者光标位置时用 编辑器left-marker left得出相对距离，然后用pos.x+相对距离
@@ -335,7 +344,7 @@
             if(typeof output === 'object') output.cursorElement = cursorElement;
             
             // 动态获取当前活动编辑区域
-            let protyleContent = cursorElement?.closest('.protyle-content');
+            let protyleContent = cursorElement?.closest('.protyle:not(.fn__none) .protyle-content');
             // 非编辑器内的元素返回
             if (!protyleContent) {
                 output.isOuterElement = true;
@@ -384,10 +393,10 @@
                 }
             });
             // 给protyle-content绑定改变尺寸事件
-            const protyleContent = cursorElement?.closest('.protyle-content');
+            const protyleContent = cursorElement?.closest('.protyle:not(.fn__none) .protyle-content');
             if (protyleContent && !protyleContent.handleResize) {
                 new ResizeObserver(entries => {
-                    updateCursor('protyleResize');
+                    updateCursor({target: protyleContent}, 'protyleResize');
                 }).observe(protyleContent);
             }
             // 给block__popover绑定拖动事件
@@ -401,7 +410,7 @@
                     isDragging = true;
                 });
                 dragEl.addEventListener('mousemove', function(e) {
-                    if(isDragging) updateCursor('blockPopoverMove');
+                    if(isDragging) updateCursor(e, 'blockPopoverMove');
                 });
                 dragEl.addEventListener('mouseup', function(e) {
                     isDragging = false;
@@ -413,10 +422,10 @@
             ['scroll', () => handleScroll],
             ['wheel', () => handleScroll],
             ['touchmove', () => handleScroll],
-            ['selectionchange', ()=>updateCursor('selectionchange'), { passive: true }],
+            ['selectionchange', (e)=>updateCursor(e, 'selectionchange'), { passive: true }],
             ['keydown', () => requestAnimationFrame(updateCursor)],
             ['input', () => requestAnimationFrame(updateCursor)],
-            ['click', () => {updateCursor();checkElementEvents();}],
+            ['click', (e) => {updateCursor(e, 'click');checkElementEvents();}],
             ['compositionend', updateCursor],
             ['mouseup', updateCursor],
             ['resize', () => requestAnimationFrame(updateCursor), { passive: true }],
