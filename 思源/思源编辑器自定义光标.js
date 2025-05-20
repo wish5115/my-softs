@@ -3,7 +3,8 @@
 // 目前仅支持在编辑器中使用
 // todo 极致性能优化，太复杂暂时不实现(可参考下文优化说明)
 // see https://pipe.b3log.org/blogs/wilsons/%E6%80%9D%E6%BA%90/%E5%AE%9E%E6%97%B6%E8%8E%B7%E5%8F%96%E5%85%89%E6%A0%87%E4%BD%8D%E7%BD%AE%E4%BC%98%E5%8C%96%E6%80%9D%E8%B7%AF
-// version 0.0.10
+// version 0.0.10.1
+// 0.0.10.1 修复手机版点击光标消失问题
 // 0.0.10 重构光标获取算法；修复光标在行内公式等特殊情况时定位不准的问题；改进光标获取性能；改进标签切换等出现意外光标
 // 0.0.9.2 修改多层滚动条嵌套下的滚动延迟问题；
 // 0.0.9.1 优化滚动性能
@@ -106,6 +107,7 @@
         const BLINK_DELAY = 500; // 静止后开始闪烁的延迟时间
         //let editorLastLeft = 0;
         let firstProtyleIds = [];
+        let currentDocId = '';
         let hidePos = null;
 
         // 优先获取光标元素自身预设行高
@@ -260,12 +262,22 @@
 
                 // 如果不是编辑器区域则隐藏光标(防止标签切换等出现意外光标)
                 if(eventType === 'selectionchange') {
-                    const protyleId = output.cursorElement?.closest('.protyle:not(.fn__none)')?.dataset?.id;
-                    if(!firstProtyleIds.includes(protyleId)){
-                        if(protyleId) firstProtyleIds.push(protyleId);
-                        cursor.classList.add('hidden');
-                        isUpdating = false;
-                        return;
+                    if(isMobile()) {
+                        // const docId =  output.cursorElement?.closest('.protyle:not(.fn__none)')?.querySelector('.protyle-title')?.dataset?.nodeId;
+                        // if(currentDocId !== docId) {
+                        //     if(docId) currentDocId = docId;
+                        //     cursor.classList.add('hidden');
+                        //     isUpdating = false;
+                        //     return;
+                        // }
+                    } else {
+                        const protyleId = output.cursorElement?.closest('.protyle:not(.fn__none)')?.dataset?.id;
+                        if(!firstProtyleIds.includes(protyleId)){
+                            if(protyleId) firstProtyleIds.push(protyleId);
+                            cursor.classList.add('hidden');
+                            isUpdating = false;
+                            return;
+                        }
                     }
                 }
 
