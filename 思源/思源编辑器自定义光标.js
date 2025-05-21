@@ -3,7 +3,8 @@
 // 目前仅支持在编辑器中使用
 // todo 极致性能优化，太复杂暂时不实现(可参考下文优化说明)
 // see https://pipe.b3log.org/blogs/wilsons/%E6%80%9D%E6%BA%90/%E5%AE%9E%E6%97%B6%E8%8E%B7%E5%8F%96%E5%85%89%E6%A0%87%E4%BD%8D%E7%BD%AE%E4%BC%98%E5%8C%96%E6%80%9D%E8%B7%AF
-// version 0.0.10.1
+// version 0.0.10.2
+// 0.0.10.2 兼容表格等空行元素定位不准问题
 // 0.0.10.1 修复手机版点击光标消失问题
 // 0.0.10 重构光标获取算法；修复光标在行内公式等特殊情况时定位不准的问题；改进光标获取性能；改进标签切换等出现意外光标
 // 0.0.9.2 修改多层滚动条嵌套下的滚动延迟问题；
@@ -160,27 +161,34 @@
             // 找到可编辑容器，用于取行高
             let hitNode = sel.focusNode;
             if (hitNode.nodeType === Node.TEXT_NODE) hitNode = hitNode.parentElement;
-            const editableEl = hitNode.closest('[contenteditable="true"]');
-            const style = editableEl ? window.getComputedStyle(editableEl) : null;
-            // 优先用 line-height，否则 fallback 到 font-size * 1.625 或 26px
-            const rawLineH = style && parseFloat(style.lineHeight)
-                || (style && parseFloat(style.fontSize) * 1.625)
-                || 26;
-            const lineH = rawLineH;
-            const paddingLeft = style ? parseFloat(style.paddingLeft) || 0 : 0;
+            let lineEl = hitNode.closest('[contenteditable="true"]');
         
             // 尝试浏览器原生的 clientRects
             const rects = Array.from(range.getClientRects());
-            let baseRect, x;
+            let baseRect, rangePos;
             if (rects.length) {
                 baseRect = rects[rects.length - 1];
             } else {
-               // 先判断是否是段落空行，段落空行直接通过段落获取
-               const paragraph = findParentParagraph(range.startContainer);
+                // 先判断是否是段落空行，段落空行直接通过段落获取
+                const cursorEl = range.startContainer;
+                const paragraph = findParentParagraph(cursorEl);
                 if (paragraph && !paragraph.textContent.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()) {
-                    baseRect = paragraph.getBoundingClientRect();
-                    const style = window.getComputedStyle(paragraph);
-                    x = baseRect.left + parseFloat(style.paddingLeft);
+                    baseRect = cursorEl.getBoundingClientRect();
+                    lineEl = cursorEl;
+                    rangePos = baseRect.left;
+                }
+                // 判断是否表格，表格空单元格需要特殊处理
+                else if(cursorEl && cursorEl.closest && cursorEl.closest('td,th') && !cursorEl.closest('td,th').textContent.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()) {
+                    const td = cursorEl.closest('td,th');
+                    baseRect = td.getBoundingClientRect();
+                    lineEl = td;
+                    rangePos = baseRect.left;
+                }
+                // 其他类型的元素空行兼容判断
+                else if(cursorEl && cursorEl.closest && !cursorEl.textContent.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()) {
+                    baseRect = cursorEl.getBoundingClientRect();
+                    lineEl = cursorEl;
+                    rangePos = baseRect.left;
                 } else {
                     // 回退：插 marker 测一次
                     range.insertNode(globalMarker);
@@ -188,6 +196,16 @@
                     globalMarker.remove();
                 }
             }
+
+            const style = lineEl ? window.getComputedStyle(lineEl) : null;
+            // 优先用 line-height，否则 fallback 到 font-size * 1.625 或 26px
+            const rawLineH = style && parseFloat(style.lineHeight)
+                || (style && parseFloat(style.fontSize) * 1.625)
+                || 26;
+            const lineH = rawLineH;
+            // 获取 padding 和 border
+            const paddingLeft = style ? parseFloat(style.paddingLeft) || 0 : 0;
+            const borderLeft = style ? parseFloat(style.borderLeftWidth) || 0 : 0;
         
             // 计算高度：统一用行高 * 比例
             const height = lineH * cursorHeightRelativeToLineHeight;
@@ -195,10 +213,10 @@
             // 计算 y：把原生/marker 获取的 rect.top 对齐到行高
             // rectTop + (rect.height - height)/2  可能让光标在垂直居中
             const gap = (baseRect.height - height) / 2;
+
+            // 定位光标位置(空白行+左边距和边框)
+            const x =  rangePos ? rangePos + paddingLeft + borderLeft : baseRect.right;
             const y = baseRect.top + gap;
-        
-            // x 贴在文字末尾
-            x = x ? x : baseRect.right;
         
             return baseRect.width + baseRect.height > 0 ? { x, y, height } : null;
         }
@@ -452,7 +470,7 @@
     function findParentParagraph(node) {
         let current = node;
         while (current && current !== document.body) {
-            if (current.dataset?.type === 'NodeParagraph') return current;
+            if (current?.dataset?.type === 'NodeParagraph') return current;
             current = current.parentElement;
         }
         return null;
