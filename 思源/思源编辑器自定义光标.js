@@ -3,7 +3,8 @@
 // 目前仅支持在编辑器中使用
 // todo 极致性能优化，太复杂暂时不实现(可参考下文优化说明)
 // see https://pipe.b3log.org/blogs/wilsons/%E6%80%9D%E6%BA%90/%E5%AE%9E%E6%97%B6%E8%8E%B7%E5%8F%96%E5%85%89%E6%A0%87%E4%BD%8D%E7%BD%AE%E4%BC%98%E5%8C%96%E6%80%9D%E8%B7%AF
-// version 0.0.10.2
+// version 0.0.10.3
+// 0.0.10.3 兼容编辑器被其他程序改变大小时光标定位不准问题
 // 0.0.10.2 兼容表格等空行元素定位不准问题
 // 0.0.10.1 修复手机版点击光标消失问题
 // 0.0.10 重构光标获取算法；修复光标在行内公式等特殊情况时定位不准的问题；改进光标获取性能；改进标签切换等出现意外光标
@@ -326,7 +327,7 @@
                 }
 
                 // 悬浮窗拖动窗口时，取消顺滑动画
-                if(['blockPopoverMove', 'protyleResize'].includes(eventType)) {
+                if(['blockPopoverMove', 'protyleResize', 'protyleWysiwygResize'].includes(eventType)) {
                     cursor.classList.add('no-transition');
                 }
 
@@ -428,6 +429,13 @@
                 new ResizeObserver(entries => {
                     updateCursor({target: protyleContent}, 'protyleResize');
                 }).observe(protyleContent);
+            }
+            // 给protyle-wysiwyg绑定改变尺寸事件
+            const protyleWysiwyg = cursorElement?.closest('.protyle:not(.fn__none) .protyle-wysiwyg');
+            if (protyleWysiwyg && !protyleWysiwyg.handleResize) {
+                new ResizeObserver(entries => {
+                    updateCursor({target: protyleWysiwyg}, 'protyleWysiwygResize');
+                }).observe(protyleWysiwyg);
             }
             // 给block__popover绑定拖动事件
             const blockPopover = cursorElement?.closest('.block__popover');
