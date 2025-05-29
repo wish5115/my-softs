@@ -3,7 +3,8 @@
 // 目前仅支持在编辑器中使用
 // todo 极致性能优化，太复杂暂时不实现(可参考下文优化说明)
 // see https://pipe.b3log.org/blogs/wilsons/%E6%80%9D%E6%BA%90/%E5%AE%9E%E6%97%B6%E8%8E%B7%E5%8F%96%E5%85%89%E6%A0%87%E4%BD%8D%E7%BD%AE%E4%BC%98%E5%8C%96%E6%80%9D%E8%B7%AF
-// version 0.0.10.3
+// version 0.0.10.4
+// 0.0.10.4 修复av光标定位不准问题
 // 0.0.10.3 兼容编辑器被其他程序改变大小时光标定位不准问题
 // 0.0.10.2 兼容表格等空行元素定位不准问题
 // 0.0.10.1 修复手机版点击光标消失问题
@@ -162,6 +163,7 @@
             // 找到可编辑容器，用于取行高
             let hitNode = sel.focusNode;
             if (hitNode.nodeType === Node.TEXT_NODE) hitNode = hitNode.parentElement;
+            if(hitNode.closest('.av')||hitNode.closest('.av__mask')) return null; // av不返回光标
             let lineEl = hitNode.closest('[contenteditable="true"]');
         
             // 尝试浏览器原生的 clientRects
