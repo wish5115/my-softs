@@ -1,5 +1,7 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748607454045
+// version 0.0.2
+// 生成译文直接放到编辑器中，方便复制等
 {
     // 翻译成什么语言
     // zh-cn 简体中文 zh-hk 港式繁体 zh-tw 台湾繁体
@@ -24,26 +26,14 @@
                 if(!block) return;
                 const text = contenteditable.textContent.trim();
                 if(!text) return;
-                if(block.classList.contains('protyle-wysiwyg--select')) {
-                    block.classList.add('trans-node');
-                }
-                block.setAttribute('custom-trans', '⟳');
+                const transElHtml = `<div class="protyle-custom" style="white-space:pre;"><svg class="b3-menu__icon "><use xlink:href="#iconRefresh"></use></svg></div>`;
+                contenteditable.insertAdjacentHTML('afterend', transElHtml);
+                const transEl = contenteditable.nextElementSibling;
                 const transText = await translateText(text, transTo);
-                block.setAttribute('custom-trans', transText);
+                transEl.innerHTML = transText;
             });
         });
     };
-
-    // 添加样式
-    addStyle(`
-        .protyle-wysiwyg [data-node-id]::after{
-            content: attr(custom-trans);
-            white-space: pre;
-        }
-        .protyle-wysiwyg .trans-node[data-node-id]::after{
-            position: relative;
-        }
-    `);
     
     // 监听protyle加载
     whenElementExist('.protyle:not(.fn__none)').then(main);
@@ -77,12 +67,7 @@
         return '';
       }
     }
-
-    function addStyle(css) {
-        const style = document.createElement('style');
-        style.innerHTML = css;
-        document.head.appendChild(style);
-    }
+    
     function whenElementExist(selector, node) {
         return new Promise(resolve => {
             // 先立即检查一次元素是否存在
@@ -104,6 +89,7 @@
             observer.observe(document.body, { childList: true, subtree: true });
         });
     }
+    
     function observeProtyleLoad(callback, parentElement) {
         // 如果 parentElement 是字符串，则将其转换为 DOM 元素
         if (typeof parentElement === 'string') {
