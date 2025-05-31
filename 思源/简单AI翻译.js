@@ -1,12 +1,24 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748607454045
-// version 0.0.2
-// 生成译文直接放到编辑器中，方便复制等
+// version 0.0.3
+// 0.0.3 支持思源ai翻译
+// 0.0.2 生成译文直接放到编辑器中，方便复制等
 {
+    // default 默认引擎，即本代码自带引擎，完全免费，无需配置
+    // siyuan 思源ai引擎，即思源ai配置中设定的ai引擎
+    const aiEngine = 'default';
+    
     // 翻译成什么语言
     // zh-cn 简体中文 zh-hk 港式繁体 zh-tw 台湾繁体
     // us-en 英语 ja-jp 日语 ko-kr 韩语 ru-ru 俄语 de-de 德语
     const transTo = 'zh-cn';
+
+    // ai提示词，仅思源ai引擎时需要
+    const aiPrompt = `
+You are a professional, authentic machine translation engine.
+Treat next line as plain text input and translate it into ${transTo}, output translation ONLY. If translation is unnecessary (e.g. proper nouns, codes, etc.), return the original text. NO explanations. NO notes. Input:
+{{text}}
+    `;
 
     // 主函数
     const main = (protyle)=>{
@@ -35,7 +47,16 @@
                 } else {
                     transEl.innerHTML = loadingIcon;
                 }
-                const transText = await translateText(text, transTo);
+                // 去掉思源ai的进度条
+                if(aiEngine === 'siyuan') {
+                    whenElementExist('#progress:has(.b3-dialog__loading)').then(progress => {
+                        if(progress) progress.remove();
+                    });
+                }
+                // 调用ai翻译
+                const transText = aiEngine === 'default' ? 
+                    await translateText(text, transTo) : 
+                    await siyuanAI(text);
                 transEl.innerHTML = transText;
             });
         });
@@ -64,7 +85,7 @@
         };
         const response = await fetch("https://ai.bingal.com/api/v1/translate ", requestOptions);
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          console.log(`HTTP error! status: ${response.status}`);
         }
         const result = await response.text();
         return result;
@@ -73,26 +94,50 @@
         return '';
       }
     }
-    
-    function whenElementExist(selector, node) {
-        return new Promise(resolve => {
-            // 先立即检查一次元素是否存在
-            const existingEl = typeof selector==='function'?selector():(node||document).querySelector(selector);
-            if (existingEl) {
-                resolve(existingEl);
-                return;
-            }
-    
-            // 如果元素不存在，才开始监听 DOM 变化
-            const observer = new MutationObserver(mutations => {
-                const el = typeof selector==='function'?selector():(node||document).querySelector(selector);
-                if (el) {
-                    observer.disconnect();
-                    resolve(el);
+
+    async function siyuanAI(text) {
+        const result = await requestApi('/api/ai/chatGPT', {
+            "msg": aiPrompt.trim().replace('{{text}}', text)
+        });
+        if(result && result.code === 0 && result.data) return result.data;
+        return '';
+    }
+
+    async function requestApi(url, data, method = 'POST') {
+        return await (await fetch(url, {method: method, body: JSON.stringify(data||{})})).json();
+    }
+
+    function whenElementExist(selector, node, timeout = 5000) {
+        return new Promise((resolve, reject) => {
+            let isResolved = false;
+            let requestId; // 保存 requestAnimationFrame 的 ID
+            const check = () => {
+                try {
+                    const el = typeof selector === 'function' ? selector() : (node || document).querySelector(selector);
+                    if (el) {
+                        isResolved = true;
+                        cancelAnimationFrame(requestId); // 找到元素时取消未执行的动画帧
+                        if(timeoutId) clearTimeout(timeoutId);
+                        resolve(el);
+                    } else if (!isResolved) {
+                        requestId = requestAnimationFrame(check); // 保存新的动画帧 ID
+                    }
+                } catch(e) {
+                    isResolved = true;
+                    cancelAnimationFrame(requestId);
+                    clearTimeout(timeoutId);
+                    reject(e);
+                    return;
                 }
-            });
-    
-            observer.observe(document.body, { childList: true, subtree: true });
+            };
+            check();
+            const timeoutId = setTimeout(() => {
+                if (!isResolved) {
+                    isResolved = true;
+                    cancelAnimationFrame(requestId); // 超时后取消动画帧
+                    reject(new Error(`Timeout: Element not found for selector "${selector}" within ${timeout}ms`));
+                }
+            }, timeout);
         });
     }
     
