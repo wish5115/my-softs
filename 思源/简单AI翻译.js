@@ -24,22 +24,23 @@
                 if(!block) return;
                 const text = contenteditable.textContent.trim();
                 if(!text) return;
-                const transText = await translateText(text, transTo);
-                block.setAttribute('custom-trans', transText);
                 if(block.classList.contains('protyle-wysiwyg--select')) {
                     block.classList.add('trans-node');
                 }
+                block.setAttribute('custom-trans', '⟳');
+                const transText = await translateText(text, transTo);
+                block.setAttribute('custom-trans', transText);
             });
         });
     };
 
     // 添加样式
     addStyle(`
-        [data-node-id]::after{
+        .protyle-wysiwyg [data-node-id]::after{
             content: attr(custom-trans);
-            pointer-events: none;
+            white-space: pre;
         }
-        .trans-node[data-node-id]::after{
+        .protyle-wysiwyg .trans-node[data-node-id]::after{
             position: relative;
         }
     `);
