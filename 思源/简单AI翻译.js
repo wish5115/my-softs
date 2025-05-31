@@ -22,11 +22,12 @@
             contenteditables.forEach(async contenteditable => {
                 const block = contenteditable.closest('[data-node-id][data-type]');
                 if(!block) return;
-                const text = contenteditable.textContent;
+                const text = contenteditable.textContent.trim();
+                if(!text) return;
                 const transText = await translateText(text, transTo);
                 block.setAttribute('custom-trans', transText);
                 if(block.classList.contains('protyle-wysiwyg--select')) {
-                    block.classList.add('select-node');
+                    block.classList.add('trans-node');
                 }
             });
         });
@@ -38,7 +39,7 @@
             content: attr(custom-trans);
             pointer-events: none;
         }
-        .select-node[data-node-id]::after{
+        .trans-node[data-node-id]::after{
             position: relative;
         }
     `);
