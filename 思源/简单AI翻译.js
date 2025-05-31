@@ -26,14 +26,15 @@
                 if(!block) return;
                 const text = contenteditable.textContent.trim();
                 if(!text) return;
+                let transEl = contenteditable.nextElementSibling;
                 const loadingIcon = `<svg class="b3-menu__icon "><use xlink:href="#iconRefresh"></use></svg>`;
-                if(!contenteditable.nextElementSibling.matches('.trans-node')) {
+                if(!transEl?.matches('.trans-node')) {
                     const transElHtml = `<div class="protyle-custom trans-node" style="white-space:pre;">${loadingIcon}</div>`;
                     contenteditable.insertAdjacentHTML('afterend', transElHtml);
+                    transEl = contenteditable.nextElementSibling;
                 } else {
-                    contenteditable.nextElementSibling.innerHTML = loadingIcon;
+                    transEl.innerHTML = loadingIcon;
                 }
-                const transEl = contenteditable.nextElementSibling;
                 const transText = await translateText(text, transTo);
                 transEl.innerHTML = transText;
             });
