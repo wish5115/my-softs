@@ -11,19 +11,23 @@
         if(protyle?.querySelector('.protyle-breadcrumb [data-type="trans"]')) return;
         const exitFocusBtn = protyle.querySelector('.protyle-breadcrumb [data-type="exit-focus"]');
         if(!exitFocusBtn) return;
-        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="AI翻译" data-type="trans"><svg><use xlink:href="#iconScrollHoriz"></use></svg></button>`;
+        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="AI翻译" data-type="trans"><strong>译</strong></button>`;
         exitFocusBtn.insertAdjacentHTML('afterend', transHtml);
         const transBtn = protyle.querySelector('.protyle-breadcrumb [data-type="trans"]');
         if(!transBtn) return;
         transBtn.addEventListener('click', () => {
             const editor = transBtn.closest('.protyle')?.querySelector('.protyle-wysiwyg');
-            const contenteditables = editor?.querySelectorAll('[contenteditable="true"]');
+            const hasSelect = editor?.querySelector('.protyle-wysiwyg--select');
+            const contenteditables = editor?.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'[contenteditable="true"]');
             contenteditables.forEach(async contenteditable => {
                 const block = contenteditable.closest('[data-node-id][data-type]');
                 if(!block) return;
                 const text = contenteditable.textContent;
                 const transText = await translateText(text, transTo);
                 block.setAttribute('custom-trans', transText);
+                if(block.classList.contains('protyle-wysiwyg--select')) {
+                    block.classList.add('select-node');
+                }
             });
         });
     };
@@ -33,6 +37,8 @@
         [data-node-id]::after{
             content: attr(custom-trans);
             pointer-events: none;
+        }
+        .select-node[data-node-id]::after{
             position: relative;
         }
     `);
