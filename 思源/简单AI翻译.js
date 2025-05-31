@@ -26,8 +26,13 @@
                 if(!block) return;
                 const text = contenteditable.textContent.trim();
                 if(!text) return;
-                const transElHtml = `<div class="protyle-custom" style="white-space:pre;"><svg class="b3-menu__icon "><use xlink:href="#iconRefresh"></use></svg></div>`;
-                contenteditable.insertAdjacentHTML('afterend', transElHtml);
+                const loadingIcon = `<svg class="b3-menu__icon "><use xlink:href="#iconRefresh"></use></svg>`;
+                if(!contenteditable.nextElementSibling.matches('.trans-node')) {
+                    const transElHtml = `<div class="protyle-custom trans-node" style="white-space:pre;">${loadingIcon}</div>`;
+                    contenteditable.insertAdjacentHTML('afterend', transElHtml);
+                } else {
+                    contenteditable.nextElementSibling.innerHTML = loadingIcon;
+                }
                 const transEl = contenteditable.nextElementSibling;
                 const transText = await translateText(text, transTo);
                 transEl.innerHTML = transText;
