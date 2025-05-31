@@ -1,4 +1,5 @@
 // 双击dock空白区域切换dock面板项
+// see https://gitee.com/wish163/mysoft/issues/ICAGTO
 (()=>{
     whenElementExist('#dockRight .dock__item--space').then(async () => {
         await sleep(100);
