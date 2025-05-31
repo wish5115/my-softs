@@ -49,7 +49,7 @@ Treat next line as plain text input and translate it into ${transTo}, output tra
                 }
                 // 去掉思源ai的进度条
                 if(aiEngine === 'siyuan') {
-                    whenElementExist('#progress:has(.b3-dialog__loading)').then(progress => {
+                    whenElementExist('#progress:has(.b3-dialog__loading)', null, 60000).then(progress => {
                         if(progress) progress.remove();
                     });
                 }
