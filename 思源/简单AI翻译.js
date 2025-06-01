@@ -1,4 +1,5 @@
 // 简单AI翻译（仿沉浸式翻译）
+// see https://ld246.com/article/1748748014662
 // see https://ld246.com/article/1748607454045
 // version 0.0.4
 // 0.0.4 增加专家模式
