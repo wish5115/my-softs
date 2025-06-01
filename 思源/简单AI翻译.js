@@ -1,7 +1,8 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748748014662
 // see https://ld246.com/article/1748607454045 需求贴
-// version 0.0.5
+// version 0.0.6
+// 0.0.6 修复译文按钮分屏刷新时不显示问题
 // 0.0.5 修复译文过长不换行问题
 // 0.0.4 增加专家模式
 // 0.0.3 支持思源ai翻译
@@ -111,7 +112,10 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
     };
     
     // 监听protyle加载
-    whenElementExist('.protyle:not(.fn__none)').then(main);
+    whenElementExist('.protyle:not(.fn__none)').then(()=>{
+        const protyles = document.querySelectorAll('.protyle:not(.fn__none)');
+        protyles.forEach(protyle => main(protyle));
+    });
     observeProtyleLoad(main);
 
     // ai翻译
