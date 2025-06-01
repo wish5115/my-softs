@@ -71,7 +71,7 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
                 }
                 // 去掉思源ai的进度条
                 if(aiEngine === 'siyuan') {
-                    whenElementExist('#progress:has(.b3-dialog__loading)', null, 60000).then(progress => {
+                    whenElementExist('#progress:has(.b3-dialog__loading)', null, 600000).then(progress => {
                         if(progress) progress.remove();
                     });
                 }
