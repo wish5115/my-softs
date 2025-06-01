@@ -16,7 +16,7 @@
     const transTo = 'zh-cn';
 
     // 是否开启专家模式
-    // 专家模式将会把所有块一起发送给ai翻译，结果更准确，性能更好
+    // 专家模式将会把所有块一起发送给ai翻译，结果更准确，性能更好，但心理等待时间更久
     const expertMode = false;
 
     // ai提示词，仅思源ai引擎时需要
@@ -27,7 +27,7 @@ Treat next line as plain text input and translate it into ${transTo}, output tra
     `;
 
     // 专家模式
-    // 专家模式将会把所有块一起发送给ai翻译，结果更准确，性能更好
+    // 专家模式将会把所有块一起发送给ai翻译，结果更准确，性能更好，但心理等待时间更久
     if(expertMode) {
         aiPrompt = `
 您是一位专业、正统的机器翻译引擎。
