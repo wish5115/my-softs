@@ -1,6 +1,7 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748607454045
-// version 0.0.3
+// version 0.0.4
+// 0.0.4 增加专家模式
 // 0.0.3 支持思源ai翻译
 // 0.0.2 生成译文直接放到编辑器中，方便复制等
 {
@@ -13,12 +14,32 @@
     // us-en 英语 ja-jp 日语 ko-kr 韩语 ru-ru 俄语 de-de 德语
     const transTo = 'zh-cn';
 
+    // 是否开启专家模式
+    // 专家模式将会把所有块一起发送给ai翻译，结果更准确，性能更好
+    const expertMode = false;
+
     // ai提示词，仅思源ai引擎时需要
-    const aiPrompt = `
+    let aiPrompt = `
 You are a professional, authentic machine translation engine.
 Treat next line as plain text input and translate it into ${transTo}, output translation ONLY. If translation is unnecessary (e.g. proper nouns, codes, etc.), return the original text. NO explanations. NO notes. Input:
 {{text}}
     `;
+
+    // 专家模式
+    // 专家模式将会把所有块一起发送给ai翻译，结果更准确，性能更好
+    if(expertMode) {
+        aiPrompt = `
+您是一位专业、正统的机器翻译引擎。
+我将提供一个 JSON 格式的文本，其格式如下：
+{"xxxx": "文本内容", "xxx2": "文本内容2", ...} —— 其中 "xxxx"、"xxx2" 是文本 ID，请原样保留；"文本内容"、"文本内容2" 等是待翻译的文本内容。
+下面我将具体的给出实际的JSON文本内容，请将JSON中的文本内容翻译为 ${transTo}，输出格式与上述示例保持一致，仅翻译值部分。
+若某段文本无需翻译（例如专有名词、代码等），请保留原文。
+请直接输出 JSON 结果，不添加任何解释或注释。直接给出JSON结果即可。
+JSON结果纯文本输出即可，不要加Markdown语法进去。
+注意，这是一篇上下文相关联的文章，翻译时可参考上下文以更准确的翻译。
+输入：{{text}}
+        `;
+    }
 
     // 主函数
     const main = (protyle)=>{
@@ -29,7 +50,8 @@ Treat next line as plain text input and translate it into ${transTo}, output tra
         exitFocusBtn.insertAdjacentHTML('afterend', transHtml);
         const transBtn = protyle.querySelector('.protyle-breadcrumb [data-type="trans"]');
         if(!transBtn) return;
-        transBtn.addEventListener('click', () => {
+        const data = {};
+        transBtn.addEventListener('click', async () => {
             const editor = transBtn.closest('.protyle')?.querySelector('.protyle-wysiwyg');
             const hasSelect = editor?.querySelector('.protyle-wysiwyg--select');
             const contenteditables = editor?.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'[contenteditable="true"]');
@@ -54,11 +76,35 @@ Treat next line as plain text input and translate it into ${transTo}, output tra
                     });
                 }
                 // 调用ai翻译
+                if(!expertMode) {
+                    // 普通模式
+                    const transText = aiEngine === 'default' ? 
+                        await translateText(text, transTo) : 
+                        await siyuanAI(text);
+                    transEl.innerHTML = transText;
+                } else {
+                    // 专家模式
+                    if(block?.dataset?.nodeId) data[block.dataset.nodeId] = text;
+                }
+            });
+            if(expertMode) {
+                // 专家模式
+                const text = JSON.stringify(data);
                 const transText = aiEngine === 'default' ? 
                     await translateText(text, transTo) : 
                     await siyuanAI(text);
-                transEl.innerHTML = transText;
-            });
+                try{
+                    const transResult = JSON.parse(transText);
+                    for(const [id, transText] of Object.entries(transResult)) {
+                        const contenteditable = editor.querySelector('[data-node-id="'+id+'"] [contenteditable="true"]');
+                        const transEl = contenteditable?.nextElementSibling;
+                        if(!transEl) continue;
+                        transEl.innerHTML = transText;
+                    }
+                } catch(e) {
+                    console.error(e);
+                }
+            }
         });
     };
     
@@ -74,7 +120,7 @@ Treat next line as plain text input and translate it into ${transTo}, output tra
         myHeaders.append("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36");
         myHeaders.append("Content-Type", "application/json");
         var raw = JSON.stringify({
-          "text": text,
+          "text": aiPrompt.trim().replace('{{text}}', text),
           "lang": toLang
         });
         var requestOptions = {
@@ -110,7 +156,7 @@ Treat next line as plain text input and translate it into ${transTo}, output tra
     function whenElementExist(selector, node, timeout = 5000) {
         return new Promise((resolve, reject) => {
             let isResolved = false;
-            let requestId; // 保存 requestAnimationFrame 的 ID
+            let requestId, timeoutId; // 保存 requestAnimationFrame 的 ID
             const check = () => {
                 try {
                     const el = typeof selector === 'function' ? selector() : (node || document).querySelector(selector);
@@ -131,7 +177,7 @@ Treat next line as plain text input and translate it into ${transTo}, output tra
                 }
             };
             check();
-            const timeoutId = setTimeout(() => {
+            timeoutId = setTimeout(() => {
                 if (!isResolved) {
                     isResolved = true;
                     cancelAnimationFrame(requestId); // 超时后取消动画帧
