@@ -1,8 +1,9 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748748014662
 // see https://ld246.com/article/1748607454045 需求贴
-// version 0.0.7
-// 0.0.7 增加shif+点击取消翻译
+// version 0.0.8
+// 0.0.8 增加alt+点击切换ai引擎；shift+alt中英切换；ctrl+shift+alt切换专家/普通模式；右键复原
+// 0.0.7 增加shift+点击取消翻译
 // 0.0.6 修复译文按钮分屏刷新时不显示问题
 // 0.0.5 修复译文过长不换行问题
 // 0.0.4 增加专家模式
@@ -11,21 +12,21 @@
 {
     // default 默认引擎，即本代码自带引擎，完全免费，无需配置
     // siyuan 思源ai引擎，即思源ai配置中设定的ai引擎
-    const aiEngine = 'default';
+    let aiEngine = 'default';
     
     // 翻译成什么语言
     // zh-cn 简体中文 zh-hk 港式繁体 zh-tw 台湾繁体
     // us-en 英语 ja-jp 日语 ko-kr 韩语 ru-ru 俄语 de-de 德语
-    const transTo = 'zh-cn';
+    let transTo = 'zh-cn';
 
     // 是否开启专家模式
     // 专家模式将会把所有块一起发送给ai翻译，结果更准确，性能更好，但心理等待时间更久
-    const expertMode = false;
+    let expertMode = false;
 
     // ai提示词
     let aiPrompt = `
 You are a professional, authentic machine translation engine.
-Treat next line as plain text input and translate it into ${transTo}, output translation ONLY. If translation is unnecessary (e.g. proper nouns, codes, etc.), return the original text. NO explanations. NO notes. Input:
+Treat next line as plain text input and translate it into {{to}}, output translation ONLY. If translation is unnecessary (e.g. proper nouns, codes, etc.), return the original text. NO explanations. NO notes. Input:
 {{text}}
     `;
 
@@ -36,11 +37,12 @@ Treat next line as plain text input and translate it into ${transTo}, output tra
 您是一位专业、正统的机器翻译引擎。
 我将提供一个 JSON 格式的文本，其格式如下：
 {"xxxx": "文本内容", "xxx2": "文本内容2", ...} —— 其中 "xxxx"、"xxx2" 是文本 ID，请原样保留；"文本内容"、"文本内容2" 等是待翻译的文本内容。
-下面我将具体的给出实际的JSON文本内容，请将JSON中的文本内容翻译为 ${transTo}，输出格式与上述示例保持一致，仅翻译值部分。
+下面我将具体的给出实际的JSON文本内容，请将JSON中的文本内容翻译为 {{to}}，输出格式与上述示例保持一致，仅翻译值部分。
 若某段文本无需翻译（例如专有名词、代码等），请保留原文。
-请直接输出 JSON 结果，不添加任何解释或注释。直接给出JSON结果即可。
+请直接输出 JSON 结果，不添加任何解释或注释。
 JSON结果纯文本输出即可，不要加Markdown语法进去。
 注意，这是一篇上下文相关联的文章，翻译时可参考上下文以更准确的翻译。
+注意，输出格式必须严格按照JSON结构返回，比如键值必须是双引号，特殊字符需要转义等。
 输入：{{text}}
         `;
     }
@@ -50,17 +52,44 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
         if(protyle?.querySelector('.protyle-breadcrumb [data-type="trans"]')) return;
         const exitFocusBtn = protyle.querySelector('.protyle-breadcrumb [data-type="exit-focus"]');
         if(!exitFocusBtn) return;
-        const shortcut = isMac() ? '⇧点击' : 'shift+点击';
-        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="点击 <span class='ft__on-surface'>翻译</span><br>${shortcut} <span class='ft__on-surface'>取消翻译</span>" data-type="trans"><strong>译</strong></button>`;
+        //shift+点击取消翻译；alt+点击切换ai引擎；shift+alt中英切换；ctrl+shift+alt切换专家/普通模式；右键复原
+        const shiftShortcut = isMac() ? '⇧点击' : 'shift+点击';
+        const altShortcut = isMac() ? '⌥点击' : 'alt+点击';
+        const shiftAltShortcut = isMac() ? '⇧⌥点击' : 'shift+alt+点击';
+        const ctrlShiftAltShortcut = isMac() ? '⌃⇧⌥点击' : 'ctrl+shift+alt+点击';
+        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="点击 <span class='ft__on-surface'>翻译</span><br>${shiftShortcut} <span class='ft__on-surface'>取消翻译</span><br>${altShortcut} <span class='ft__on-surface'>切换AI</span><br>${shiftAltShortcut} <span class='ft__on-surface'>中英切换</span><br>${ctrlShiftAltShortcut} <span class='ft__on-surface'>切换专家/普通模式</span><br>右键 <span class='ft__on-surface'>复原</span>" data-type="trans"><strong>译</strong></button>`;
         exitFocusBtn.insertAdjacentHTML('afterend', transHtml);
         const transBtn = protyle.querySelector('.protyle-breadcrumb [data-type="trans"]');
         if(!transBtn) return;
         const data = {};
+        const originAiEngine = aiEngine;
+        const originTransTo = transTo;
+        const originExpertMode = expertMode;
+        // 右键复原
+        transBtn.addEventListener('contextmenu', async (event) => {
+            aiEngine = originAiEngine;
+            transTo = originTransTo;
+            expertMode = originExpertMode;
+        });
+        // shift+单击取消翻译；alt+点击切换ai引擎；shift+alt中英切换；ctrl+shift+alt切换专家/普通模式；右键复原
         transBtn.addEventListener('click', async (event) => {
+            // ctrl+shift+alt切换专家/普通模式
+            const ctrlKey = isMac() ? event.metaKey : event.ctrlKey;
+            if(ctrlKey && event.shiftKey && event.altKey) {
+                expertMode = expertMode === true ? false : true;
+            }
+            // shift+alt中英切换
+            if(event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey) {
+                transTo = transTo.startsWith('zh-') ? 'us-en' : 'zh-cn';
+            }
+            // alt+点击切换ai引擎
+            if(event.altKey && !event.ctrlKey && !event.shiftKey && !event.metaKey) {
+                aiEngine = aiEngine === 'default' ? 'siyuan' : 'default';
+            }
             const editor = transBtn.closest('.protyle')?.querySelector('.protyle-wysiwyg');
             const hasSelect = editor?.querySelector('.protyle-wysiwyg--select');
+            // shift+单击取消翻译
             if(event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
-                // 取消翻译
                 const transNodes = editor.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'.trans-node');
                 transNodes.forEach(transEl => transEl.remove());
                 return;
@@ -91,7 +120,7 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
                     // 普通模式
                     const transText = aiEngine === 'default' ? 
                         await translateText(text, transTo) : 
-                        await siyuanAI(text);
+                        await siyuanAI(text, transTo);
                     transEl.innerHTML = transText;
                 } else {
                     // 专家模式
@@ -103,7 +132,7 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
                 const text = JSON.stringify(data);
                 const transText = aiEngine === 'default' ? 
                     await translateText(text, transTo) : 
-                    await siyuanAI(text);
+                    await siyuanAI(text, transTo);
                 try{
                     const transResult = JSON.parse(transText);
                     for(const [id, transText] of Object.entries(transResult)) {
@@ -134,7 +163,7 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
         myHeaders.append("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36");
         myHeaders.append("Content-Type", "application/json");
         var raw = JSON.stringify({
-          "text": aiPrompt.trim().replace('{{text}}', text),
+          "text": aiPrompt.trim().replace('{{text}}', text).replace('{{to}}', toLang),
           "lang": toLang
         });
         var requestOptions = {
@@ -155,9 +184,9 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
       }
     }
 
-    async function siyuanAI(text) {
+    async function siyuanAI(text, toLang) {
         const result = await requestApi('/api/ai/chatGPT', {
-            "msg": aiPrompt.trim().replace('{{text}}', text)
+            "msg": aiPrompt.trim().replace('{{text}}', text).replace('{{to}}', toLang)
         });
         if(result && result.code === 0 && result.data) return result.data;
         return '';
