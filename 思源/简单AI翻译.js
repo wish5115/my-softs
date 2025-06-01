@@ -1,7 +1,8 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748748014662
-// see https://ld246.com/article/1748607454045
-// version 0.0.4
+// see https://ld246.com/article/1748607454045 需求贴
+// version 0.0.5
+// 0.0.5 修复译文过长不换行问题
 // 0.0.4 增加专家模式
 // 0.0.3 支持思源ai翻译
 // 0.0.2 生成译文直接放到编辑器中，方便复制等
@@ -64,7 +65,7 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
                 let transEl = contenteditable.nextElementSibling;
                 const loadingIcon = `<svg class="b3-menu__icon "><use xlink:href="#iconRefresh"></use></svg>`;
                 if(!transEl?.matches('.trans-node')) {
-                    const transElHtml = `<div class="protyle-custom trans-node" style="white-space:pre;">${loadingIcon}</div>`;
+                    const transElHtml = `<div class="protyle-custom trans-node" style="white-space:pre-wrap;word-break:break-all;">${loadingIcon}</div>`;
                     contenteditable.insertAdjacentHTML('afterend', transElHtml);
                     transEl = contenteditable.nextElementSibling;
                 } else {
