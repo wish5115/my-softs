@@ -80,7 +80,7 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
             }
             // shift+alt中英切换
             if(event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey) {
-                transTo = transTo.startsWith('zh-') ? 'us-en' : 'zh-cn';
+                transTo = transTo.startsWith('zh-') ? 'us-en' : (originTransTo.startsWith('zh-')?originTransTo:'zh-cn');
             }
             // alt+点击切换ai引擎
             if(event.altKey && !event.ctrlKey && !event.shiftKey && !event.metaKey) {
