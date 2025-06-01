@@ -70,11 +70,13 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
         const originAiEngine = aiEngine;
         const originTransTo = transTo;
         const originExpertMode = expertMode;
+        const originAiPrompt = aiPrompt;
         // 右键复原
         transBtn.addEventListener('contextmenu', async (event) => {
             aiEngine = originAiEngine;
             transTo = originTransTo;
             expertMode = originExpertMode;
+            aiPrompt = originAiPrompt;
         });
         // shift+单击取消翻译；alt+点击切换ai引擎；shift+alt中英切换；ctrl+shift+alt切换专家/普通模式；右键复原
         transBtn.addEventListener('click', async (event) => {
