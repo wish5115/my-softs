@@ -49,7 +49,7 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
         if(protyle?.querySelector('.protyle-breadcrumb [data-type="trans"]')) return;
         const exitFocusBtn = protyle.querySelector('.protyle-breadcrumb [data-type="exit-focus"]');
         if(!exitFocusBtn) return;
-        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="AI翻译&#10;F5取消翻译" data-type="trans"><strong>译</strong></button>`;
+        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="点击 <span class='ft__on-surface'>AI翻译</span><br>F5 <span class='ft__on-surface'>取消翻译</span>" data-type="trans"><strong>译</strong></button>`;
         exitFocusBtn.insertAdjacentHTML('afterend', transHtml);
         const transBtn = protyle.querySelector('.protyle-breadcrumb [data-type="trans"]');
         if(!transBtn) return;
