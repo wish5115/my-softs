@@ -106,8 +106,10 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
                     if(!contenteditable.matches('[contenteditable="true"]')) return;
                     const transText = transEl.textContent;
                     transEl.remove();
-                    contenteditable.innerHTML += "\n" + transText;
-                    updateBlock(contenteditable);
+                    if(transText?.trim()) {
+                        contenteditable.innerHTML += "\n" + transText;
+                        updateBlock(contenteditable);
+                    }
                 });
                 return;
             }
