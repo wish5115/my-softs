@@ -19,7 +19,7 @@
     // 专家模式将会把所有块一起发送给ai翻译，结果更准确，性能更好，但心理等待时间更久
     const expertMode = false;
 
-    // ai提示词，仅思源ai引擎时需要
+    // ai提示词
     let aiPrompt = `
 You are a professional, authentic machine translation engine.
 Treat next line as plain text input and translate it into ${transTo}, output translation ONLY. If translation is unnecessary (e.g. proper nouns, codes, etc.), return the original text. NO explanations. NO notes. Input:
