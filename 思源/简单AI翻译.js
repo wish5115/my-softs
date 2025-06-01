@@ -1,7 +1,8 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748748014662
 // see https://ld246.com/article/1748607454045 需求贴
-// version 0.0.8.1
+// version 0.0.9
+// 0.0.9 增加ctrl+shift+点击保存译文
 // 0.0.8.1 修复切换专家模式时提示词错误问题
 // 0.0.8 增加alt+点击切换ai引擎；shift+alt中英切换；ctrl+shift+alt切换专家/普通模式；右键复原
 // 0.0.7 增加shift+点击取消翻译
@@ -62,7 +63,8 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
         const altShortcut = isMac() ? '⌥点击' : 'alt+点击';
         const shiftAltShortcut = isMac() ? '⇧⌥点击' : 'shift+alt+点击';
         const ctrlShiftAltShortcut = isMac() ? '⌘⇧⌥点击' : 'ctrl+shift+alt+点击';
-        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="点击 <span class='ft__on-surface'>翻译</span><br>${shiftShortcut} <span class='ft__on-surface'>取消翻译</span><br>${altShortcut} <span class='ft__on-surface'>切换AI</span><br>${shiftAltShortcut} <span class='ft__on-surface'>中英切换</span><br>${ctrlShiftAltShortcut} <span class='ft__on-surface'>切换专家/普通模式</span><br>右键 <span class='ft__on-surface'>复原</span>" data-type="trans"><strong>译</strong></button>`;
+        const ctrlShiftShortcut = isMac() ? '⌘⇧点击' : 'ctrl+shift+点击';
+        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="点击 <span class='ft__on-surface'>翻译</span><br>${shiftShortcut} <span class='ft__on-surface'>取消翻译</span><br>${altShortcut} <span class='ft__on-surface'>切换AI</span><br>${shiftAltShortcut} <span class='ft__on-surface'>中英切换</span><br>${ctrlShiftAltShortcut} <span class='ft__on-surface'>切换专家/普通模式</span><br>${ctrlShiftShortcut} <span class='ft__on-surface'>保存译文</span><br>右键 <span class='ft__on-surface'>复原</span>" data-type="trans"><strong>译</strong></button>`;
         exitFocusBtn.insertAdjacentHTML('afterend', transHtml);
         const transBtn = protyle.querySelector('.protyle-breadcrumb [data-type="trans"]');
         if(!transBtn) return;
@@ -96,6 +98,19 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
             }
             const editor = transBtn.closest('.protyle')?.querySelector('.protyle-wysiwyg');
             const hasSelect = editor?.querySelector('.protyle-wysiwyg--select');
+            // ctrl+shift 保存译文
+            if(ctrlKey && event.shiftKey && !event.altKey) {
+                const transNodes = editor.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'.trans-node');
+                transNodes.forEach(transEl => {
+                    const contenteditable = transEl.previousElementSibling;
+                    if(!contenteditable.matches('[contenteditable="true"]')) return;
+                    const transText = transEl.textContent;
+                    transEl.remove();
+                    contenteditable.innerHTML += "\n" + transText;
+                    updateBlock(contenteditable);
+                });
+                return;
+            }
             // shift+单击取消翻译
             if(event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
                 const transNodes = editor.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'.trans-node');
@@ -202,6 +217,17 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
 
     async function requestApi(url, data, method = 'POST') {
         return await (await fetch(url, {method: method, body: JSON.stringify(data||{})})).json();
+    }
+
+    async function updateBlock(node) {
+        if(!node.matches('[data-node-id][data-type]')) {
+            node = node.closest('[data-node-id][data-type]');
+        }
+        await requestApi('/api/block/updateBlock', {
+            "dataType": "dom",
+            "data": node.outerHTML,
+            "id": node.dataset.nodeId
+        });
     }
 
     function whenElementExist(selector, node, timeout = 5000) {
