@@ -56,7 +56,7 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
         const shiftShortcut = isMac() ? '⇧点击' : 'shift+点击';
         const altShortcut = isMac() ? '⌥点击' : 'alt+点击';
         const shiftAltShortcut = isMac() ? '⇧⌥点击' : 'shift+alt+点击';
-        const ctrlShiftAltShortcut = isMac() ? '⌃⇧⌥点击' : 'ctrl+shift+alt+点击';
+        const ctrlShiftAltShortcut = isMac() ? '⌘⇧⌥点击' : 'ctrl+shift+alt+点击';
         const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="点击 <span class='ft__on-surface'>翻译</span><br>${shiftShortcut} <span class='ft__on-surface'>取消翻译</span><br>${altShortcut} <span class='ft__on-surface'>切换AI</span><br>${shiftAltShortcut} <span class='ft__on-surface'>中英切换</span><br>${ctrlShiftAltShortcut} <span class='ft__on-surface'>切换专家/普通模式</span><br>右键 <span class='ft__on-surface'>复原</span>" data-type="trans"><strong>译</strong></button>`;
         exitFocusBtn.insertAdjacentHTML('afterend', transHtml);
         const transBtn = protyle.querySelector('.protyle-breadcrumb [data-type="trans"]');
