@@ -60,7 +60,7 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
             const editor = transBtn.closest('.protyle')?.querySelector('.protyle-wysiwyg');
             const hasSelect = editor?.querySelector('.protyle-wysiwyg--select');
             if(event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
-                // 取消翻
+                // 取消翻译
                 const transNodes = editor.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'.trans-node');
                 transNodes.forEach(transEl => transEl.remove());
                 return;
