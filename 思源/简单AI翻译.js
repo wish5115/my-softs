@@ -1,7 +1,8 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748748014662
 // see https://ld246.com/article/1748607454045 需求贴
-// version 0.0.6
+// version 0.0.7
+// 0.0.7 增加shif+点击取消翻译
 // 0.0.6 修复译文按钮分屏刷新时不显示问题
 // 0.0.5 修复译文过长不换行问题
 // 0.0.4 增加专家模式
@@ -49,14 +50,21 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
         if(protyle?.querySelector('.protyle-breadcrumb [data-type="trans"]')) return;
         const exitFocusBtn = protyle.querySelector('.protyle-breadcrumb [data-type="exit-focus"]');
         if(!exitFocusBtn) return;
-        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="点击 <span class='ft__on-surface'>AI翻译</span><br>F5 <span class='ft__on-surface'>取消翻译</span>" data-type="trans"><strong>译</strong></button>`;
+        const shortcut = isMac() ? '⇧点击' : 'shift+点击';
+        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="点击 <span class='ft__on-surface'>翻译</span><br>${shortcut} <span class='ft__on-surface'>取消翻译</span>" data-type="trans"><strong>译</strong></button>`;
         exitFocusBtn.insertAdjacentHTML('afterend', transHtml);
         const transBtn = protyle.querySelector('.protyle-breadcrumb [data-type="trans"]');
         if(!transBtn) return;
         const data = {};
-        transBtn.addEventListener('click', async () => {
+        transBtn.addEventListener('click', async (event) => {
             const editor = transBtn.closest('.protyle')?.querySelector('.protyle-wysiwyg');
             const hasSelect = editor?.querySelector('.protyle-wysiwyg--select');
+            if(event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+                // 取消翻
+                const transNodes = editor.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'.trans-node');
+                transNodes.forEach(transEl => transEl.remove());
+                return;
+            }
             const contenteditables = editor?.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'[contenteditable="true"]');
             contenteditables.forEach(async contenteditable => {
                 const block = contenteditable.closest('[data-node-id][data-type]');
@@ -221,5 +229,9 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
         };
         // 启动观察，默认监听 document.body 或指定的父容器
         observer.observe(parentElement || document.body, config);
+    }
+
+    function isMac() {
+        return navigator.platform.indexOf("Mac") > -1;
     }
 }
