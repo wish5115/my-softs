@@ -1,7 +1,8 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748748014662
 // see https://ld246.com/article/1748607454045 需求贴
-// version 0.0.8
+// version 0.0.8.1
+// 0.0.8.1 修复切换专家模式时提示词错误问题
 // 0.0.8 增加alt+点击切换ai引擎；shift+alt中英切换；ctrl+shift+alt切换专家/普通模式；右键复原
 // 0.0.7 增加shift+点击取消翻译
 // 0.0.6 修复译文按钮分屏刷新时不显示问题
@@ -24,7 +25,7 @@
     let expertMode = false;
 
     // ai提示词
-    let aiPrompt = `
+    const aiPromptCommon =  `
 You are a professional, authentic machine translation engine.
 Treat next line as plain text input and translate it into {{to}}, output translation ONLY. If translation is unnecessary (e.g. proper nouns, codes, etc.), return the original text. NO explanations. NO notes. Input:
 {{text}}
@@ -32,8 +33,7 @@ Treat next line as plain text input and translate it into {{to}}, output transla
 
     // 专家模式
     // 专家模式将会把所有块一起发送给ai翻译，结果更准确，性能更好，但心理等待时间更久
-    if(expertMode) {
-        aiPrompt = `
+    const aiPromptExpert = `
 您是一位专业、正统的机器翻译引擎。
 我将提供一个 JSON 格式的文本，其格式如下：
 {"xxxx": "文本内容", "xxx2": "文本内容2", ...} —— 其中 "xxxx"、"xxx2" 是文本 ID，请原样保留；"文本内容"、"文本内容2" 等是待翻译的文本内容。
@@ -45,6 +45,11 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
 注意，输出格式必须严格按照JSON结构返回，比如键值必须是双引号，特殊字符需要转义等。
 输入：{{text}}
         `;
+
+    // 动态提示词
+    let aiPrompt = aiPromptCommon;
+    if(expertMode) {
+        aiPrompt = aiPromptExpert;
     }
 
     // 主函数
@@ -77,6 +82,7 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
             const ctrlKey = isMac() ? event.metaKey : event.ctrlKey;
             if(ctrlKey && event.shiftKey && event.altKey) {
                 expertMode = expertMode === true ? false : true;
+                aiPrompt = expertMode ? aiPromptExpert : aiPromptCommon;
             }
             // shift+alt中英切换
             if(event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey) {
