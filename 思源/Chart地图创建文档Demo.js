@@ -4,6 +4,7 @@
 // 注意，不要在最后一行加;号，因为该代码在函数调用内不能加;号
 // 修改 chart 高度可通过块菜单“图表”修改
 // 更多参数请参考 https://echarts.apache.org/examples/zh/editor.html?c=map-usa-projection
+// 思源chart源码参考 https://github.com/siyuan-note/siyuan/blob/91d3e2d00174acb148f9aac67998e2a0af6056ec/app/src/protyle/render/chartRender.ts#L35
 (async () => {
     // 建议把china.js下载到本地，比如 /public/china.js
     await loadScript('https://jsd.onmicrosoft.cn/npm/echarts/map/js/china.js');
