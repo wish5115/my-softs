@@ -1,7 +1,8 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748748014662
 // see https://ld246.com/article/1748607454045 需求贴
-// version 0.0.10
+// version 0.0.11
+// 0.0.11 优化提示词，对低版本及国内ai兼容性更好；修复专家模式已是目标语言仍未跳过的问题
 // 0.0.10 支持自动跳过已是目标语言的文本和支持多语言混翻；ctrl+点击停止翻译；优化提示词
 // 0.0.9 增加ctrl+shift+点击保存译文
 // 0.0.8.1 修复切换专家模式时提示词错误问题
@@ -28,15 +29,15 @@
 
     // ai提示词
     const aiPromptCommon =  `
-You are a professional {{to}} native translator who needs to fluently translate text into {{to}}.
-Translation rules:
-1. Output only the translated content, without explanations or additional content (such as "Here's the translation:" or "Translation as follows:")
-2. The returned translation must maintain exactly the same number of paragraphs and format as the original text
-3. If the text contains HTML tags, consider where the tags should be placed in the translation while maintaining fluency
-4. For content that should not be translated (such as proper nouns, code, etc.)
-5. DO NOT translate any {{to}} content — return {{to}} text EXACTLY as-is, UNCHANGED, no matter what type of text it is. VERY IMPORTANT! STRICTLY ENFORCED RULE — FAILURE TO FOLLOW WILL BREAK THE OUTPUT!
-Translate the following:
-Input: {{text}}
+你是一名专业的 {{to}} 母语翻译人员，需要将文本流畅地翻译成 {{to}}。
+翻译规则：
+1. 仅输出翻译后的内容，不要附加任何解释或额外内容（例如“以下是翻译：”或“翻译如下：”）
+2. 返回的译文必须与原文本保持完全相同的段落数量和格式
+3. 如果文本包含 HTML 标签，请在保证语句通顺的前提下，合理安排标签在翻译后的位置
+4. 对于不应翻译的内容（如专有名词、代码等），请保留原内容不翻译
+5. 绝对不可翻译任何 {{to}} 的内容 —— 无论该内容是什么类型，都必须原样返回 {{to}} 文本，不得更改。非常重要！此规则严格强制执行——违反将导致输出错误！
+请翻译以下内容：
+输入：{{text}}
     `;
 
     // 专家模式
@@ -58,7 +59,7 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
 3. 正确保留HTML标签——在翻译后的句子中自然放置它们。
 4. 不要翻译任何{{to}}内容——原文中的{{to}}部分必须保持原样返回。
 5. 不要翻译专有名词、代码或任何明确不需要翻译的内容。
-6. 如果文本已经是{{to}}，则原样返回，无论是什么类型的文本。非常重要！此规则将严格执行——违反将导致输出错误！
+6. 如果文本已经是{{to}}，则原样返回，无论是什么类型的文本，不得更改。非常重要！此规则将严格执行——违反将导致输出错误！
 输入：{{text}}
         `;
 
@@ -195,7 +196,6 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
             if(expertMode && Object.keys(data).length > 0) {
                 // 专家模式
                 const text = JSON.stringify(data);
-                data = {};
                 const transText = aiEngine === 'default' ? 
                     await translateText(text, transTo) : 
                     await siyuanAI(text, transTo);
@@ -206,8 +206,9 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
                         const contenteditable = editor.querySelector('[data-node-id="'+id+'"] [contenteditable="true"]');
                         const transEl = contenteditable?.nextElementSibling;
                         if(!transEl) continue;
-                        transEl.innerHTML = !transText || transText.trim() === text.trim() ? '' : transText;
+                        transEl.innerHTML = !transText || transText.trim() === data[id]?.trim() ? '' : transText;
                     }
+                    data = {};
                 } catch(e) {
                     if (e.name === 'AbortError') {
                         const transNodes = editor.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'.trans-node:has(.loading-icon)');
@@ -216,6 +217,7 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
                     } else {
                         console.error(e);
                     }
+                    data = {};
                     return;
                 }
             }
