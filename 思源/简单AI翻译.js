@@ -90,6 +90,7 @@ JSON 结构如下所示：
         stopping = true;
         if(controllers.length) controllers.forEach(controller => controller.abort());
         controllers = [];
+        if(stopTimeoutId) clearTimeout(stopTimeoutId);
         stopTimeoutId = setTimeout(()=>stopping = false, 60000);
     }
 
