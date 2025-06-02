@@ -85,11 +85,12 @@ JSON 结构如下所示：
     // 控制器可以手动调用 .abort() 终止所有请求
     let stopping = false;
     let controllers = [];
+    let stopTimeoutId;
     const stopTrans = () => {
         stopping = true;
         if(controllers.length) controllers.forEach(controller => controller.abort());
         controllers = [];
-        setTimeout(()=>stopping = false, 60000);
+        stopTimeoutId = setTimeout(()=>stopping = false, 60000);
     }
 
     // 主函数
@@ -166,6 +167,7 @@ JSON 结构如下所示：
                 transNodes.forEach(transEl => transEl.remove());
                 return;
             }
+            if(stopTimeoutId) clearTimeout(stopTimeoutId);
             stopping = false;
             controllers = [];
             data = {};
