@@ -1,7 +1,8 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748748014662
 // see https://ld246.com/article/1748607454045 需求贴
-// version 0.0.9
+// version 0.0.10
+// 0.0.10 支持自动跳过已是目标语言的文本和支持多语言混翻；ctrl+点击停止翻译；优化提示词
 // 0.0.9 增加ctrl+shift+点击保存译文
 // 0.0.8.1 修复切换专家模式时提示词错误问题
 // 0.0.8 增加alt+点击切换ai引擎；shift+alt中英切换；ctrl+shift+alt切换专家/普通模式；右键复原
@@ -27,23 +28,37 @@
 
     // ai提示词
     const aiPromptCommon =  `
-You are a professional, authentic machine translation engine.
-Treat next line as plain text input and translate it into {{to}}, output translation ONLY. If translation is unnecessary (e.g. proper nouns, codes, etc.), return the original text. NO explanations. NO notes. Input:
-{{text}}
+You are a professional {{to}} native translator who needs to fluently translate text into {{to}}.
+Translation rules:
+1. Output only the translated content, without explanations or additional content (such as "Here's the translation:" or "Translation as follows:")
+2. The returned translation must maintain exactly the same number of paragraphs and format as the original text
+3. If the text contains HTML tags, consider where the tags should be placed in the translation while maintaining fluency
+4. For content that should not be translated (such as proper nouns, code, etc.)
+5. DO NOT translate any {{to}} content — return {{to}} text EXACTLY as-is, UNCHANGED, no matter what type of text it is. VERY IMPORTANT! STRICTLY ENFORCED RULE — FAILURE TO FOLLOW WILL BREAK THE OUTPUT!
+Translate the following:
+Input: {{text}}
     `;
 
     // 专家模式
     // 专家模式将会把所有块一起发送给ai翻译，结果更准确，性能更好，但心理等待时间更久
     const aiPromptExpert = `
-您是一位专业、正统的机器翻译引擎。
+你是一个专业的{{to}}母语翻译人员，需要将文本流利地翻译成{{to}}。
 我将提供一个 JSON 格式的文本，其格式如下：
 {"xxxx": "文本内容", "xxx2": "文本内容2", ...} —— 其中 "xxxx"、"xxx2" 是文本 ID，请原样保留；"文本内容"、"文本内容2" 等是待翻译的文本内容。
 下面我将具体的给出实际的JSON文本内容，请将JSON中的文本内容翻译为 {{to}}，输出格式与上述示例保持一致，仅翻译值部分。
 若某段文本无需翻译（例如专有名词、代码等），请保留原文。
+如果文本本身已经是目标语言 {{to}}，请保留原文。
+注意，这可能是一篇上下文有关联的文章，翻译时可参考上下文以更准确的翻译。
 请直接输出 JSON 结果，不添加任何解释或注释。
 JSON结果纯文本输出即可，不要加Markdown语法进去。
-注意，这是一篇上下文相关联的文章，翻译时可参考上下文以更准确的翻译。
 注意，输出格式必须严格按照JSON结构返回，比如键值必须是双引号，特殊字符需要转义等。
+翻译说明：
+1. 只返回翻译后的内容——不要添加任何评论或解释。
+2. 保持段落换行和格式完全一致。
+3. 正确保留HTML标签——在翻译后的句子中自然放置它们。
+4. 不要翻译任何{{to}}内容——原文中的{{to}}部分必须保持原样返回。
+5. 不要翻译专有名词、代码或任何明确不需要翻译的内容。
+6. 如果输入已经是{{to}}，则原样返回，无论是什么类型的文本。非常重要！此规则将严格执行——违反将导致输出错误！
 输入：{{text}}
         `;
 
@@ -51,6 +66,16 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
     let aiPrompt = aiPromptCommon;
     if(expertMode) {
         aiPrompt = aiPromptExpert;
+    }
+
+    // 控制器可以手动调用 .abort() 终止所有请求
+    let stopping = false;
+    let controllers = [];
+    const stopTrans = () => {
+        stopping = true;
+        if(controllers.length) controllers.forEach(controller => controller.abort());
+        controllers = [];
+        setTimeout(()=>stopping = false, 60000);
     }
 
     // 主函数
@@ -64,11 +89,12 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
         const shiftAltShortcut = isMac() ? '⇧⌥点击' : 'shift+alt+点击';
         const ctrlShiftAltShortcut = isMac() ? '⌘⇧⌥点击' : 'ctrl+shift+alt+点击';
         const ctrlShiftShortcut = isMac() ? '⌘⇧点击' : 'ctrl+shift+点击';
-        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="点击 <span class='ft__on-surface'>翻译</span><br>${shiftShortcut} <span class='ft__on-surface'>取消翻译</span><br>${altShortcut} <span class='ft__on-surface'>切换AI</span><br>${shiftAltShortcut} <span class='ft__on-surface'>中英切换</span><br>${ctrlShiftAltShortcut} <span class='ft__on-surface'>切换专家/普通模式</span><br>${ctrlShiftShortcut} <span class='ft__on-surface'>保存译文</span><br>右键 <span class='ft__on-surface'>复原</span>" data-type="trans"><strong>译</strong></button>`;
+        const ctrlShortcut = isMac() ? '⌘点击' : 'ctrl+点击';
+        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="点击 <span class='ft__on-surface'>翻译</span><br>${shiftShortcut} <span class='ft__on-surface'>取消翻译</span><br>${altShortcut} <span class='ft__on-surface'>切换AI</span><br>${shiftAltShortcut} <span class='ft__on-surface'>中英切换</span><br>${ctrlShiftAltShortcut} <span class='ft__on-surface'>切换专家/普通模式</span><br>${ctrlShiftShortcut} <span class='ft__on-surface'>保存译文</span><br>${ctrlShortcut} <span class='ft__on-surface'>停止翻译</span><br>右键 <span class='ft__on-surface'>复原</span>" data-type="trans"><strong>译</strong></button>`;
         exitFocusBtn.insertAdjacentHTML('afterend', transHtml);
         const transBtn = protyle.querySelector('.protyle-breadcrumb [data-type="trans"]');
         if(!transBtn) return;
-        const data = {};
+        let data = {};
         const originAiEngine = aiEngine;
         const originTransTo = transTo;
         const originExpertMode = expertMode;
@@ -113,20 +139,31 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
                 });
                 return;
             }
+            // ctrl+点击 停止翻译
+            if(ctrlKey && !event.altKey && !event.shiftKey) {
+                stopTrans();
+                const transNodes = editor.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'.trans-node:has(.loading-icon)');
+                transNodes.forEach(transEl => transEl.remove());
+                return;
+            }
             // shift+单击取消翻译
             if(event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
                 const transNodes = editor.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'.trans-node');
                 transNodes.forEach(transEl => transEl.remove());
                 return;
             }
+            stopping = false;
+            controllers = [];
+            data = {};
             const contenteditables = editor?.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'[contenteditable="true"]');
             contenteditables.forEach(async contenteditable => {
+                if (stopping) return;
                 const block = contenteditable.closest('[data-node-id][data-type]');
                 if(!block) return;
-                const text = contenteditable.textContent.trim();
+                const text = contenteditable.innerHTML.trim();
                 if(!text) return;
                 let transEl = contenteditable.nextElementSibling;
-                const loadingIcon = `<svg class="b3-menu__icon "><use xlink:href="#iconRefresh"></use></svg>`;
+                const loadingIcon = `<svg class="b3-menu__icon loading-icon"><use xlink:href="#iconRefresh"></use></svg>`;
                 if(!transEl?.matches('.trans-node')) {
                     const transElHtml = `<div class="protyle-custom trans-node" style="white-space:pre-wrap;word-break:break-all;">${loadingIcon}</div>`;
                     contenteditable.insertAdjacentHTML('afterend', transElHtml);
@@ -134,40 +171,52 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
                 } else {
                     transEl.innerHTML = loadingIcon;
                 }
-                // 去掉思源ai的进度条
-                if(aiEngine === 'siyuan') {
-                    whenElementExist('#progress:has(.b3-dialog__loading)', null, 600000).then(progress => {
-                        if(progress) progress.remove();
-                    });
-                }
                 // 调用ai翻译
                 if(!expertMode) {
                     // 普通模式
-                    const transText = aiEngine === 'default' ? 
-                        await translateText(text, transTo) : 
-                        await siyuanAI(text, transTo);
-                    transEl.innerHTML = transText;
+                    try {
+                        const transText = aiEngine === 'default' ? 
+                            await translateText(text, transTo) : 
+                            await siyuanAI(text, transTo);
+                        transEl.innerHTML = !transText || transText.trim() === text.trim() ? '' : transText;
+                    } catch(e) {
+                        if (e.name === 'AbortError') {
+                            transEl.remove();
+                            console.log('翻译请求被手动中止');
+                        } else {
+                            console.error(e);
+                        }
+                    }
                 } else {
                     // 专家模式
                     if(block?.dataset?.nodeId) data[block.dataset.nodeId] = text;
                 }
             });
-            if(expertMode) {
+            if(expertMode && Object.keys(data).length > 0) {
                 // 专家模式
                 const text = JSON.stringify(data);
+                data = {};
                 const transText = aiEngine === 'default' ? 
                     await translateText(text, transTo) : 
                     await siyuanAI(text, transTo);
                 try{
                     const transResult = JSON.parse(transText);
                     for(const [id, transText] of Object.entries(transResult)) {
+                        if (stopping) break;
                         const contenteditable = editor.querySelector('[data-node-id="'+id+'"] [contenteditable="true"]');
                         const transEl = contenteditable?.nextElementSibling;
                         if(!transEl) continue;
-                        transEl.innerHTML = transText;
+                        transEl.innerHTML = !transText || transText.trim() === text.trim() ? '' : transText;
                     }
                 } catch(e) {
-                    console.error(e);
+                    if (e.name === 'AbortError') {
+                        const transNodes = editor.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'.trans-node:has(.loading-icon)');
+                        transNodes.forEach(transEl => transEl.remove());
+                        console.log('翻译请求被手动中止');
+                    } else {
+                        console.error(e);
+                    }
+                    return;
                 }
             }
         });
@@ -181,25 +230,35 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
     observeProtyleLoad(main);
 
     // ai翻译
-    async function translateText(text, toLang='zh-cn') {
+    async function translateText(text, toLang='zh-cn', timeout = 60000) {
+        const abortController = new AbortController();
+        controllers.push(abortController);
+        const signal = abortController.signal;
+        const timeoutId = setTimeout(() => abortController.abort(), timeout);
       try {
         var myHeaders = new Headers();
         myHeaders.append("Pragma", "no-cache");
         myHeaders.append("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36");
         myHeaders.append("Content-Type", "application/json");
         var raw = JSON.stringify({
-          "text": aiPrompt.trim().replace('{{text}}', text).replace('{{to}}', toLang),
+          "text": aiPrompt.trim().replace('{{text}}', text).replace(/\{\{to\}\}/g, toLang),
           "lang": toLang
         });
         var requestOptions = {
           method: 'POST',
           headers: myHeaders,
           body: raw,
-          redirect: 'follow'
+          redirect: 'follow',
+          signal,
         };
-        const response = await fetch("https://ai.bingal.com/api/v1/translate ", requestOptions);
+        const response = await fetch("https://ai.bingal.com/api/v1/translate", requestOptions).finally(() => {
+            clearTimeout(timeoutId);
+            const idx = controllers.indexOf(abortController);
+            if (idx > -1) controllers.splice(idx, 1);
+        });
         if (!response.ok) {
           console.log(`HTTP error! status: ${response.status}`);
+          return '';
         }
         const result = await response.text();
         return result;
@@ -209,16 +268,28 @@ JSON结果纯文本输出即可，不要加Markdown语法进去。
       }
     }
 
-    async function siyuanAI(text, toLang) {
-        const result = await requestApi('/api/ai/chatGPT', {
-            "msg": aiPrompt.trim().replace('{{text}}', text).replace('{{to}}', toLang)
+    async function siyuanAI(text, toLang, timeout = 60000) {
+        // 去掉思源ai的进度条
+        whenElementExist('#progress:has(.b3-dialog__loading)', null, 600000).then(progress => {
+            if(progress) progress.remove();
         });
+        const result = await requestApi('/api/ai/chatGPT', {
+            "msg": aiPrompt.trim().replace('{{text}}', text).replace(/\{\{to\}\}/g, toLang)
+        }, 'POST', timeout);
         if(result && result.code === 0 && result.data) return result.data;
         return '';
     }
 
-    async function requestApi(url, data, method = 'POST') {
-        return await (await fetch(url, {method: method, body: JSON.stringify(data||{})})).json();
+    async function requestApi(url, data, method = 'POST', timeout = 60000) {
+        const abortController = new AbortController();
+        controllers.push(abortController);
+        const signal = abortController.signal;
+        const timeoutId = setTimeout(() => abortController.abort(), timeout);
+        return await (await fetch(url, {method: method, body: JSON.stringify(data||{}), signal}).finally(() => {
+            clearTimeout(timeoutId);
+            const idx = controllers.indexOf(abortController);
+            if (idx > -1) controllers.splice(idx, 1);
+        })).json();
     }
 
     async function updateBlock(node) {
