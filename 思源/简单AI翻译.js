@@ -213,6 +213,8 @@ JSON 结构如下所示：
                         const transText = aiEngine === 'default' ? 
                             await translateText(text, transTo) : 
                             await siyuanAI(text, transTo);
+                        transEl = contenteditable.nextElementSibling;
+                        if(!transEl?.matches('.trans-node')) return;
                         transEl.innerHTML = !transText || transText.trim() === text.trim() ? '' : transText;
                     } catch(e) {
                         if (e.name === 'AbortError') {
@@ -239,7 +241,7 @@ JSON 结构如下所示：
                         if (stopping) break;
                         const contenteditable = editor.querySelector('[data-node-id="'+id+'"] [contenteditable="true"]');
                         const transEl = contenteditable?.nextElementSibling;
-                        if(!transEl) continue;
+                        if(!transEl || !transEl?.matches('.trans-node')) continue;
                         transEl.innerHTML = !transText || transText.trim() === data[id]?.trim() ? '' : transText;
                     }
                     data = {};
