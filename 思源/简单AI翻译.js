@@ -2,7 +2,7 @@
 // see https://ld246.com/article/1748748014662
 // see https://ld246.com/article/1748607454045 需求贴
 // version 0.0.12
-// 0.0.12 改进提示词，完美兼容多语言混合段落。
+// 0.0.12 改进提示词，完美兼容多语言混合段落；修复潜在bug；改善快捷键逻辑；提示信息显示当前状态。
 // 0.0.11.1 改进提示词，兼容更多ai，提高翻译的稳定性和准确度。
 // 0.0.11 优化提示词，对低版本及国内ai兼容性更好；修复专家模式已是目标语言仍然翻译的问题
 // 0.0.10 支持自动跳过已是目标语言的文本和支持多语言混翻；ctrl+点击停止翻译；优化提示词
@@ -40,6 +40,7 @@
 4. 如果文本包含 HTML 标签，请合理保留标签结构并保证语义通顺。
 5. 对于不应翻译的内容（如专有名词、代码等），请保留原内容不翻译
 6. 不允许输出任何附加说明，解释或注释等，例如“翻译如下：”等内容。
+7. 请忽略历史对话内容，严格按照上述规则执行。
 
 现在，请翻译以下内容：
 {{text}}
@@ -67,11 +68,12 @@ JSON 结构如下所示：
 
 **输出格式说明：**
 1. 直接输出 JSON 结果，不添加任何解释或注释。格式需与输入格式严格保持一致。
-2. 输出必须是纯粹的 JSON 文本，**不要添加 Markdown 代码块或任何包装字符，比如 \`\`\`json等**。
+2. 输出必须是纯粹的 JSON 文本，**不要添加任何字符在JSON的首尾，比如 {"id":"文本"}✅正确，\`\`\`json\n{"id":"文本"}\n\`\`\`❌错误**。
 3. 输出必须为标准合法的 JSON 格式（键值使用双引号，必要时转义特殊字符）。
 
 **上下文说明：**
-该 JSON 中的内容可能来自一篇有上下文有关联的文章，可参考上下文以提高翻译准确度，请综合判断。
+1. 该 JSON 中的内容可能来自一篇有上下文有关联的文章，可参考上下文以提高翻译准确度，请综合判断。
+2. 请忽略历史对话内容，严格按照上述说明执行。
 
 现在，请翻译以下内容：
 {{text}}
@@ -130,14 +132,17 @@ JSON 结构如下所示：
             if(ctrlKey && event.shiftKey && event.altKey) {
                 expertMode = expertMode === true ? false : true;
                 aiPrompt = expertMode ? aiPromptExpert : aiPromptCommon;
+                return;
             }
             // shift+alt中英切换
             if(event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey) {
                 transTo = transTo.startsWith('zh-') ? 'us-en' : (originTransTo.startsWith('zh-')?originTransTo:'zh-cn');
+                return;
             }
             // alt+点击切换ai引擎
             if(event.altKey && !event.ctrlKey && !event.shiftKey && !event.metaKey) {
                 aiEngine = aiEngine === 'default' ? 'siyuan' : 'default';
+                return;
             }
             const editor = transBtn.closest('.protyle')?.querySelector('.protyle-wysiwyg');
             const hasSelect = editor?.querySelector('.protyle-wysiwyg--select');
