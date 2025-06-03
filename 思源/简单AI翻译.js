@@ -2,7 +2,7 @@
 // see https://ld246.com/article/1748748014662
 // see https://ld246.com/article/1748607454045 需求贴
 // version 0.0.12
-// 0.0.12 改进提示词，完美兼容多语言混合段落；修复潜在bug；改善快捷键逻辑；提示信息显示当前状态。
+// 0.0.12 改进提示词，完美兼容多语言混合段落；修复专家模式偶发ai返回格式错误问题；改善快捷键交互方式，更符合思维习惯；提示信息实时显示当前状态。
 // 0.0.11.1 改进提示词，兼容更多ai，提高翻译的稳定性和准确度。
 // 0.0.11 优化提示词，对低版本及国内ai兼容性更好；修复专家模式已是目标语言仍然翻译的问题
 // 0.0.10 支持自动跳过已是目标语言的文本和支持多语言混翻；ctrl+点击停止翻译；优化提示词
@@ -98,6 +98,8 @@ JSON 结构如下所示：
     }
 
     // 主函数
+    const focusColor = 'var(--b3-tooltips-color)';
+    const focusStyle = `color:${focusColor};`;
     const main = (protyle)=>{
         if(protyle?.querySelector('.protyle-breadcrumb [data-type="trans"]')) return;
         const exitFocusBtn = protyle.querySelector('.protyle-breadcrumb [data-type="exit-focus"]');
@@ -109,7 +111,7 @@ JSON 结构如下所示：
         const ctrlShiftAltShortcut = isMac() ? '⌘⇧⌥点击' : 'ctrl+shift+alt+点击';
         const ctrlShiftShortcut = isMac() ? '⌘⇧点击' : 'ctrl+shift+点击';
         const ctrlShortcut = isMac() ? '⌘点击' : 'ctrl+点击';
-        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="点击 <span class='ft__on-surface'>翻译</span><br>${shiftShortcut} <span class='ft__on-surface'>取消翻译</span><br>${altShortcut} <span class='ft__on-surface'>切换AI</span><br>${shiftAltShortcut} <span class='ft__on-surface'>中英切换</span><br>${ctrlShiftAltShortcut} <span class='ft__on-surface'>切换专家/普通模式</span><br>${ctrlShiftShortcut} <span class='ft__on-surface'>保存译文</span><br>${ctrlShortcut} <span class='ft__on-surface'>停止翻译</span><br>右键 <span class='ft__on-surface'>复原</span>" data-type="trans"><strong>译</strong></button>`;
+        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="点击 <span class='ft__on-surface'>翻译</span><br>${shiftShortcut} <span class='ft__on-surface'>取消翻译</span><br>${altShortcut} <span class='ft__on-surface'>切换AI <span class='tooltip-trans-ai-default' style='${aiEngine==='default'?focusStyle:''}'>Default</span>/<span class='tooltip-trans-ai-siyuan' style='${aiEngine==='siyuan'?focusStyle:''}'>SiYuan</span></span><br>${shiftAltShortcut} <span class='ft__on-surface'>切换翻译为<span class='tooltip-trans-lang-zh' style='${transTo.startsWith('zh-')?focusStyle:''}'>中文</span>/<span class='tooltip-trans-lang-en' style='${!transTo.startsWith('zh-')?focusStyle:''}'>英文</span></span><br>${ctrlShiftAltShortcut} <span class='ft__on-surface'>切换<span class='tooltip-trans-mode-common' style='${!expertMode?focusStyle:''}'>普通</span>/<span class='tooltip-trans-mode-expert' style='${expertMode?focusStyle:''}'>专家</span>模式</span><br>${ctrlShiftShortcut} <span class='ft__on-surface'>保存译文</span><br>${ctrlShortcut} <span class='ft__on-surface'>停止翻译</span><br>右键 <span class='ft__on-surface'>复原</span>" data-type="trans"><strong>译</strong></button>`;
         exitFocusBtn.insertAdjacentHTML('afterend', transHtml);
         const transBtn = protyle.querySelector('.protyle-breadcrumb [data-type="trans"]');
         if(!transBtn) return;
@@ -124,6 +126,7 @@ JSON 结构如下所示：
             transTo = originTransTo;
             expertMode = originExpertMode;
             aiPrompt = originAiPrompt;
+            showMessage('已恢复到初始状态');
         });
         // shift+单击取消翻译；alt+点击切换ai引擎；shift+alt中英切换；ctrl+shift+alt切换专家/普通模式；右键复原
         transBtn.addEventListener('click', async (event) => {
@@ -132,16 +135,22 @@ JSON 结构如下所示：
             if(ctrlKey && event.shiftKey && event.altKey) {
                 expertMode = expertMode === true ? false : true;
                 aiPrompt = expertMode ? aiPromptExpert : aiPromptCommon;
+                switchStatus('mode', expertMode, transBtn);
+                //showMessage(expertMode?'已切换到专家模式':'已切换到普通模式');
                 return;
             }
             // shift+alt中英切换
             if(event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey) {
                 transTo = transTo.startsWith('zh-') ? 'us-en' : (originTransTo.startsWith('zh-')?originTransTo:'zh-cn');
+                switchStatus('lang', transTo, transBtn);
+                //showMessage(transTo.startsWith('zh-')?'已切换到翻译为中文':'已切换到翻译为英文');
                 return;
             }
             // alt+点击切换ai引擎
             if(event.altKey && !event.ctrlKey && !event.shiftKey && !event.metaKey) {
                 aiEngine = aiEngine === 'default' ? 'siyuan' : 'default';
+                switchStatus('ai', aiEngine, transBtn);
+                //showMessage(aiEngine === 'default' ?'已切换到default引擎':'已切换到siyuan引擎');
                 return;
             }
             const editor = transBtn.closest('.protyle')?.querySelector('.protyle-wysiwyg');
@@ -159,6 +168,7 @@ JSON 结构如下所示：
                         updateBlock(contenteditable);
                     }
                 });
+                showMessage('已保存译文成功');
                 return;
             }
             // ctrl+点击 停止翻译
@@ -166,12 +176,14 @@ JSON 结构如下所示：
                 stopTrans();
                 const transNodes = editor.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'.trans-node:has(.loading-icon)');
                 transNodes.forEach(transEl => transEl.remove());
+                showMessage('已停止翻译');
                 return;
             }
             // shift+单击取消翻译
             if(event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
                 const transNodes = editor.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'.trans-node');
                 transNodes.forEach(transEl => transEl.remove());
+                showMessage('已取消翻译');
                 return;
             }
             if(stopTimeoutId) clearTimeout(stopTimeoutId);
@@ -252,6 +264,33 @@ JSON 结构如下所示：
         protyles.forEach(protyle => main(protyle));
     });
     observeProtyleLoad(main);
+
+    // 切换状态
+    function switchStatus(type, to, transBtn) {
+        const toes = {
+            ai: ['default', 'siyuan'],
+            lang: ['zh', 'en'],
+            mode: ['common', 'expert'],
+        };
+        if(type === 'lang') to = to.startsWith('zh-') ? 'zh' : 'en';
+        if(type === 'mode') to = to ? 'expert' : 'common';
+        doChangeStatus(type, to, transBtn, toes[type][0], toes[type][1]);
+    }
+
+    function doChangeStatus(type, to, transBtn, firstTo, secondTo) {
+        // tooltip
+        const firstSpan = document.querySelector(`#tooltip:not(.fn__none) .tooltip-trans-${type}-${firstTo}`);
+        if(firstSpan) firstSpan.style.color = to === firstTo ? focusColor : '';
+        const secondSpan = document.querySelector(`#tooltip:not(.fn__none) .tooltip-trans-${type}-${secondTo}`);
+        if(secondSpan) secondSpan.style.color = to === secondTo ? focusColor : '';
+        // aria-label
+        let ariaLabel = transBtn.getAttribute('aria-label');
+        const pattern = new RegExp(`(<span class='tooltip-trans-${type}-${firstTo}' style=')([^']*)('>[^<]*<\/span>\/<span class='tooltip-trans-${type}-${secondTo}' style=')([^']*)('>[^<]*<\/span>)`, 'i');
+        ariaLabel = ariaLabel.replace(pattern, (match, pre, firstStyle, mid, secondStyle, last) => {
+            return `${pre}${(to === firstTo ? focusStyle : '')}${mid}${(to === secondTo ? focusStyle : '')}${last}`;
+        });
+        transBtn.setAttribute('aria-label', ariaLabel);
+    }
 
     // ai翻译
     async function translateText(text, toLang='zh-cn', timeout = 60000) {
@@ -393,5 +432,12 @@ JSON 结构如下所示：
 
     function isMac() {
         return navigator.platform.indexOf("Mac") > -1;
+    }
+
+    function showMessage(message, isError = false, delay = 5000) {
+        return fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
+            "method": "POST",
+            "body": JSON.stringify({"msg": message, "timeout": delay})
+        });
     }
 }
