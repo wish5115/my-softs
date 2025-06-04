@@ -268,6 +268,7 @@ JSON 结构如下所示：
                         transEl.innerHTML = !transText?.trim() || transText.trim() === data[id]?.trim() ? '' : transText;
                     }
                     data = {};
+                    showMessage('全部翻译已完成');
                 } catch(e) {
                     if (e.name === 'AbortError') {
                         const transNodes = editor.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'.trans-node:has(.loading-icon)');
