@@ -1,7 +1,8 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748748014662
 // see https://ld246.com/article/1748607454045 需求贴
-// version 0.0.12
+// version 0.0.12.1
+// 0.0.12.1 修复模式切换后，ai受历史对话影响造成返回格式错误的问题
 // 0.0.12 改进提示词，完美兼容多语言混合段落；修复专家模式偶发ai返回格式错误问题；改善快捷键交互方式，更符合使用习惯；提示信息实时显示当前状态。
 // 0.0.11.1 改进提示词，兼容更多ai，提高翻译的稳定性和准确度。
 // 0.0.11 优化提示词，对低版本及国内ai兼容性更好；修复专家模式已是目标语言仍然翻译的问题
@@ -40,7 +41,8 @@
 4. 如果文本包含 HTML 标签，请合理保留标签结构并保证语义通顺。
 5. 对于不应翻译的内容（如专有名词、代码等），请保留原内容不翻译
 6. 不允许输出任何附加说明，解释或注释等，例如“翻译如下：”等内容。
-7. 请忽略历史对话内容，严格按照上述规则执行。
+7. 不允许输出JSON格式，直接返回译文即可，比如{"id":"译文"}错误，直接返回译文文本即可。
+8. 不要参考历史对话内容，仅严格按照上述规则执行。
 
 现在，请翻译以下内容：
 {{text}}
@@ -73,7 +75,7 @@ JSON 结构如下所示：
 
 **上下文说明：**
 1. 该 JSON 中的内容可能来自一篇有上下文有关联的文章，可参考上下文以提高翻译准确度，请综合判断。
-2. 请忽略历史对话内容，严格按照上述说明执行。
+2. 不要参考历史对话内容，仅严格按照上述说明执行。
 
 现在，请翻译以下内容：
 {{text}}
@@ -190,6 +192,17 @@ JSON 结构如下所示：
             stopping = false;
             controllers = [];
             data = {};
+            const formatTrans = (transText) => {
+                transText = transText.trim();
+                if(transText.startsWith('{') && transText.endsWith('}') && transText.indexOf(':')!==-1 && transText.indexOf('"')!==-1) {
+                    try {
+                        transText = JSON.parse(transText);
+                        if(typeof transText === 'object') transText = Object.values(transText)[0] || '';
+                        return transText;
+                    } catch(e) {return transText;}
+                }
+                return transText;
+            };
             const contenteditables = editor?.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'[contenteditable="true"]');
             contenteditables.forEach(async contenteditable => {
                 if (stopping) return;
@@ -210,9 +223,10 @@ JSON 结构如下所示：
                 if(!expertMode) {
                     // 普通模式
                     try {
-                        const transText = aiEngine === 'default' ? 
+                        let transText = aiEngine === 'default' ? 
                             await translateText(text, transTo) : 
                             await siyuanAI(text, transTo);
+                        transText = formatTrans(transText);
                         transEl = contenteditable.nextElementSibling;
                         if(!transEl?.matches('.trans-node')) return;
                         transEl.innerHTML = !transText || transText.trim() === text.trim() ? '' : transText;
