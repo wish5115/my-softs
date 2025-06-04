@@ -292,7 +292,7 @@ JSON 结构如下所示：
     whenElementExist('.protyle:not(.fn__none)').then(()=>{
         const protyles = document.querySelectorAll('.protyle:not(.fn__none)');
         protyles.forEach(protyle => main(protyle));
-    });
+    }).catch(e=>console.warn(e));
     observeProtyleLoad(main);
 
     // 切换状态
