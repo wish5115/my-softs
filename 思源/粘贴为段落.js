@@ -13,7 +13,8 @@
             pasteBtn.addEventListener('click', async (e) => {
                 let text  = await getClipText();
                 if(!text) return;
-                text = text.split('\n').join('\n\n');
+                text = text.replace(/\n/g, '\n\n');
+                //text = text.split('\n').join('\n\n');
                 insertToEditor(text);
                 window.siyuan.menus.menu.remove();
             });
