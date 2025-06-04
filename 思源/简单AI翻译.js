@@ -1,8 +1,9 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748748014662
 // see https://ld246.com/article/1748607454045 需求贴
-// version 0.0.12.2
-// 0.0.12.2 支持行首缩进对齐；优化提示词。
+// version 0.0.12.3
+// 0.0.12.3 右键复原时复原提示信息切换状态
+// 0.0.12.2 支持行首缩进对齐；优化提示词
 // 0.0.12.1 修复模式切换后，ai受历史对话影响造成返回格式错误的问题
 // 0.0.12 改进提示词，完美兼容多语言混合段落；修复专家模式偶发ai返回格式错误问题；改善快捷键交互方式，更符合使用习惯；提示信息实时显示当前状态。
 // 0.0.11.1 改进提示词，兼容更多ai，提高翻译的稳定性和准确度。
@@ -130,6 +131,9 @@ JSON 结构如下所示：
             transTo = originTransTo;
             expertMode = originExpertMode;
             aiPrompt = originAiPrompt;
+            switchStatus('ai', originAiEngine, transBtn);
+            switchStatus('lang', originTransTo, transBtn);
+            switchStatus('mode', originExpertMode, transBtn);
             showMessage('已恢复到初始状态');
         });
         // shift+单击取消翻译；alt+点击切换ai引擎；shift+alt中英切换；ctrl+shift+alt切换专家/普通模式；右键复原
