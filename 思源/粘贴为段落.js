@@ -1,12 +1,12 @@
 // 粘贴为段落（自动把剪切板一个换行转换为两个）
-// see 
+// see https://ld246.com/article/1749074848419
 (()=>{
     // 添加右键菜单
     document.addEventListener('contextmenu', async function (e) {
         const hljs = e.target.closest('.hljs');
         if(hljs) return;
         whenElementExistOrNull('#commonMenu [data-id="pasteEscaped"]').then(element => {
-            if(element.parentElement.querySelector('[data-id="pasteParagraph"]')) return;
+            if(!element || element.parentElement.querySelector('[data-id="pasteParagraph"]')) return;
             const pasteHtml = `<button data-id="pasteParagraph" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#"></use></svg><span class="b3-menu__label">粘贴为段落</span></button>`;
             element.insertAdjacentHTML('afterend', pasteHtml);
             const pasteBtn = element.parentElement.querySelector('[data-id="pasteParagraph"]');
