@@ -1,7 +1,8 @@
 // name 模拟连续点击 openAny
 // 支持多个选择符的链式点击或文本输入或模拟按键等
 // see https://ld246.com/article/1744896396694
-// version 0.0.6.5
+// version 0.0.6.6
+// updateDesc 0.0.6.6 修复openAny.on openAny.off等函数的bug
 // updateDesc 0.0.6.5 改进press，element参数可以传回调函数，新增getCurrTabEl函数
 // updateDesc 0.0.6.4 增加选项菜单配置参数，input() text参数支持回调，parentElement参数支持回调
 // updateDesc 0.0.6.3 增加on once off emit方法，可以绑定思源事件总线
@@ -1341,7 +1342,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             constructor(options) {
                 this.app = options.app||window.siyuan.ws.app.appId;
                 this.i18n = options.i18n;
-                this.displayName = options.displayName;
+                this.displayName = options.displayName||options.name;
                 this.name = options.name;
                 this.eventBus = new EventBus(options.name);
                 this.protyleSlash = [];
@@ -1357,13 +1358,14 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             onload() {}
             onunload() {}
             uninstall() {}
-            async updateCards(options) { return {}; } // 返回空对象或其他默认值
+            async updateCards(options) { return options; } // 返回选项本身
             onLayoutReady() {}
             addCommand(command) {}
             addIcons(svg) {}
-            addTopBar(options) { return {}; } // 模拟返回一个空元素对象
-            addStatusBar(options) { return {}; } // 模拟返回一个空元素对象
-            openSetting() {}
+            addTopBar(options) { return null; } // 模拟返回null
+            addStatusBar(options) { return null; } // 模拟返回null
+            // 去掉设置，参考 https://github.com/siyuan-note/siyuan/blob/dae6158860cc704e353454565c96e874278c6f47/app/src/plugin/openTopBarMenu.ts#L25
+            //openSetting() {}
             loadData(storageName) { return Promise.resolve(null); }
             saveData(storageName, data) { return Promise.resolve(); }
             removeData(storageName) { return Promise.resolve(); }
@@ -1371,7 +1373,7 @@ addKeymap 回调函数的第一个参数是event,第二个参数是this.function
             addTab(options) { return () => {}; } // 返回空函数模拟模型
             addDock(options) { return {}; } // 返回空对象模拟 dock
             addFloatLayer(options) {}
-            updateProtyleToolbar(toolbar) { return []; } // 返回空数组
+            updateProtyleToolbar(toolbar) { return toolbar; } // 返回toolbar本身
             set protyleOptions(options) {}
             get protyleOptions() { return this.protyleOptionsValue; }
         }
