@@ -1,7 +1,8 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748748014662
 // see https://ld246.com/article/1748607454045 需求贴
-// version 0.0.12.1
+// version 0.0.12.2
+// 0.0.12.2 支持行首缩进对齐；优化提示词。
 // 0.0.12.1 修复模式切换后，ai受历史对话影响造成返回格式错误的问题
 // 0.0.12 改进提示词，完美兼容多语言混合段落；修复专家模式偶发ai返回格式错误问题；改善快捷键交互方式，更符合使用习惯；提示信息实时显示当前状态。
 // 0.0.11.1 改进提示词，兼容更多ai，提高翻译的稳定性和准确度。
@@ -37,12 +38,13 @@
 翻译规则：
 1. 如果文本中包含{{to}}的句子或段落，仅{{to}}这部分文本原样输出，不要进行任何翻译、润色或改写。其他非{{to}}部分，请翻译成自然流畅、符合使用习惯的 {{to}}。
 2. 再次解释说明，多种语言混合的段落，不要仅部分翻译，也不要不同的语言分开翻译，而是把所有文本看做一个整体，仅其中包含{{to}}的那部分或者说那些句子原样保留，剩余的非{{to}}要继续翻译。
-3. 返回的译文必须严格保留原文本的段落数量与格式。
+3. 返回的译文必须严格保留原文本的段落数量、空格（包括行首空格）、空白符、缩进、换行符等格式，必须与原文格式完全保持一致，不得更改。
 4. 如果文本包含 HTML 标签，请合理保留标签结构并保证语义通顺。
-5. 对于不应翻译的内容（如专有名词、代码等），请保留原内容不翻译
+5. 对于不应翻译的内容（如专有名词、代码等），请保留原内容不翻译。
 6. 不允许输出任何附加说明，解释或注释等，例如“翻译如下：”等内容。
 7. 不允许输出JSON格式，直接返回译文即可，比如{"id":"译文"}错误，直接返回译文文本即可。
-8. 不要参考历史对话内容，仅严格按照上述规则执行。
+8. 注意，原文从行首开始，行首可能含有空格，当行首有空格时，不得忽略行首的空格，输出时也必须包含行首空格，如果行首无空格时，不要自作主张添加空格。
+9. 不要参考历史对话内容，仅严格按照上述规则执行。
 
 现在，请翻译以下内容：
 {{text}}
@@ -63,7 +65,7 @@ JSON 结构如下所示：
 **翻译规则如下：**
 1. **语言检测优先级最高**：请在翻译前判断每段文本中是否包含 {{to}} 的句子或段落。如果文本中包含{{to}}的句子或段落，仅{{to}}这部分文本原样输出，不要进行任何翻译、润色或改写。其他非{{to}}部分，请翻译成自然、流畅、地道的 {{to}}，符合目标语言表达习惯。
 2. 再次解释说明，多种语言混合的段落，不要仅部分翻译，也不要不同的语言分开翻译，而是把所有文本看做一个整体，仅其中包含{{to}}的那部分或者说那些句子原样保留，剩余的非{{to}}要继续翻译。
-3. 保持原有的段落数量、换行符与格式完全一致。
+3. 保持原有的段落数量、空格（包括行首空格）、空白符、缩进、换行符等格式完全一致。再次强调，必须与原文格式完全保持一致，不得更改。
 4. 正确处理 HTML 标签：翻译文本内容的同时，合理保留并安置 HTML 标签，使译文语义通顺、结构正确。
 5. **绝对不要翻译任何已为 {{to}} 的文本内容**，无论是什么类型的文本——这项规则必须严格执行，任何违背都会导致输出错误。
 6. 不要翻译专有名词、代码或任何明确不需要翻译的内容。
@@ -113,7 +115,7 @@ JSON 结构如下所示：
         const ctrlShiftAltShortcut = isMac() ? '⌘⇧⌥点击' : 'ctrl+shift+alt+点击';
         const ctrlShiftShortcut = isMac() ? '⌘⇧点击' : 'ctrl+shift+点击';
         const ctrlShortcut = isMac() ? '⌘点击' : 'ctrl+点击';
-        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="点击 <span class='ft__on-surface'>翻译</span><br>${shiftShortcut} <span class='ft__on-surface'>取消翻译</span><br>${altShortcut} <span class='ft__on-surface'>切换AI <span class='tooltip-trans-ai-default' style='${aiEngine==='default'?focusStyle:''}'>Default</span>/<span class='tooltip-trans-ai-siyuan' style='${aiEngine==='siyuan'?focusStyle:''}'>SiYuan</span></span><br>${shiftAltShortcut} <span class='ft__on-surface'>切换翻译为<span class='tooltip-trans-lang-zh' style='${transTo.startsWith('zh-')?focusStyle:''}'>中文</span>/<span class='tooltip-trans-lang-en' style='${!transTo.startsWith('zh-')?focusStyle:''}'>英文</span></span><br>${ctrlShiftAltShortcut} <span class='ft__on-surface'>切换<span class='tooltip-trans-mode-common' style='${!expertMode?focusStyle:''}'>普通</span>/<span class='tooltip-trans-mode-expert' style='${expertMode?focusStyle:''}'>专家</span>模式</span><br>${ctrlShiftShortcut} <span class='ft__on-surface'>保存译文</span><br>${ctrlShortcut} <span class='ft__on-surface'>停止翻译</span><br>右键 <span class='ft__on-surface'>复原</span>" data-type="trans"><strong>译</strong></button>`;
+        const transHtml = `<button class="block__icon fn__flex-center ariaLabel" aria-label="点击 <span class='ft__on-surface'>翻译</span><br>${shiftShortcut} <span class='ft__on-surface'>取消翻译</span><br>${altShortcut} <span class='ft__on-surface'>切换AI <span class='tooltip-trans-ai-default' style='${aiEngine==='default'?focusStyle:''}'>default</span>/<span class='tooltip-trans-ai-siyuan' style='${aiEngine==='siyuan'?focusStyle:''}'>siyuan</span></span><br>${shiftAltShortcut} <span class='ft__on-surface'>切换翻译为<span class='tooltip-trans-lang-zh' style='${transTo.startsWith('zh-')?focusStyle:''}'>中文</span>/<span class='tooltip-trans-lang-en' style='${!transTo.startsWith('zh-')?focusStyle:''}'>英文</span></span><br>${ctrlShiftAltShortcut} <span class='ft__on-surface'>切换<span class='tooltip-trans-mode-common' style='${!expertMode?focusStyle:''}'>普通</span>/<span class='tooltip-trans-mode-expert' style='${expertMode?focusStyle:''}'>专家</span>模式</span><br>${ctrlShiftShortcut} <span class='ft__on-surface'>保存译文</span><br>${ctrlShortcut} <span class='ft__on-surface'>停止翻译</span><br>右键 <span class='ft__on-surface'>复原</span>" data-type="trans"><strong>译</strong></button>`;
         exitFocusBtn.insertAdjacentHTML('afterend', transHtml);
         const transBtn = protyle.querySelector('.protyle-breadcrumb [data-type="trans"]');
         if(!transBtn) return;
@@ -193,10 +195,10 @@ JSON 结构如下所示：
             controllers = [];
             data = {};
             const formatTrans = (transText) => {
-                transText = transText.trim();
-                if(transText.startsWith('{') && transText.endsWith('}') && transText.indexOf(':')!==-1 && transText.indexOf('"')!==-1) {
+                const checkText = transText.trim();
+                if(checkText.startsWith('{') && checkText.endsWith('}') && checkText.indexOf(':')!==-1 && checkText.indexOf('"')!==-1) {
                     try {
-                        transText = JSON.parse(transText);
+                        transText = JSON.parse(transText.trim());
                         if(typeof transText === 'object') transText = Object.values(transText)[0] || '';
                         return transText;
                     } catch(e) {return transText;}
@@ -208,8 +210,8 @@ JSON 结构如下所示：
                 if (stopping) return;
                 const block = contenteditable.closest('[data-node-id][data-type]');
                 if(!block) return;
-                const text = contenteditable.innerHTML.trim();
-                if(!text) return;
+                const text = contenteditable.innerHTML;
+                if(!text.trim()) return;
                 let transEl = contenteditable.nextElementSibling;
                 const loadingIcon = `<svg class="b3-menu__icon loading-icon"><use xlink:href="#iconRefresh"></use></svg>`;
                 if(!transEl?.matches('.trans-node')) {
@@ -227,9 +229,10 @@ JSON 结构如下所示：
                             await translateText(text, transTo) : 
                             await siyuanAI(text, transTo);
                         transText = formatTrans(transText);
+                        if(!areLeadingWhitespacesSame(text, transText)) transText = getLeadingWhitespace(text) + removeLeadingWhitespace(transText);
                         transEl = contenteditable.nextElementSibling;
                         if(!transEl?.matches('.trans-node')) return;
-                        transEl.innerHTML = !transText || transText.trim() === text.trim() ? '' : transText;
+                        transEl.innerHTML = !transText?.trim() || transText.trim() === text.trim() ? '' : transText;
                     } catch(e) {
                         if (e.name === 'AbortError') {
                             transEl.remove();
@@ -253,10 +256,12 @@ JSON 结构如下所示：
                     const transResult = JSON.parse(transText.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim());
                     for(const [id, transText] of Object.entries(transResult)) {
                         if (stopping) break;
+                        if(!data[id]) continue;
+                        if(!areLeadingWhitespacesSame(data[id], transText)) transText = getLeadingWhitespace(data[id]) + removeLeadingWhitespace(transText);
                         const contenteditable = editor.querySelector('[data-node-id="'+id+'"] [contenteditable="true"]');
                         const transEl = contenteditable?.nextElementSibling;
                         if(!transEl || !transEl?.matches('.trans-node')) continue;
-                        transEl.innerHTML = !transText || transText.trim() === data[id]?.trim() ? '' : transText;
+                        transEl.innerHTML = !transText?.trim() || transText.trim() === data[id]?.trim() ? '' : transText;
                     }
                     data = {};
                 } catch(e) {
@@ -455,5 +460,27 @@ JSON 结构如下所示：
             "method": "POST",
             "body": JSON.stringify({"msg": message, "timeout": delay})
         });
+    }
+
+    // 获取行首空白符
+    function getLeadingWhitespace(str) {
+      const match = str.match(/^\s+/);
+      return match ? match[0] : '';
+    }
+    // 判断多行行首空白符是否一致
+    function areLeadingWhitespacesSame(...strings) {
+      if (strings.length < 2) return true;
+      const firstWhitespace = getLeadingWhitespace(strings[0]);
+      for (let i = 1; i < strings.length; i++) {
+        const currentWhitespace = getLeadingWhitespace(strings[i]);
+        if (currentWhitespace !== firstWhitespace) {
+          return false;
+        }
+      }
+      return true;
+    }
+    // 去除行首空白符
+    function removeLeadingWhitespace(str) {
+      return str.replace(/^\s+/, '');
     }
 }
