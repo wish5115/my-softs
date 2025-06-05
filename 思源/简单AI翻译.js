@@ -1,7 +1,8 @@
 // 简单AI翻译（仿沉浸式翻译）
 // see https://ld246.com/article/1748748014662
 // see https://ld246.com/article/1748607454045 需求贴
-// version 0.0.12.3
+// version 0.0.13
+// 0.0.13 解决请求过多，后面请求超时问题；解决siyuan引擎专家模式下执行时间过长超时问题；保存引文增加data-type属性，方便其他代码调用
 // 0.0.12.3 右键复原时复原提示信息切换状态；优化提示词；
 // 0.0.12.2 支持行首缩进对齐；优化提示词
 // 0.0.12.1 修复模式切换后，ai受历史对话影响造成返回格式错误的问题
@@ -32,6 +33,13 @@
     // 专家模式将会把所有块一起发送给ai翻译，结果更准确，性能更好，但心理等待时间更久
     let expertMode = false;
 
+    // 普通模式请求超时时间，默认1分钟
+    const timeoutCommon = 60000;
+
+    // 专家模式请求超时时间，默认20分钟
+    // 注意，当aiEngine='siyuan'时，还需要在设置/AI/超时时间中配置同样的时间才行
+    const timeoutExpert = 1200000;
+
     // ai提示词
     const aiPromptCommon =  `
 你是一名专业的翻译人员，母语为 {{to}}。你的任务是将输入文本翻译成标准的、地道的 {{to}}。但在执行前，请先判断输入文本的语言。
@@ -44,7 +52,7 @@
 5. 对于不应翻译的内容（如专有名词、代码等），请保留原内容不翻译。
 
 输出说明：
-1. 不要输出任何说明，解释或注释等，例如“翻译如下：”，“根据规则1，我应当xxxx”，“此处用xxxx翻译更合适”等内容。
+1. 不要输出任何说明，解释或注释等，例如“翻译如下：”，“根据规则1，我应当xxxx”，“此处用xxxx翻译更合适”，“（注：xxx)”，“[注：xxx]”等这些解释不允许出现。
 2. 不要输出JSON格式，直接返回译文文本即可，比如{"id":"译文"}错误，直接返回译文文本即可。
 3. 保留所有原始格式：包括行首空格、换行、标点符号等。若某行原文以空格开头，请确保译文也以相同数量的空格开头；若原文行首无空格，则译文也不得添加空格。不得对空白符进行任何改动。比如“　　hello word!”，输出“　　你好世界！”，正确，而输出“你好世界！”，错误。
 4. 换行符的格式必须与原文一致，不得自行添加或减少换行，标点符号和空白符也要与原文一致。
@@ -105,6 +113,11 @@ JSON 结构如下所示：
         if(stopTimeoutId) clearTimeout(stopTimeoutId);
         stopTimeoutId = setTimeout(()=>stopping = false, 60000);
     }
+
+    // 任务变量
+    const MAX_CONCURRENT = 5;
+    let activeCount = 0;
+    const queue = [];
 
     // 主函数
     const focusColor = 'var(--b3-tooltips-color)';
@@ -173,10 +186,10 @@ JSON 结构如下所示：
                 transNodes.forEach(transEl => {
                     const contenteditable = transEl.previousElementSibling;
                     if(!contenteditable.matches('[contenteditable="true"]')) return;
-                    const transText = transEl.textContent;
+                    const transText = transEl.innerHTML;
                     transEl.remove();
                     if(transText?.trim()) {
-                        contenteditable.innerHTML += "\n" + transText;
+                        contenteditable.innerHTML += `<span data-type="ws-ai-trans-text">${transText}</span>`;
                         updateBlock(contenteditable);
                     }
                 });
@@ -233,20 +246,32 @@ JSON 结构如下所示：
                 if(!expertMode) {
                     // 普通模式
                     try {
-                        let transText = aiEngine === 'default' ? 
-                            await translateText(text, transTo) : 
-                            await siyuanAI(text, transTo);
-                        transText = formatTrans(transText);
-                        if(!areLeadingWhitespacesSame(text, transText)) transText = getLeadingWhitespace(text) + removeLeadingWhitespace(transText);
-                        transEl = contenteditable.nextElementSibling;
-                        if(!transEl?.matches('.trans-node')) return;
-                        transEl.innerHTML = !transText?.trim() || transText.trim() === text.trim() ? '' : transText;
+                        await runTask(async () => {
+                            let transText = aiEngine === 'default' ? 
+                                await translateText(text, transTo, timeoutCommon) : 
+                                await siyuanAI(text, transTo, timeoutCommon);
+                            transText = formatTrans(transText);
+                            if(!areLeadingWhitespacesSame(text, transText)) transText = getLeadingWhitespace(text) + removeLeadingWhitespace(transText);
+                            transEl = contenteditable.nextElementSibling;
+                            if(!transEl?.matches('.trans-node')) return;
+                            if(transText?.trim() && transText.trim() === text.trim()) {
+                                transEl.remove();
+                            } else if(!transText?.trim() || transText.trim() ==='Internal Server Error') {
+                                transEl.remove();
+                                console.log('可能已触发ai tokens 最大限额，建议少量选择后再翻译。 返回数据：', transText);
+                                showMessage('可能已触发ai tokens 最大限额，建议少量选择后再翻译。 返回数据：'+transText, true);
+                            } else {
+                                transEl.innerHTML = transText;
+                            }
+                        });
                     } catch(e) {
                         if (e.name === 'AbortError') {
                             transEl.remove();
                             console.log('翻译请求被手动中止');
+                            if(!stopping) showMessage('已超时', true);
                         } else {
                             console.error(e);
+                            showMessage(e?.message || '未知错误', true);
                         }
                     }
                 } else {
@@ -256,11 +281,18 @@ JSON 结构如下所示：
             });
             if(expertMode && Object.keys(data).length > 0) {
                 // 专家模式
-                const text = JSON.stringify(data);
-                const transText = aiEngine === 'default' ? 
-                    await translateText(text, transTo) : 
-                    await siyuanAI(text, transTo);
-                try{
+                try {
+                    const text = JSON.stringify(data);
+                    const transText = aiEngine === 'default' ? 
+                        await translateText(text, transTo, timeoutExpert) : 
+                        await siyuanAI(text, transTo, timeoutExpert);
+                    if(!transText || transText === 'Internal Server Error') {
+                        const transNodes = editor.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'.trans-node:has(.loading-icon)');
+                        transNodes.forEach(transEl => transEl.remove());
+                        console.log('可能超时或已触发ai tokens 最大限额，建议少量选择后再翻译。 返回数据：', transText);
+                        showMessage('可能超时或已触发ai tokens 最大限额，建议少量选择后再翻译。 返回数据：'+transText, true);
+                        return;
+                    }
                     const transResult = JSON.parse(transText.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim());
                     for(const [id, transText] of Object.entries(transResult)) {
                         if (stopping) break;
@@ -269,7 +301,11 @@ JSON 结构如下所示：
                         const contenteditable = editor.querySelector('[data-node-id="'+id+'"] [contenteditable="true"]');
                         const transEl = contenteditable?.nextElementSibling;
                         if(!transEl || !transEl?.matches('.trans-node')) continue;
-                        transEl.innerHTML = !transText?.trim() || transText.trim() === data[id]?.trim() ? '' : transText;
+                        if(!transText?.trim() || transText.trim() === data[id]?.trim()) {
+                            transEl.remove();
+                        } else {
+                            transEl.innerHTML = transText;
+                        }
                     }
                     data = {};
                     showMessage('全部翻译已完成');
@@ -278,8 +314,10 @@ JSON 结构如下所示：
                         const transNodes = editor.querySelectorAll((hasSelect?'.protyle-wysiwyg--select ':'')+'.trans-node:has(.loading-icon)');
                         transNodes.forEach(transEl => transEl.remove());
                         console.log('翻译请求被手动中止');
+                        if(!stopping) showMessage('已超时', true);
                     } else {
                         console.error(e);
+                        showMessage(e?.message || '未知错误', true);
                     }
                     data = {};
                     return;
@@ -491,5 +529,24 @@ JSON 结构如下所示：
     // 去除行首空白符
     function removeLeadingWhitespace(str) {
       return str.replace(/^\s+/, '');
+    }
+
+    // 任务队列
+    async function runTask(task) {
+      if (activeCount >= MAX_CONCURRENT) {
+        // 等待队列中有位置
+        await new Promise(resolve => queue.push(resolve));
+      }
+      activeCount++;
+      try {
+        await task();
+      } finally {
+        activeCount--;
+        if (queue.length > 0) {
+          // 触发下一个排队的任务
+          const next = queue.shift();
+          next();
+        }
+      }
     }
 }
