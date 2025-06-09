@@ -3,7 +3,8 @@
 // 目前仅支持在编辑器中使用
 // todo 极致性能优化，太复杂暂时不实现(可参考下文优化说明)
 // see https://pipe.b3log.org/blogs/wilsons/%E6%80%9D%E6%BA%90/%E5%AE%9E%E6%97%B6%E8%8E%B7%E5%8F%96%E5%85%89%E6%A0%87%E4%BD%8D%E7%BD%AE%E4%BC%98%E5%8C%96%E6%80%9D%E8%B7%AF
-// version 0.0.10.4
+// version 0.0.10.5
+// 0.0.10.5 修复公式，嵌入块，备注等关闭弹窗后光标定位不到问题
 // 0.0.10.4 修复av光标定位不准问题
 // 0.0.10.3 兼容编辑器被其他程序改变大小时光标定位不准问题
 // 0.0.10.2 兼容表格等空行元素定位不准问题
@@ -173,7 +174,9 @@
                 baseRect = rects[rects.length - 1];
             } else {
                 // 先判断是否是段落空行，段落空行直接通过段落获取
-                const cursorEl = range.startContainer;
+                const cursorEl = range.startContainer.nodeType === Node.TEXT_NODE
+                    ? range.startContainer.parentElement
+                    : range.startContainer;
                 const paragraph = findParentParagraph(cursorEl);
                 if (cursorEl && paragraph && !paragraph.textContent.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()) {
                     baseRect = cursorEl.getBoundingClientRect();
