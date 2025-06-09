@@ -175,7 +175,7 @@
                 // 先判断是否是段落空行，段落空行直接通过段落获取
                 const cursorEl = range.startContainer;
                 const paragraph = findParentParagraph(cursorEl);
-                if (paragraph && !paragraph.textContent.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()) {
+                if (cursorEl && paragraph && !paragraph.textContent.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()) {
                     baseRect = cursorEl.getBoundingClientRect();
                     lineEl = cursorEl;
                     rangePos = baseRect.left;
