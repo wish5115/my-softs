@@ -1,6 +1,7 @@
 // 行内js
 // see https://ld246.com/article/1749806156975
-// version 0.0.3
+// version 0.0.4
+// 0.0.4 彻底解决特殊字符被意外解析导致的错误问题
 // 0.0.3 修复模板导入时的反撇号等错误
 // 0.0.2 修复获取文档和块的bug
 // 使用示例
@@ -92,8 +93,8 @@
             await runCode(element, code);
         } catch (error) {
             const errorMsg = "<span class='inline-js-error-msg'>行内js执行出错:" + error.toString() + "</span>";
-            const formatCode = code.replace(/_esc_newline_/ig, '\n').replace(/"/g, "'''");
-            element.setAttribute('custom-js', formatCode);
+            //const formatCode = code.replace(/_esc_newline_/ig, '\n').replace(/"/g, "'''");
+            //element.setAttribute('custom-js', formatCode);
             element.dataset.content = Lute.EscapeHTMLStr(errorMsg).replace(/\$/g, '\\$');
             element.innerHTML = errorMsg;
             console.error("行内js执行出错:", error);
@@ -103,10 +104,11 @@
     // 执行用户代码
     async function runCode(element, code) {
         // 动态生成的函数体
-        const formatCode = code.replace(/_esc_newline_/ig, '\n').replace(/"/g, "'''");
+        const isBase64Str = isBase64(code);
+        const formatCode = isBase64Str?base64Decode(code):code.replace(/_esc_newline_/ig, '\n').replace(/"/g, "'''");
         const functionBody = `
             return (async () => {
-                ${formatCode.replace(/'''/g, '"')}
+                ${isBase64Str?formatCode:formatCode.replace(/'''/g, '"')}
             })();
         `;
 
@@ -175,7 +177,7 @@
         //if (!content) console.error("行内js输出错误: .custom-js-content元素不存在");
         //if (!content.innerText.trim()) content.innerHTML = '暂无输出内容';
         // 生成格式化的代码
-        element.setAttribute('custom-js', formatCode);
+        //element.setAttribute('custom-js', formatCode);
         //if (lastCursorPos) restoreCursorPos(lastCursorPos);
         if (lastCursorPos) restoreCursorPos(element.closest('[data-node-id]'), lastCursorPos);
     }
@@ -445,13 +447,12 @@
                                 spanElements.forEach((spanElement) => {
                                     // 获取 custom-code 属性
                                     let customCode = spanElement.getAttribute('custom-js');
-                                    if(isBase64(customCode)) customCode = base64Decode(customCode);
                                     if (customCode) {
                                         if (typeof onExecute === 'function') {
                                             // 如果提供了自定义回调函数，则使用它执行代码
                                             let dataContent = spanElement?.dataset?.content;
                                             if(dataContent) {
-                                                const code = customCode.replace(/'''/g, '"').replace(/_esc_newline_/ig, '\n');
+                                                const code = isBase64(customCode)?base64Decode(customCode):customCode.replace(/'''/g, '"').replace(/_esc_newline_/ig, '\n');
                                                 const content = Lute.UnEscapeHTMLStr(dataContent);
                                                 if(content.replace(/\\$/g, '$') === code) dataContent = '';
                                             }
@@ -460,7 +461,7 @@
                                             onExecute(customCode, spanElement);
                                         }
                                     }
-                                    // 匹配意外情况
+                                    // 匹配意外情况（使用了base64编码后这种意外情况不会出现了）
                                     if (spanElement.matches('[data-type="inline-math"]') &&
                                         spanElement.nextSibling?.nodeType === Node.TEXT_NODE &&
                                         spanElement.nextSibling?.textContent?.includes('custom-js')) {
@@ -468,7 +469,6 @@
                                         const match = spanElement.nextSibling.textContent.match(regex);
                                         if (match) {
                                             let customCode = match[2] || '';
-                                            if(isBase64(customCode)) customCode = base64Decode(customCode);
                                             if(spanElement) spanElement.innerHTML = 'Loading...';
                                             if(spanElement) onExecute(customCode, spanElement);
                                             const regex = /\{:\s*[^}]*?custom-js\s*=\s*(['"])(.*?)\1[^}]*?\}/g;
@@ -483,7 +483,6 @@
                             if (typeof onExecute === 'function') {
                                 // 如果提供了自定义回调函数，则使用它执行代码
                                 let customCode = node.getAttribute('custom-js');
-                                if(isBase64(customCode)) customCode = base64Decode(customCode);
                                 if (customCode) node.innerHTML = 'Loading...';
                                 if (customCode) onExecute(customCode, node);
                             }
@@ -494,7 +493,6 @@
                                 const element = node.closest('[custom-js]');
                                 // 如果提供了自定义回调函数，则使用它执行代码
                                 let customCode = element?.getAttribute('custom-js');
-                                if(isBase64(customCode)) customCode = base64Decode(customCode);
                                 if (customCode) element.innerHTML = 'Loading...';
                                 if (customCode) onExecute(customCode, element);
                             }
@@ -560,7 +558,10 @@
 
             // 获取输入框内容
             const textarea = protyleUtil.querySelector('textarea');
-            textarea.value = element.getAttribute('custom-js').replace(/_esc_newline_/ig, '\n').replace(/'''/g, '"');
+            let code = element.getAttribute('custom-js');
+            const isBase64Str = isBase64(code);
+            if(isBase64Str) code = base64Decode(code);
+            textarea.value = isBase64Str ? code : code.replace(/_esc_newline_/ig, '\n').replace(/'''/g, '"');
             textarea.select();
             textarea.style.width = codeEditorWidth || '480px';
             textarea.style.height = codeEditorHeight || '96px';
@@ -569,7 +570,8 @@
             textarea.addEventListener('input', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                element.setAttribute('custom-js', textarea.value.replace(/"/g, "'''"));
+                element.setAttribute('custom-js', base64Encode(textarea.value));
+                //element.setAttribute('custom-js', textarea.value.replace(/"/g, "'''"));
             }, true);
 
             // 拦截关闭
