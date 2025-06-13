@@ -92,6 +92,8 @@
             await runCode(element, code);
         } catch (error) {
             const errorMsg = "<span class='inline-js-error-msg'>行内js执行出错:" + error.toString() + "</span>";
+            const formatCode = code.replace(/_esc_newline_/ig, '\n').replace(/"/g, "'''");
+            element.setAttribute('custom-js', formatCode);
             element.dataset.content = Lute.EscapeHTMLStr(errorMsg).replace(/\$/g, '\\$');
             element.innerHTML = errorMsg;
             console.error("行内js执行出错:", error);
