@@ -443,7 +443,7 @@
                                 spanElements.forEach((spanElement) => {
                                     // 获取 custom-code 属性
                                     let customCode = spanElement.getAttribute('custom-js');
-                                    if(isUnicode(customCode)) customCode = unescapeUnicode(customCode);
+                                    if(isBase64(customCode)) customCode = base64Decode(customCode);
                                     if (customCode) {
                                         if (typeof onExecute === 'function') {
                                             // 如果提供了自定义回调函数，则使用它执行代码
@@ -466,7 +466,7 @@
                                         const match = spanElement.nextSibling.textContent.match(regex);
                                         if (match) {
                                             let customCode = match[2] || '';
-                                            if(isUnicode(customCode)) customCode = unescapeUnicode(customCode);
+                                            if(isBase64(customCode)) customCode = base64Decode(customCode);
                                             if(spanElement) spanElement.innerHTML = 'Loading...';
                                             if(spanElement) onExecute(customCode, spanElement);
                                             const regex = /\{:\s*[^}]*?custom-js\s*=\s*(['"])(.*?)\1[^}]*?\}/g;
@@ -481,7 +481,7 @@
                             if (typeof onExecute === 'function') {
                                 // 如果提供了自定义回调函数，则使用它执行代码
                                 let customCode = node.getAttribute('custom-js');
-                                if(isUnicode(customCode)) customCode = unescapeUnicode(customCode);
+                                if(isBase64(customCode)) customCode = base64Decode(customCode);
                                 if (customCode) node.innerHTML = 'Loading...';
                                 if (customCode) onExecute(customCode, node);
                             }
@@ -492,7 +492,7 @@
                                 const element = node.closest('[custom-js]');
                                 // 如果提供了自定义回调函数，则使用它执行代码
                                 let customCode = element?.getAttribute('custom-js');
-                                if(isUnicode(customCode)) customCode = unescapeUnicode(customCode);
+                                if(isBase64(customCode)) customCode = base64Decode(customCode);
                                 if (customCode) element.innerHTML = 'Loading...';
                                 if (customCode) onExecute(customCode, element);
                             }
@@ -594,7 +594,7 @@
             buttonElement.onclick = () => {
                 // 复制为模板
                 const output = textarea.value.replace(/\n/g, '_esc_newline_').replace(/"/g, "'''");
-                navigator.clipboard.writeText('$Loading${: custom-js="' + escapeUnicode(output) + '"}');
+                navigator.clipboard.writeText('$Loading${: custom-js="' + base64Encode(output) + '"}');
                 buttonElement.innerHTML = '已复制';
                 setTimeout(() => {
                     buttonElement.innerHTML = svg;
@@ -906,27 +906,14 @@
         }
     },true);
 
-    function escapeUnicode(str) {
-        let result = '';
-        for (let i = 0; i < str.length; i++) {
-            const codePoint = str.codePointAt(i);
-            const hex = codePoint.toString(16).padStart(4, '0');
-            result += `;u${hex}`;
-            // 如果是辅助平面字符（emoji），跳过下一个代理项
-            if (codePoint > 0xFFFF) {
-                i++;
-            }
-        }
-        return 'UnicodeData:'+result;
+    function base64Encode(str) {
+        return 'Base64Text:'+btoa(unescape(encodeURIComponent(str)));
     }
-    function unescapeUnicode(str) {
-        str = str.replace(/^UnicodeData:/, '');
-        return str.replace(/;u([0-9a-fA-F]{4})/g, function(_, hex) {
-            return String.fromCharCode(parseInt(hex, 16));
-        });
+    function base64Decode(str) {
+        str = str.replace(/^Base64Text:/, '');
+        return decodeURIComponent(escape(atob(str)));
     }
-
-    function isUnicode(str) {
-        return /^UnicodeData:/.test(str);
+    function isBase64(str) {
+        return str.startsWith('Base64Text:');
     }
 })();
