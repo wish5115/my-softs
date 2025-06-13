@@ -8,7 +8,7 @@
 //     return '''今日天气：''' + text.trim(); // 双引号可以用3个单引号代替
 // ">Loading</span>
 //或
-// $Loading${: custom-js="return 'Hello Inline JS'"}
+// $Loading${: custom-js="return 'Hello Inline JS';"}
 (() => {
     // 是否插入时弹出编辑窗空，true 弹窗 false 不弹窗
     // 注意，从模板插入不会弹窗
@@ -826,7 +826,7 @@
                     const inlineJsEl = hintListEl.querySelector('[data-id="inlineJS"]');
                     inlineJsEl.addEventListener('click', async () => {
                         window.requestAnimationFrame(async () => {
-                            insertToEditor(`$Loading\${: custom-js="return 'Hello Inline JS'"}`);
+                            insertToEditor(`$Loading\${: custom-js="return 'Hello Inline JS';"}`);
                             const newJsEl = event.target.closest('.protyle').querySelector('.protyle-content [custom-js][data-content="Loading"]');
                             await sleep(50);
                             newJsEl.focus();
@@ -845,7 +845,7 @@
         // 监控斜杠菜单插入修改光标位置
         if (event.target.closest('.protyle')?.querySelector('.protyle-hint:not(.fn__none) .b3-list-item--focus[data-id="inlineJS"]')) {
             window.requestAnimationFrame(async () => {
-                insertToEditor(`$Loading\${: custom-js="return 'Hello Inline JS'"}`);
+                insertToEditor(`$Loading\${: custom-js="return 'Hello Inline JS';"}`);
                 const newJsEl = event.target.closest('.protyle').querySelector('.protyle-content [custom-js][data-content="Loading"]');
                 await sleep(50);
                 newJsEl.focus();
