@@ -80,9 +80,11 @@
                 element.clickHandle = true;
                 listenMathBoxShow(element);
                 // 解决公式无法输入$的问题
-                observeDataChange(element, (code)=>{
+                const observeDataChangeHandle = (code)=>{
                     element.setAttribute('data-content', element.getAttribute('data-content').replace(/\$/g, '\\$'));
-                })
+                    if(!element.observerDataChange) observeDataChange(element, observeDataChangeHandle);
+                };
+                observeDataChange(element, observeDataChangeHandle);
             });
             // 防止输入光标丢失问题
             if (lastCursorPos && lastInputChar && !element.textContent.startsWith('Loading')){
@@ -509,17 +511,19 @@
         return () => observer.disconnect();
     }
 
-    // 暂未用到
+    // 监控公式data-content数据变化
     function observeDataChange(element, callback) {
-        const observer = new MutationObserver((mutationsList) => {
+        if(element.observerDataChange) return;
+        element.observerDataChange = new MutationObserver((mutationsList) => {
             for (let mutation of mutationsList) {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'data-content') {
-                    observer.disconnect();
+                    element.observerDataChange.disconnect();
+                    element.observerDataChange = null;
                     callback(element.getAttribute('data-content'));
                 }
             }
         });
-        observer.observe(element, {
+        element.observerDataChange.observe(element, {
             attributes: true // 观察属性变化
         });
     }
@@ -570,6 +574,7 @@
             textarea.addEventListener('input', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
+                // 保存js数据
                 element.setAttribute('custom-js', base64Encode(textarea.value));
                 //element.setAttribute('custom-js', textarea.value.replace(/"/g, "'''"));
             }, true);
@@ -836,7 +841,7 @@
                     const inlineJsEl = hintListEl.querySelector('[data-id="inlineJS"]');
                     inlineJsEl.addEventListener('click', async () => {
                         window.requestAnimationFrame(async () => {
-                            insertToEditor(`$Loading\${: custom-js="return 'Hello Inline JS';"}`);
+                            insertToEditor(`$Loading\${: custom-js="${base64Encode(`return 'Hello Inline JS';`)}"}`);
                             const newJsEl = event.target.closest('.protyle').querySelector('.protyle-content [custom-js][data-content="Loading"]');
                             await sleep(50);
                             newJsEl.focus();
@@ -855,7 +860,7 @@
         // 监控斜杠菜单插入修改光标位置
         if (event.target.closest('.protyle')?.querySelector('.protyle-hint:not(.fn__none) .b3-list-item--focus[data-id="inlineJS"]')) {
             window.requestAnimationFrame(async () => {
-                insertToEditor(`$Loading\${: custom-js="return 'Hello Inline JS';"}`);
+                insertToEditor(`$Loading\${: custom-js="${base64Encode(`return 'Hello Inline JS';`)}"}`);
                 const newJsEl = event.target.closest('.protyle').querySelector('.protyle-content [custom-js][data-content="Loading"]');
                 await sleep(50);
                 newJsEl.focus();
