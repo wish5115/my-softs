@@ -451,7 +451,7 @@
                                             // 如果提供了自定义回调函数，则使用它执行代码
                                             let dataContent = spanElement?.dataset?.content;
                                             if(dataContent) {
-                                                const code = customCode.replace(/'''/g, '"');
+                                                const code = customCode.replace(/'''/g, '"').replace(/_esc_newline_/ig, '\n');
                                                 const content = Lute.UnEscapeHTMLStr(dataContent);
                                                 if(content.replace(/\\$/g, '$') === code) dataContent = '';
                                             }
