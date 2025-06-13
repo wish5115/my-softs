@@ -1,6 +1,7 @@
 // 行内js
 // see https://ld246.com/article/1749806156975
-// version 0.0.1
+// version 0.0.2
+// 0.0.2 修复获取文档和块的bug
 // 使用示例
 // <span data-type="text" custom-js="
 //     const weather = await fetch('https://wttr.in/?format=1');
@@ -138,8 +139,8 @@
         const result = await userFunction(
             element,
             element,
-            getBlock(element),
-            getDoc(element),
+            await getBlock(element),
+            await getDoc(element),
             getProtyle(),
             querySql,
             fetchSyncPost,
@@ -194,20 +195,20 @@
         });
     }
 
-    function getBlock(element) {
+    async function getBlock(element) {
         const blockEl = element.closest("[data-node-id]");
         const blockId = blockEl.dataset.nodeId;
-        let block = querySql(`select * from blocks where id = '${blockId}'`);
-        block = blockId[0] || {};
+        let block = await querySql(`select * from blocks where id = '${blockId}'`);
+        block = block[0] || {};
         block.element = blockEl;
         block.id = blockId;
         return block;
     }
 
-    function getDoc(element) {
+    async function getDoc(element) {
         const protyle = getProtyle();
         const docId = protyle.block.rootID;
-        let doc = querySql(`select * from blocks where id = '${docId}'`);
+        let doc = await querySql(`select * from blocks where id = '${docId}'`);
         doc = doc[0] || {};
         return doc;
     }
