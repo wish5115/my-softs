@@ -1,5 +1,5 @@
 // 行内js
-// see 
+// see https://ld246.com/article/1749806156975
 // version 0.0.1
 // 使用示例
 // <span data-type="text" custom-js="
@@ -605,7 +605,7 @@
             exportBtn.remove();
             const helpBtn = protyleUtil.querySelector('[data-type="help"]');
             helpBtn.onclick = () => {
-                window.open('https://ld246.com/article/1648437535737');
+                window.open('https://ld246.com/article/1749806156975');
             };
 
             // 删除刷新按钮
