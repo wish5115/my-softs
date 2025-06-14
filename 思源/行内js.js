@@ -1,6 +1,7 @@
 // 行内js
 // see https://ld246.com/article/1749806156975
-// version 0.0.4
+// version 0.0.5
+// 0.0.5 解决特殊字符导致报错解析错误的问题
 // 0.0.4 彻底解决特殊字符思源被意外解析导致的错误问题
 // 0.0.3 修复模板导入时的反撇号等错误
 // 0.0.2 修复获取文档和块的bug
@@ -12,6 +13,7 @@
 // ">Loading</span>
 //或
 // $Loading${: custom-js="return 'Hello Inline JS';"}
+// todo 方案2：直接用inline-math前缀标记实现，应该更加兼容和稳定
 (() => {
     // 是否插入时弹出编辑窗空，true 弹窗 false 不弹窗
     // 注意，从模板插入不会弹窗
@@ -81,7 +83,8 @@
                 listenMathBoxShow(element);
                 // 解决公式无法输入$的问题
                 const observeDataChangeHandle = (code)=>{
-                    element.setAttribute('data-content', element.getAttribute('data-content').replace(/\$/g, '\\$'));
+                    element.setAttribute('data-content', base64Encode(element.getAttribute('data-content')));
+                    //element.setAttribute('data-content', element.getAttribute('data-content').replace(/\$/g, '\\$'));
                     if(!element.observerDataChange) observeDataChange(element, observeDataChangeHandle);
                 };
                 observeDataChange(element, observeDataChangeHandle);
@@ -97,7 +100,8 @@
             const errorMsg = "<span class='inline-js-error-msg'>行内js执行出错:" + error.toString() + "</span>";
             //const formatCode = code.replace(/_esc_newline_/ig, '\n').replace(/"/g, "'''");
             //element.setAttribute('custom-js', formatCode);
-            element.dataset.content = Lute.EscapeHTMLStr(errorMsg).replace(/\$/g, '\\$');
+            element.dataset.content = base64Encode(element.getAttribute('data-content'));
+            //element.dataset.content = Lute.EscapeHTMLStr(errorMsg).replace(/\$/g, '\\$');
             element.innerHTML = errorMsg;
             console.error("行内js执行出错:", error);
         }
@@ -455,8 +459,8 @@
                                             let dataContent = spanElement?.dataset?.content;
                                             if(dataContent) {
                                                 const code = isBase64(customCode)?base64Decode(customCode):customCode.replace(/'''/g, '"').replace(/_esc_newline_/ig, '\n');
-                                                const content = Lute.UnEscapeHTMLStr(dataContent);
-                                                if(content.replace(/\\$/g, '$') === code) dataContent = '';
+                                                const content = isBase64(dataContent)?base64Decode(dataContent):Lute.UnEscapeHTMLStr(dataContent);
+                                                if((isBase64(dataContent)?content:content.replace(/\\$/g, '$')) === code) dataContent = '';
                                             }
                                             const html = dataContent||'Loading...';
                                             spanElement.innerHTML = html === 'Loading' ? 'Loading...' : html;
