@@ -1,6 +1,7 @@
 // 行内js
 // see https://ld246.com/article/1749806156975
-// version 0.0.5
+// version 0.0.6
+// 0.0.6 修复0.0.5逻辑上的bug
 // 0.0.5 解决特殊字符导致报错解析错误的问题
 // 0.0.4 彻底解决特殊字符思源被意外解析导致的错误问题
 // 0.0.3 修复模板导入时的反撇号等错误
@@ -461,6 +462,7 @@
                                                 const code = isBase64(customCode)?base64Decode(customCode):customCode.replace(/'''/g, '"').replace(/_esc_newline_/ig, '\n');
                                                 const content = isBase64(dataContent)?base64Decode(dataContent):Lute.UnEscapeHTMLStr(dataContent);
                                                 if((isBase64(dataContent)?content:content.replace(/\\$/g, '$')) === code) dataContent = '';
+                                                else dataContent = content;
                                             }
                                             const html = dataContent||'Loading...';
                                             spanElement.innerHTML = html === 'Loading' ? 'Loading...' : html;
