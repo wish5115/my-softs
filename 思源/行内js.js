@@ -1,6 +1,7 @@
 // 行内js
 // see https://ld246.com/article/1749806156975
-// version 0.0.6
+// version 0.0.7
+// 0.0.7 改善输入时的体验，仅在执行和刷新时重新执行代码，输入期间不再执行代码
 // 0.0.6 修复0.0.5逻辑上的bug
 // 0.0.5 解决特殊字符导致报错解析错误的问题
 // 0.0.4 彻底解决特殊字符思源被意外解析导致的错误问题
@@ -92,7 +93,12 @@
             });
             // 防止输入光标丢失问题
             if (lastCursorPos && lastInputChar && !element.textContent.startsWith('Loading')){
-                restoreCursorPos(element.closest('[data-node-id]'), lastCursorPos);
+                if(lastInputChar === 'paste') {
+                    lastCursorPos = null;
+                } else {
+                    // 由于这里没有重执行代码，其实这里不用恢复光标了，以防万一先保留吧
+                    restoreCursorPos(element.closest('[data-node-id]'), lastCursorPos);
+                }
                 lastInputChar = null;
                 return;
             }
@@ -104,6 +110,8 @@
             element.dataset.content = base64Encode(element.getAttribute('data-content'));
             //element.dataset.content = Lute.EscapeHTMLStr(errorMsg).replace(/\$/g, '\\$');
             element.innerHTML = errorMsg;
+            restoreCursorPos(element.closest('[data-node-id]'), lastCursorPos);
+            lastInputChar = null;
             console.error("行内js执行出错:", error);
         }
     }
@@ -809,13 +817,24 @@
     // }
 
     // 记录最后输入的光标位置
-    document.addEventListener('input', async (event) => {
+    let hasPasted = false;
+    const recordLastCursorPos = async (event, char) => {
         const node = getCursorElement()?.closest('.protyle-wysiwyg [data-node-id]');
         if (node) {
             lastCursorPos = saveCursorPos(node);
-            lastInputChar = event.data;
+            //deleteContentBackward deleteContentForward
+            if(!char && event.inputType && event.inputType.startsWith('deleteContent')) {
+                char = 'delete';
+            }
+            if(hasPasted && char === 'paste') return;
+            hasPasted = true;
+            setTimeout(() => { hasPasted = false; }, 100);
+            lastInputChar = char || event.data;
         }
-    }, true);
+    };
+    document.addEventListener('input', recordLastCursorPos, true);
+    document.addEventListener('cut', (event)=>recordLastCursorPos(event, 'cut'), true);
+    document.addEventListener('paste', (event)=>recordLastCursorPos(event, 'paste'), true);
 
     // 监控斜杠菜单被打开
     let lastFilterText = '';
