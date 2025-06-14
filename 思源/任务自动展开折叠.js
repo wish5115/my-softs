@@ -6,7 +6,7 @@
     ];
     
     observeProtyleLoaded((protyle)=>{
-        const tasks = protyle.querySelectorAll('.protyle-wysiwyg [data-node-index][data-subtype="t"] > [data-subtype="t"]:not([fold="1"])');
+        const tasks = protyle.querySelectorAll('.protyle-wysiwyg [data-node-index][data-subtype="t"] > [data-subtype="t"]:not([fold="1"]):has([data-subtype="t"])');
         tasks.forEach(task => {
             if(excludes.includes(task.dataset.nodeId)) return;
             foldBlock(task.dataset.nodeId, true);
@@ -14,12 +14,12 @@
     });
     document.addEventListener('click', (event)=>{
         if(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
-        const firstTask = event.target.closest('.protyle-wysiwyg [data-node-index][data-subtype="t"] > [data-subtype="t"]');
+        const firstTask = event.target.closest('.protyle-wysiwyg [data-node-index][data-subtype="t"] > [data-subtype="t"]:has([data-subtype="t"])');
         if(firstTask) {
             if(!excludes.includes(firstTask.dataset.nodeId)) foldBlock(firstTask.dataset.nodeId, false);
         } else {
             const wysiwyg = event.target.closest('.protyle-wysiwyg') || getWysiwyg();
-            const tasks = wysiwyg.querySelectorAll('[data-node-index][data-subtype="t"] > [data-subtype="t"]');
+            const tasks = wysiwyg.querySelectorAll('[data-node-index][data-subtype="t"] > [data-subtype="t"]:has([data-subtype="t"])');
             tasks.forEach(task => {
                 if(excludes.includes(task.dataset.nodeId)) return;
                 foldBlock(task.dataset.nodeId, true);
