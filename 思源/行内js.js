@@ -454,6 +454,7 @@
         } else {
             element.innerHTML = html;
         }
+        updateDataContent(element, element.innerHTML);
     }
 
     //////////////////// 监听custom-js 加载 /////////////////////////
