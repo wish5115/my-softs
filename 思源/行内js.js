@@ -1,6 +1,7 @@
 // 行内js
 // see https://ld246.com/article/1749806156975
-// version 0.0.8
+// version 0.0.9
+// 0.0.9 增加renderOnce和convertToTextForever及增加防止死循环
 // 0.0.8 解决base64重复编码问题
 // 0.0.7 改善输入时的体验，仅在执行和刷新时重新执行代码，输入期间不再执行代码
 // 0.0.6 修复0.0.5逻辑上的bug
@@ -53,6 +54,8 @@
     // 全局变量
     let lastCursorPos = null,
         lastInputChar = null,
+        onceRendering = false,
+        convertToTexting = false,
         shareData = {};
     window.inlineJsShareData = shareData;
 
@@ -154,6 +157,8 @@
             "setShareData",
             "shareData",
             "render",
+            "renderOnce",
+            "convertToTextForever",
             "updateDataContent",
             functionBody
         );
@@ -183,6 +188,8 @@
             setShareData,
             shareData,
             render,
+            renderOnce,
+            convertToTextForever,
             updateDataContent
         );
         // 更新结果
@@ -190,6 +197,10 @@
             element.innerHTML = result; //`<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base custom-js-content">${result}</span></span></span>`;
             updateDataContent(element, result);
             //element.dataset.content = Lute.EscapeHTMLStr(result).replace(/\$/g, '\\$');
+            if(!onceRendering && !convertToTexting && element.getAttribute("custom-rendered-result")) {
+                element.removeAttribute("custom-rendered-result");
+                updateBlock(element);
+            }
         }
         // 未输出时输出提示信息
         if(!allowOutputEmpty) setTimeout(() => {
@@ -214,7 +225,7 @@
         element.dataset.content = isBase64(content)?content:base64Encode(content); //Lute.EscapeHTMLStr(content).replace(/\$/g, '\\$');
     }
 
-    function updateBlock(block, data = '', type = 'dom') {
+    async function updateBlock(block, data = '', type = 'dom') {
         let blockEl, blockId = block;
         if (block?.nodeType === 1) {
             blockEl = block.closest("[data-node-id]");
@@ -223,7 +234,7 @@
         }
         if (!blockId) return;
 
-        fetchSyncPost('/api/block/updateBlock', {
+        await fetchSyncPost('/api/block/updateBlock', {
             "dataType": type || "dom",
             "data": data || blockEl.outerHTML,
             "id": blockId
@@ -449,12 +460,41 @@
     }
 
     function render(element, html, append = false) {
-        if (append) {
-            element.innerHTML += html;
-        } else {
-            element.innerHTML = html;
-        }
+        append ? element.innerHTML += html : element.innerHTML = html;
         updateDataContent(element, element.innerHTML);
+        if(!onceRendering && !convertToTexting && element.getAttribute("custom-rendered-result")) {
+            element.removeAttribute("custom-rendered-result");
+            updateBlock(element);
+        }
+    }
+
+    function renderOnce(element, html, append = false) {
+        const lastRendered = element.getAttribute("custom-rendered-result");
+        if(lastRendered) {
+            element.innerHTML = base64Decode(lastRendered);
+            return;
+        }
+        append ? element.innerHTML += html : element.innerHTML = html;
+        element.setAttribute("custom-rendered-result", base64Encode(element.innerHTML));
+        onceRendering = true;
+        updateBlock(element);
+        setTimeout(() => onceRendering = false, 100);
+    }
+
+    async function convertToTextForever(element, html) {
+        if (!(element instanceof HTMLElement)) return;
+        element.innerHTML = html;
+        // 创建纯文本节点
+        const textNode = document.createTextNode(element.textContent);
+        // 替换元素
+        const parentNode = element.parentNode;
+        if (parentNode) {
+            parentNode.replaceChild(textNode, element);
+            convertToTexting = true;
+            await updateBlock(parentNode);
+            insertCursorAfterElement(textNode);
+            setTimeout(() => convertToTexting = false, 50);
+        }
     }
 
     //////////////////// 监听custom-js 加载 /////////////////////////
@@ -475,6 +515,13 @@
                         if (node.nodeType === Node.ELEMENT_NODE && node.getAttribute('data-node-id')) {
                             const spanElements = node.querySelectorAll('[custom-js], [data-type="inline-math"]');
                             if (spanElements.length > 0) {
+                                // 防止死循环
+                                if(!node.count) {
+                                    node.count = 0;
+                                    setTimeout(() => node.count = 0, 500);
+                                }
+                                if(node.count >= 100) return;
+                                node.count++;
                                 spanElements.forEach((spanElement) => {
                                     // 获取 custom-code 属性
                                     let customCode = spanElement.getAttribute('custom-js');
