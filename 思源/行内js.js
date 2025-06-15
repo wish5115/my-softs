@@ -1,6 +1,7 @@
 // 行内js
 // see https://ld246.com/article/1749806156975
-// version 0.0.7
+// version 0.0.8
+// 0.0.8 解决base64重复编码问题
 // 0.0.7 改善输入时的体验，仅在执行和刷新时重新执行代码，输入期间不再执行代码
 // 0.0.6 修复0.0.5逻辑上的bug
 // 0.0.5 解决特殊字符导致报错解析错误的问题
@@ -107,7 +108,8 @@
             const errorMsg = "<span class='inline-js-error-msg'>行内js执行出错:" + error.toString() + "</span>";
             //const formatCode = code.replace(/_esc_newline_/ig, '\n').replace(/"/g, "'''");
             //element.setAttribute('custom-js', formatCode);
-            element.dataset.content = base64Encode(element.getAttribute('data-content'));
+            updateDataContent(element, element.getAttribute('data-content'));
+            //element.dataset.content = base64Encode(element.getAttribute('data-content'));
             //element.dataset.content = Lute.EscapeHTMLStr(errorMsg).replace(/\$/g, '\\$');
             element.innerHTML = errorMsg;
             restoreCursorPos(element.closest('[data-node-id]'), lastCursorPos);
@@ -152,6 +154,7 @@
             "setShareData",
             "shareData",
             "render",
+            "updateDataContent",
             functionBody
         );
 
@@ -179,14 +182,22 @@
             getShareData,
             setShareData,
             shareData,
-            render
+            render,
+            updateDataContent
         );
         // 更新结果
-        if(result !== undefined) element.innerHTML = result; //`<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base custom-js-content">${result}</span></span></span>`;
-        element.dataset.content = Lute.EscapeHTMLStr(result).replace(/\$/g, '\\$');
+        if(result !== undefined) {
+            element.innerHTML = result; //`<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base custom-js-content">${result}</span></span></span>`;
+            updateDataContent(element, result);
+            //element.dataset.content = Lute.EscapeHTMLStr(result).replace(/\$/g, '\\$');
+        }
         // 未输出时输出提示信息
         if(!allowOutputEmpty) setTimeout(() => {
-            if (!element.innerText.trim()) element.innerHTML = '暂无内容输出';
+            if (!element.innerText.trim()) {
+                element.innerHTML = '暂无内容输出';
+                updateDataContent(element, element.innerHTML);
+                //element.dataset.content = Lute.EscapeHTMLStr(element.innerHTML).replace(/\$/g, '\\$');
+            }
         }, checkOutputEmptyDelay);
         //const content = element.querySelector('.custom-js-content');
         //if (!content) console.error("行内js输出错误: .custom-js-content元素不存在");
@@ -198,6 +209,10 @@
     }
 
     ///////////////// 功能函数 ///////////////////////////
+
+    function updateDataContent(element, content) {
+        element.dataset.content = isBase64(content)?content:base64Encode(content); //Lute.EscapeHTMLStr(content).replace(/\$/g, '\\$');
+    }
 
     function updateBlock(block, data = '', type = 'dom') {
         let blockEl, blockId = block;
@@ -941,13 +956,17 @@
     },true);
 
     function base64Encode(str) {
+        if(isBase64(str)) return str; // 防止重复编码
+        if(typeof str !== 'string') str += '';
         return 'Base64Text:'+btoa(unescape(encodeURIComponent(str)));
     }
     function base64Decode(str) {
+        if(typeof str !== 'string') str += '';
         str = str.replace(/^Base64Text:/, '');
         return decodeURIComponent(escape(atob(str)));
     }
     function isBase64(str) {
-        return str.startsWith('Base64Text:');
+        if(typeof str !== 'string') str += '';
+        return (str+'').startsWith('Base64Text:');
     }
 })();
