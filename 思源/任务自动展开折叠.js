@@ -1,4 +1,5 @@
-// 任务自动展开折叠
+// 任务自动展开折叠（目前仅支持对主任务展开折叠）
+// 快捷键Alt + T 展开所有任务
 (()=>{
     // 这些任务将不受该功能影响
     const excludes = [
@@ -26,6 +27,20 @@
             });
         }
     });
+    // Alt + T 展开所有任务
+    document.addEventListener('keydown', function(event) {
+        // 检查是否按下了 Alt + T
+        if (event.altKey && event.code === 'KeyT' && !event.ctrlKey && !event.shiftKey && !event.metaKey) {
+            // 阻止浏览器默认行为（如果有）
+            event.preventDefault();
+            // 展开所有任务
+            const tasks = getWysiwyg()?.querySelectorAll('.protyle-wysiwyg [data-node-index][data-subtype="t"] > [data-subtype="t"][fold="1"]:has([data-subtype="t"])');
+            if(tasks && tasks.length) tasks.forEach(task => {
+                if(excludes.includes(task.dataset.nodeId)) return;
+                foldBlock(task.dataset.nodeId, false);
+            });
+        }
+    }, true);
     // 折叠/展开块
     async function foldBlock(id, isFold = true) {
         const result = await requestApi('/api/block/' + (isFold ? 'foldBlock' : 'unfoldBlock'), {id: id});
@@ -35,6 +50,9 @@
         return await (await fetch(url, {method: method, body: JSON.stringify(data||{})})).json();
     }
     function getWysiwyg() {
+        if(document.querySelector('.block__popover--open')) {
+            return document.querySelector('.block__popover--open').querySelector('.protyle-wysiwyg');
+        }
         return document.querySelector('[data-type="wnd"].layout__wnd--active .protyle:not(.fn__none) .protyle-wysiwyg.protyle-wysiwyg--attr')||document.querySelector('[data-type="wnd"] .protyle:not(.fn__none) .protyle-wysiwyg.protyle-wysiwyg--attr');
     }
     // 监听protyle加载完成，注意这个是开始加载完成时，不是加载时
