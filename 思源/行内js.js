@@ -1,6 +1,7 @@
 // 行内js
 // see https://ld246.com/article/1749806156975
-// version 0.0.9
+// version 0.0.10
+// 0.0.10 增加notCheckEmptyTextContent
 // 0.0.9 增加renderOnce和convertToTextForever及增加防止死循环
 // 0.0.8 解决base64重复编码问题
 // 0.0.7 改善输入时的体验，仅在执行和刷新时重新执行代码，输入期间不再执行代码
@@ -160,6 +161,7 @@
             "renderOnce",
             "convertToTextForever",
             "updateDataContent",
+            "notCheckEmptyTextContent",
             functionBody
         );
 
@@ -190,7 +192,8 @@
             render,
             renderOnce,
             convertToTextForever,
-            updateDataContent
+            updateDataContent,
+            notCheckEmptyTextContent
         );
         // 更新结果
         if(result !== undefined) {
@@ -203,7 +206,7 @@
             }
         }
         // 未输出时输出提示信息
-        if(!allowOutputEmpty) setTimeout(() => {
+        if(!allowOutputEmpty && formatCode.indexOf('notCheckEmptyTextContent()') === -1) setTimeout(() => {
             if (!element.innerText.trim()) {
                 element.innerHTML = '暂无内容输出';
                 updateDataContent(element, element.innerHTML);
@@ -496,6 +499,8 @@
             setTimeout(() => convertToTexting = false, 50);
         }
     }
+
+    function notCheckEmptyTextContent() {}
 
     //////////////////// 监听custom-js 加载 /////////////////////////
 
