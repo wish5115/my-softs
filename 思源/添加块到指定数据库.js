@@ -2,13 +2,14 @@
 // see https://ld246.com/article/1746153210116
 // 注意：只能在块菜单中操作（你的右键可能不是块菜单）
 // 本应用已全部用完Achuan-2大佬提供的所有api see https://ld246.com/article/1733365731025
-// version 0.0.7
+// version 0.0.8
 // 0.0.2 （已废弃）
 // 0.0.3 修改参数配置方式
 // 0.0.4 修复仅对当前文档中的选中块起作用
 // 0.0.5 支持叶归等第三方非标准思源dom结构
 // 0.0.6 增加附加字段功能
 // 0.0.7 增加可同时对选中块增加自定义属性
+// 0.0.8 修复批量调添加可能扩展字段无法被添加的意外情况
 (()=>{
     // 是否开启，同时添加其他字段 true 开启 false 不开启
     // 开启时，需要配置menus中的otherCols字段信息（可参考下面的示例）
@@ -134,10 +135,10 @@
                     col.keyID = keyID;
                 });
                 // 添加属性到数据库
-                addColsToAv(blockIds, otherCols, avId);
+                await addColsToAv(blockIds, otherCols, avId);
             }
             // 给选中块添加自定义属性
-            if(isEnableCustomAttrsInSelectedBlock) setBlocksAttrs(blockIds, customAttrs);
+            if(isEnableCustomAttrsInSelectedBlock) await setBlocksAttrs(blockIds, customAttrs);
         }
         // 非绑定块
         else {
@@ -162,11 +163,11 @@
                     col.keyID = keyID;
                 });
             }
-            addBlocksToAvNoBind(blocks, avId, pkKeyID, keyID, otherCols);
+            await addBlocksToAvNoBind(blocks, avId, pkKeyID, keyID, otherCols);
 
             // 给选中块添加自定义属性
             const blockIds = [...blocks].map(block => block.dataset.nodeId);
-            if(isEnableCustomAttrsInSelectedBlock) setBlocksAttrs(blockIds, customAttrs);
+            if(isEnableCustomAttrsInSelectedBlock) await setBlocksAttrs(blockIds, customAttrs);
         }
     }
     // 通过块id获取数据库id
@@ -215,13 +216,13 @@
         blockIds = typeof blockIds === 'string' ? [blockIds] : blockIds;
         for(const blockId of blockIds) {
             for(const col of cols) {
-                if(!col.keyID) return;
+                if(!col.keyID) continue;
                 const cellID = await getCellIdByRowIdAndKeyId(blockId, col.keyID, avID);
-                if(!cellID) return;
+                if(!cellID) continue;
                 let colData = {avID: avID, keyID: col.keyID, rowID: blockId, cellID};
-                if(typeof col.getColValue !== 'function') return;
+                if(typeof col.getColValue !== 'function') continue;
                 const colValue = await col.getColValue(col.keyID, blockId, cellID, avID);
-                if(typeof colValue !== 'object') return;
+                if(typeof colValue !== 'object') continue;
                 colData.value = colValue;
                 const result = await requestApi("/api/av/setAttributeViewBlockAttr", colData);
                 if(!result || result.code !== 0) console.error(result);
