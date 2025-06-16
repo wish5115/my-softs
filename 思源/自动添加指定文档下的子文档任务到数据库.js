@@ -49,7 +49,7 @@
                 // 判断是否正常块
                 if(!hasKeys(block, ['nextID', 'data', 'id', 'avID', 'blockID', 'isDetached'])) return;
                 const blockInfo = (await fetchSyncPost('/api/block/getBlockInfo', {id:block?.id}))?.data;
-                if(!blockInfo || !blockInfo.path || !blockInfo.path.includes('/'+avDocId)) return;
+                if(!blockInfo || !blockInfo.path || !blockInfo.path.includes('/'+avDocId) || blockInfo.rootID === avDocId) return;
                 ids.add(blockInfo.rootID);
                 // 定时发布
                 if(postTimer) clearTimeout(postTimer);
@@ -124,10 +124,16 @@
                 col.keyID = keyID;
             });
             // 添加属性到数据库
-            addColsToAv(blockIds, otherCols, avId);
+            await addColsToAv(blockIds, otherCols, avId);
         }
         // 给选中块添加自定义属性
-        setBlocksAttrs(blockIds, customAttrs);
+        await setBlocksAttrs(blockIds, customAttrs);
+    }
+
+    async function getAvViews(avId) {
+        const result = await fetchSyncPost('/api/av/getAttributeView', {id:avId});
+        if(!result || result.code !== 0) console.error(result);
+        return result.data;
     }
 
     async function addBlocksToAv(blockIds, avId, avBlockID) {
@@ -147,33 +153,52 @@
 
     async function addColsToAv(blockIds, cols, avID) {
         blockIds = typeof blockIds === 'string' ? [blockIds] : blockIds;
+        const views = await getAvViews(avID);
         for(const blockId of blockIds) {
             for(const col of cols) {
-                if(!col.keyID) return;
-                const cellID = await getCellIdByRowIdAndKeyId(blockId, col.keyID, avID);
-                if(!cellID) return;
-                let colData = {avID: avID, keyID: col.keyID, rowID: blockId, cellID};
-                if(typeof col.getColValue !== 'function') return;
-                const colValue = await col.getColValue(col.keyID, blockId, cellID, avID);
-                if(typeof colValue !== 'object') return;
-                colData.value = colValue;
-                const result = await fetchSyncPost("/api/av/setAttributeViewBlockAttr", colData);
-                if(!result || result.code !== 0) console.error(result);
+                try{
+                    if(!col.keyID) continue;
+                    const cellID = await getCellIdByRowIdAndKeyId(blockId, col.keyID, avID);
+                    if(!cellID) continue;
+                    let colData = {avID: avID, keyID: col.keyID, rowID: blockId, cellID};
+                    if(typeof col.getColValue !== 'function') continue;
+                    const colValue = await col.getColValue(col.keyID, blockId, cellID, avID);
+                    if(typeof colValue !== 'object') continue;
+                    const colKey = Object.keys(colValue)[0];
+                    if(!colKey) continue;
+                    // 判断值是否已存在，已存在不添加
+                    const colAttrs = views.av.keyValues.find(item => item.key.name.includes(col.colName));
+                    if(colAttrs) {
+                        const colAttr = colAttrs.values.find(item=>item.blockID === blockId);
+                        if(colAttr && colAttr[colKey]) continue;
+                    }
+                    colData.value = colValue;
+                    const result = await fetchSyncPost("/api/av/setAttributeViewBlockAttr", colData);
+                    if(!result || result.code !== 0) console.error(result);
+                } catch (e) {
+                    console.log(e);
+                    continue;
+                }
             }
         }
     }
 
     async function getCellIdByRowIdAndKeyId(rowID, keyID, avID) {
-        let res = await fetchSyncPost("/api/av/getAttributeViewKeys", {id: rowID });
-        const foundItem = res.data.find(item => item.avID === avID); //avid
-        if (foundItem && foundItem.keyValues) {
-            // 步骤2：在 keyValues 中查找特定 key.id 的项
-            const specificKey = foundItem.keyValues.find(kv => kv.key.id === keyID); // keyid
-            // 步骤3：获取 values 数组的第一个元素的 id
-            if (specificKey && specificKey.values && specificKey.values.length > 0) {
-                //console.log(specificKey.values[0].id)
-                return specificKey.values[0].id;
+        try {
+            let res = await fetchSyncPost("/api/av/getAttributeViewKeys", {id: rowID });
+            const foundItem = res.data.find(item => item.avID === avID); //avid
+            if (foundItem && foundItem.keyValues) {
+                // 步骤2：在 keyValues 中查找特定 key.id 的项
+                const specificKey = foundItem.keyValues.find(kv => kv.key.id === keyID); // keyid
+                // 步骤3：获取 values 数组的第一个元素的 id
+                if (specificKey && specificKey.values && specificKey.values.length > 0) {
+                    //console.log(specificKey.values[0].id)
+                    return specificKey.values[0].id;
+                }
             }
+        } catch (e) {
+            console.error(e);
+            return '';
         }
     }
 
