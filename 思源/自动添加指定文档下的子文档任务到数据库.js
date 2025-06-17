@@ -6,8 +6,15 @@
     // 配置数据库所在文档id
     const avDocId = '20250613063011-x7t4zyq';
 
+    // 数据库id，注意这里是数据库id，不是数据库所在块id
+    // 当为空时则自动获取
+    let avId = '';
+
     // 文档编辑后添加任务延迟，单位秒，默认30秒
-    const timeout = 30;
+    const timeout = 5;
+
+    // 不更新已在数据库中的任务 true 不更新 false 更新
+    const notUpdateHasInAvBlocks = true;
 
     // 给选中块添加自定义属性，可以按key:value形式添加多组
     // 注意，自定义属性需要添加custom-前缀
@@ -33,7 +40,7 @@
     }
 
      // 获取数据库id
-     const avId = await getAvIdByAvBlockId(avBlockId);
+     if(!avId) avId = await getAvIdByAvBlockId(avBlockId);
     
     //main 定时添加任务到数据库
     async function main() {
@@ -93,6 +100,8 @@
             WHERE root_id = '${docId}'
               AND type = 'i'
               AND subtype = 't'
+              -- 不更新已在数据库中的任务
+              ${notUpdateHasInAvBlocks?`AND ial not like '%custom-avs="${avId}"%'`:''}
               AND EXISTS (
                 -- 查找当前记录的父记录
                 SELECT 1 FROM blocks b2
@@ -207,12 +216,26 @@
         if(typeof attrs !== 'object') return;
         for(const blockId of blockIds) {
             if(!blockId) continue;
+            // 不更新已存在的自定义属性
+            const newAttrs = deepClone(attrs);
+            const attrsData = await fetchSyncPost('/api/attr/getBlockAttrs', {"id": blockId});
+            if(attrsData && attrsData.data) {
+                const attrsKeys = Object.keys(newAttrs);
+                attrsKeys.forEach(key => {
+                    if(attrsData.data[key]) delete newAttrs[key];
+                });
+            }
+            if(Object.keys(newAttrs).length === 0) continue;
             const result = await fetchSyncPost('/api/attr/setBlockAttrs', {
                 "id": blockId,
-                "attrs": attrs
+                "attrs": newAttrs
             });
             if(!result || result.code !== 0) console.error(result);
         }
+    }
+
+    function deepClone(obj) {
+        return JSON.parse(JSON.stringify(obj));
     }
 
     function hasKeys(obj, keys) {
