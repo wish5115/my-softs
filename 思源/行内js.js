@@ -1,6 +1,7 @@
 // 行内js
 // see https://ld246.com/article/1749806156975
-// version 0.0.10
+// version 0.0.11
+// 0.0.11 增加convertToHtmlForever，fetchSyncPost支持GET请求
 // 0.0.10 增加notCheckEmptyTextContent
 // 0.0.9 增加renderOnce和convertToTextForever及增加防止死循环
 // 0.0.8 解决base64重复编码问题
@@ -160,8 +161,10 @@
             "render",
             "renderOnce",
             "convertToTextForever",
+            "convertToHtmlForever",
             "updateDataContent",
             "notCheckEmptyTextContent",
+            "containsHTML",
             functionBody
         );
 
@@ -192,8 +195,10 @@
             render,
             renderOnce,
             convertToTextForever,
+            convertToHtmlForever,
             updateDataContent,
-            notCheckEmptyTextContent
+            notCheckEmptyTextContent,
+            containsHTML
         );
         // 更新结果
         if(result !== undefined) {
@@ -325,8 +330,8 @@
     }
 
     // 请求api
-    async function fetchSyncPost(url, data, returnType = 'json') {
-        const init = { method: "POST" };
+    async function fetchSyncPost(url, data, returnType = 'json', method = 'POST') {
+        const init = { method };
         if (data) {
             if (data instanceof FormData) {
                 init.body = data;
@@ -485,7 +490,8 @@
     }
 
     async function convertToTextForever(element, html) {
-        if (!(element instanceof HTMLElement)) return;
+        if(!(element instanceof HTMLElement)) return;
+        if(containsHTML(html)) return convertToHtmlForever(element, html);
         element.innerHTML = html;
         // 创建纯文本节点
         const textNode = document.createTextNode(element.textContent);
@@ -500,7 +506,26 @@
         }
     }
 
+    async function convertToHtmlForever(element, html) {
+        if (!(element instanceof HTMLElement)) return;
+        const newSpan = document.createElement('span');
+        newSpan.setAttribute('data-type', 'text');
+        newSpan.innerHTML = html; // 插入 HTML 内容
+        // 替换元素
+        if (element.parentNode) {
+            element.parentNode.replaceChild(newSpan, element);
+            convertToTexting = true;
+            await updateBlock(newSpan);
+            insertCursorAfterElement(newSpan);
+            setTimeout(() => convertToTexting = false, 50);
+        }
+    }
+
     function notCheckEmptyTextContent() {}
+
+    function containsHTML(str) {
+        return /<([a-zA-Z]+)(\s+[^>]*)?(>)|(\/>)/.test(str) && !/^[^<]*$/.test(str);
+    }
 
     //////////////////// 监听custom-js 加载 /////////////////////////
 
