@@ -11,7 +11,7 @@
     let avId = '';
 
     // 文档编辑后添加任务延迟，单位秒，默认30秒
-    const timeout = 5;
+    const timeout = 30;
 
     // 不更新已在数据库中的任务 true 不更新 false 更新
     const notUpdateHasInAvBlocks = true;
