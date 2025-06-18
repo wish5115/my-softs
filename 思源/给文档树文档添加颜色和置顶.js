@@ -1,6 +1,6 @@
 // 给文档树文档添加颜色和置顶
 // see https://ld246.com/article/1741359650489
-// version 0.0.8.2
+// version 0.0.9
 // 0.0.3 兼容手机版
 // 0.0.4 修复右键时可能出现的与上一个未关闭的菜单冲突问题
 // 0.0.5 修改默认配色方案，增加tree_colors_user_config.json用户配色方案文件
@@ -9,6 +9,7 @@
 // 0.0.8 增加记住顶层置顶文件夹展开状态；修复文件夹置顶到顶层后定位不到问题；增加置顶取消置顶时自动定位到目标文档；修复文档全部折叠后顶层置顶恢复后需要刷新才能显示的问题；优化交互体验细节
 // 0.0.8.1 修复已取消的顶层置顶无法实时同步问题
 // 0.0.8.2 修复文件夹中的文档全部顶层置顶后，文件夹的展开按钮显示隐藏问题
+// 0.0.8.9 修复whenElementExist导致的性能问题
 // 存储文件及使用说明
 // 1. 修改/data/storage/tree_colors_user_config.json文件即可修改默认配色方案（第一次运行后生成）
 // 2. 取消全部置顶只需删除/data/storage/tree_topmost.json文件即可（第一次置顶时生成）
@@ -792,13 +793,31 @@
     function whenElementExist(selector, node, timeout = 5000) {
         return new Promise((resolve, reject) => {
             let isResolved = false;
+            let requestId, timeoutId; // 保存 requestAnimationFrame 的 ID
             const check = () => {
-                const el = typeof selector==='function'?selector():(node||document).querySelector(selector);
-                if (el) {isResolved = true; resolve(el);} else if(!isResolved) requestAnimationFrame(check);
+                try {
+                    const el = typeof selector === 'function' ? selector() : (node || document).querySelector(selector);
+                    if (el) {
+                        isResolved = true;
+                        cancelAnimationFrame(requestId); // 找到元素时取消未执行的动画帧
+                        if (timeoutId) clearTimeout(timeoutId);
+                        resolve(el);
+                    } else if (!isResolved) {
+                        requestId = requestAnimationFrame(check); // 保存新的动画帧 ID
+                    }
+                } catch (e) {
+                    isResolved = true;
+                    cancelAnimationFrame(requestId);
+                    clearTimeout(timeoutId);
+                    reject(new Error(`Timeout: Element not found for selector "${selector}" within ${timeout}ms`));
+                    return;
+                }
             };
             check();
-            setTimeout(() => {
+            timeoutId = setTimeout(() => {
                 if (!isResolved) {
+                    isResolved = true;
+                    cancelAnimationFrame(requestId); // 超时后取消动画帧
                     reject(new Error(`Timeout: Element not found for selector "${selector}" within ${timeout}ms`));
                 }
             }, timeout);
