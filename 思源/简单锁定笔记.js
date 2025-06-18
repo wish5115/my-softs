@@ -1,5 +1,5 @@
 // 功能：简单锁定笔记
-// version 0.0.3
+// version 0.0.4
 // 功能简介：
 // 1. 支持给多个笔记添加不同的密码
 // 2. 可自定义多少秒内不再输入密码
@@ -10,6 +10,7 @@
 // 更新记录：
 // 0.0.2 修复了当窗口较小时，密码框可能超出屏幕外的bug；改进了当拖动窗口大小时，密码框始终在窗口内。
 // 0.0.3 修复加载后文档可能未锁定的问题；修复了同步等意外导致锁定消失的问题；增加取消按钮以适应手机版无法按escape的问题。
+// 0.0.4 修复whenElementExist导致的性能问题。
 (()=>{
     // 定义锁定的笔记
     const lockNotes = {
@@ -410,26 +411,37 @@
     }
 
     // 等待元素渲染完成后执行
-    function whenElementExist(selector, bySetTimeout = false, delay = 40) {
-        return new Promise(resolve => {
-            const checkForElement = () => {
-                let element = null;
-                if (typeof selector === 'function') {
-                    element = selector();
-                } else {
-                    element = document.querySelector(selector);
-                }
-                if (element) {
-                    resolve(element);
-                } else {
-                    if (bySetTimeout) {
-                        setTimeout(checkForElement, delay);
-                    } else {
-                        requestAnimationFrame(checkForElement);
+    function whenElementExist(selector, node, timeout = 5000) {
+        return new Promise((resolve, reject) => {
+            let isResolved = false;
+            let requestId, timeoutId; // 保存 requestAnimationFrame 的 ID
+            const check = () => {
+                try {
+                    const el = typeof selector === 'function' ? selector() : (node || document).querySelector(selector);
+                    if (el) {
+                        isResolved = true;
+                        cancelAnimationFrame(requestId); // 找到元素时取消未执行的动画帧
+                        if (timeoutId) clearTimeout(timeoutId);
+                        resolve(el);
+                    } else if (!isResolved) {
+                        requestId = requestAnimationFrame(check); // 保存新的动画帧 ID
                     }
+                } catch (e) {
+                    isResolved = true;
+                    cancelAnimationFrame(requestId);
+                    clearTimeout(timeoutId);
+                    reject(new Error(`Timeout: Element not found for selector "${selector}" within ${timeout}ms`));
+                    return;
                 }
             };
-            checkForElement();
+            check();
+            timeoutId = setTimeout(() => {
+                if (!isResolved) {
+                    isResolved = true;
+                    cancelAnimationFrame(requestId); // 超时后取消动画帧
+                    reject(new Error(`Timeout: Element not found for selector "${selector}" within ${timeout}ms`));
+                }
+            }, timeout);
         });
     }
 })();
