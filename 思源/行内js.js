@@ -21,7 +21,6 @@
 // ">Loading</span>
 //或
 // $Loading${: custom-js="return 'Hello Inline JS';"}
-// todo 方案2：直接用inline-math前缀标记实现，应该更加兼容和稳定
 (() => {
     // 是否插入时弹出编辑窗空，true 弹窗 false 不弹窗
     // 注意，从模板插入不会弹窗
