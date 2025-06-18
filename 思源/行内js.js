@@ -1,4 +1,5 @@
 // 行内js
+// 注意：需要在设置-> 编辑器配置中，开启 Markdown 行级公式语法 感谢 @Fighter93 提醒！
 // see https://ld246.com/article/1749806156975
 // version 0.0.12
 // 0.0.12 自动检测并提示用户开启Markdown行级公式语法
