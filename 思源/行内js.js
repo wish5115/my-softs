@@ -1,6 +1,7 @@
 // 行内js
 // see https://ld246.com/article/1749806156975
-// version 0.0.11
+// version 0.0.12
+// 0.0.12 自动检测并提示用户开启Markdown行级公式语法
 // 0.0.11 增加convertToHtmlForever，fetchSyncPost支持GET请求
 // 0.0.10 增加notCheckEmptyTextContent
 // 0.0.9 增加renderOnce和convertToTextForever及增加防止死循环
@@ -65,6 +66,11 @@
     observeJsSpan(document.body, async (code, element) => {
         runJs(code, element);
     });
+
+    // 判断是否开启行级公式语法
+    if(!siyuan.config.editor.markdown.inlineMath) {
+        showMessage('行内JS提醒您：<br />请先在设置->编辑器，开启Markdown 行级公式语法');
+    }
 
     // 运行js
     async function runJs(code, element) {
@@ -1046,5 +1052,11 @@
     function isBase64(str) {
         if(typeof str !== 'string') str += '';
         return (str+'').startsWith('Base64Text:');
+    }
+    function showMessage(message, isError = false, delay = 7000) {
+        return fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
+            "method": "POST",
+            "body": JSON.stringify({"msg": message, "timeout": delay})
+        });
     }
 })();
