@@ -34,6 +34,7 @@
 
         // 当按钮被单击执行
         const onButtonClicked = (searchUrl) => {
+            toolbar.classList.add("fn__none");
             const selection = window.getSelection().toString().trim();
             let url = '';
             if(selection.toLowerCase().startsWith('https://') || selection.toLowerCase().startsWith('http://')) {
