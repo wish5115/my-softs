@@ -7,7 +7,7 @@
 -- 直接使用字段查询
 select content, created from blocks where type='d' and trim(content) != '' limit 2
 
--- 通过指令内容查询
+-- 通过指令控制显示字段
 -- fields content,created
 -- render markdown false
 select * from blocks where type='p' and trim(markdown) != '' limit 2
