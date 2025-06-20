@@ -1,5 +1,5 @@
 // 功能：简单锁定笔记
-// version 0.0.4
+// version 0.0.5
 // 功能简介：
 // 1. 支持给多个笔记添加不同的密码
 // 2. 可自定义多少秒内不再输入密码
@@ -11,11 +11,12 @@
 // 0.0.2 修复了当窗口较小时，密码框可能超出屏幕外的bug；改进了当拖动窗口大小时，密码框始终在窗口内。
 // 0.0.3 修复加载后文档可能未锁定的问题；修复了同步等意外导致锁定消失的问题；增加取消按钮以适应手机版无法按escape的问题。
 // 0.0.4 修复whenElementExist导致的性能问题。
+// 0.0.5 whenElementExist调用加了try...catch
 (()=>{
     // 定义锁定的笔记
     const lockNotes = {
         // 前面是笔记id，后面是笔记密码，请根据自己情况修改
-        "20240727024414-j46al4m": "123qwe",
+        "20240727024414-j46al4m": "wisha",
     };
 
     // 定义多少秒内无需再输入密码，默认60秒，如果想使用分钟表示，比如10分钟可以使用 10*60代表即可。
@@ -69,18 +70,26 @@
                 }
                 // 加载时尝试锁定笔记
                 setTimeout(async ()=>{
-                    await whenElementExist(()=>arrowBtn.classList.contains("b3-list-item__arrow--open"));
+                    try {
+                        await whenElementExist(()=>arrowBtn.classList.contains("b3-list-item__arrow--open"));
+                    } catch (error) {
+                        return;
+                    }
                     lockNoteFn();
                 }, 1000);
                 // 笔记打开事件
                 const onOpen = async event => {
                     // 等待打开菜单事件
                     const arrowClassList = arrowBtn.classList.toString();
-                    await whenElementExist(()=>{
-                        return noteLi.nextElementSibling?.tagName === 'UL' &&
-                            arrowClassList !== arrowBtn.classList.toString() &&
-                            arrowBtn.classList.contains("b3-list-item__arrow--open");
-                    });
+                    try {
+                        await whenElementExist(()=>{
+                            return noteLi.nextElementSibling?.tagName === 'UL' &&
+                                arrowClassList !== arrowBtn.classList.toString() &&
+                                arrowBtn.classList.contains("b3-list-item__arrow--open");
+                        });
+                    } catch (error) {
+                        return;
+                    }
                     //打开时且未输入过密码时执行
                     if(inputPassword === false){
                         // 删除系统展开的菜单
@@ -287,8 +296,12 @@
         lockBtn.ariaLabel = "立即锁定";
         lockBtn.innerHTML = `<svg><use xlink:href="#iconLock"></use></svg>`;
         lockBtn.onclick = callback;
-        const moreBtn = await whenElementExist(()=>noteLi.querySelector('span[data-type="more-root"]'));
-        noteLi.insertBefore(lockBtn, moreBtn.nextElementSibling);
+        try {
+            const moreBtn = await whenElementExist(()=>noteLi.querySelector('span[data-type="more-root"]'));
+            noteLi.insertBefore(lockBtn, moreBtn.nextElementSibling);
+        } catch (error) {
+            return;
+        }
     }
 
     // 删除立即锁定按钮
