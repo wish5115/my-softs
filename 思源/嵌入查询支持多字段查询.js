@@ -1,5 +1,5 @@
 // 嵌入查询支持多字段查询
-// see 
+// see https://ld246.com/article/1750463052773
 // version 0.0.1
 
 // 使用示例
