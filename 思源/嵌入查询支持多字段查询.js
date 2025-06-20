@@ -35,10 +35,12 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
         const meta = parseSQLMeta(stmt);
         const fields = getFields(stmt, meta);
         if(Object.keys(fields||{}).length === 0) return;
-        const sql = stmt.replace('from', `${Object.keys(getFields(stmt, meta, false)||{}).join(', ').replace(/(.+)/, ', $1')}, id from`);
+        const sql = stmt.replace('from', `${Object.keys(getFields(stmt, meta, false)||{}).join(', ').replace(/(.+)/, ', $1')}, id, type, hpath, root_id, parent_id, fcontent, markdown from`);
         const results = await querySql(sql);
         if(results && results.length > 0) {
-            results.forEach((result, index) => {
+            let newBlocks = [];
+            for (let index in results) {
+                const result = results[index];
                 if(blocks && blocks.length > 0) {
                     // 如果select *查到内容
                     let block;
@@ -52,22 +54,33 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
                     if(block) {
                         // 更新内容
                         block.content = getContent(result, stmt, meta, block.content);
+                        block.flag = true;
                     }
                 } else {
                     // 如果select *未查到内容
-                    const block = getBlock(result, getContent(result, stmt, meta));
-                    blocks.push(block);
+                    const block = await getBlock(result, getContent(result, stmt, meta));
+                    block.block.flag = true;
+                    newBlocks.push(block);
                 }
+            }
+            // 把新数据插入原blocks数据中
+            if((!blocks || blocks.length == 0) && newBlocks && newBlocks.length > 0) {
+                newBlocks.forEach(block => blocks.push(block));
+            }
+            // 以result为准，删除多余的记录
+            blocks.forEach((item, index) => {
+                if(!item.block?.flag) blocks.splice(index, 1);
             });
         }
     });
     function getContent(result, stmt, meta, content) {
+        let markdown = '';
         // 解析内容
         if(content) {
             let container = document.createElement('div');
             container.innerHTML = content;
             let contenteditable = container.querySelector('div[contenteditable="false"][spellcheck="true"]');
-            const markdown = contenteditable.innerHTML;
+            markdown = contenteditable.innerHTML;
             const fieldsHtml = getFieldsHtml(result, stmt, meta, markdown);
             // 替换文本内容
             if (contenteditable) {
@@ -243,22 +256,26 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
             return originalFetch(url, init);
         };
     }
-    function getBlock(row, content) {
+    async function getBlock(row, content) {
+        let breadcrumbs = [];
+        if(siyuan.config.editor.embedBlockBreadcrumb) {
+            breadcrumbs = await getBlockBreadcrumb(row.id, row.type, row.hpath);
+        }
         return {
             "block": {
-                "box": row.box,
-                "path": row.path,
-                "hPath": row.hpath,
-                "id": row.id,
-                "rootID": row.root_id,
-                "parentID": row.parent_id,
+                "box": row.box||'',
+                "path": row.path||'',
+                "hPath": row.hpath||'',
+                "id": row.id||'',
+                "rootID": row.root_id||'',
+                "parentID": row.parent_id||'',
                 "name": "",
                 "alias": "",
                 "memo": "",
                 "tag": "",
                 "content": content,
-                "fcontent": row.fcontent,
-                "markdown": row.markdown,
+                "fcontent": row.fcontent||'',
+                "markdown": row.markdown||'',
                 "folded": false,
                 "type": "NodeParagraph",
                 "subType": "",
@@ -276,8 +293,18 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
                 "riffCardID": "",
                 "riffCard": null
             },
-            "blockPaths": []
+            "blockPaths": breadcrumbs
         };
+    }
+    async function getBlockBreadcrumb(blockId, type = '', hpath = '') {
+        const result = await requestApi("/api/block/getBlockBreadcrumb", {
+            id: blockId,
+            excludeTypes: []
+        });
+        if(!result || result.code !== 0) return [];
+        const breadcrumbs = result.data;
+        if(type === 'd' && breadcrumbs[0]?.name === '' && hpath) breadcrumbs[0].name = hpath;
+        return breadcrumbs;
     }
     function extractSelectFields(sql) {
         // 1. 拿到 select ... from 之间的内容
