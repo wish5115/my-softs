@@ -97,12 +97,16 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
         const renders = getRenders(stmt, meta);
         Object.entries(fields).forEach(([field, style], index) => {
             let fieldVal = result[field] || '';
-            if(field === 'created' || field === 'updated') fieldVal = formatField('datetime', fieldVal);
-            if(field === 'type') fieldVal = formatField('type', fieldVal);
-            if(field === 'subtype') fieldVal = formatField('subtype', fieldVal);
-            if(formats[field]) fieldVal = formatField(formats[field], fieldVal);
-            if(field === 'markdown') fieldVal = markdown || fieldVal;
-            if(renders.hasOwnProperty(field)) fieldVal = renders[field] === true ? markdown : fieldVal;
+            const originVal = fieldVal;
+            if(field === 'created' || field === 'updated') fieldVal = formatField('datetime', originVal);
+            if(field === 'type') fieldVal = formatField('type', originVal);
+            if(field === 'subtype') fieldVal = formatField('subtype', originVal);
+            if(formats[field]) fieldVal = formatField(formats[field], originVal);
+            if(renders.hasOwnProperty(field)) {
+                fieldVal = renders[field] === true ? markdown : originVal;
+            } else {
+                if(field === 'markdown') fieldVal = markdown || originVal;
+            }
             const defStyle = field === 'created' || field === 'updated' ? 'float:right;' : '';
             fieldsHtml += `<span class="embed-${field}" style="display:inline-block;${index>0?'margin-left:10px;':''}${defStyle}${style||''}">${fieldVal}</span>`;
         });
