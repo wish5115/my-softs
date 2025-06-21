@@ -35,7 +35,7 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
         const meta = parseSQLMeta(stmt);
         const fields = getFields(stmt, meta);
         if(Object.keys(fields||{}).length === 0) return;
-        const sql = stmt.replace('from', `${Object.keys(getFields(stmt, meta, false)||{}).join(', ').replace(/(.+)/, ', $1')}, id, type, hpath, root_id, parent_id, fcontent, markdown from`);
+        const sql = addFieldsToSelect(stmt, Object.keys(getFields(stmt, meta, false)||{}));
         const results = await querySql(sql);
         if(results && results.length > 0) {
             let newBlocks = [];
@@ -309,6 +309,25 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
         const breadcrumbs = result.data;
         if(type === 'd' && breadcrumbs[0]?.name === '' && hpath) breadcrumbs[0].name = hpath;
         return breadcrumbs;
+    }
+    function addFieldsToSelect(stmt, fields = []) {
+        // 要添加的字段列表
+        const extraFields = [...fields, 'id', 'type', 'hpath', 'root_id', 'parent_id', 'fcontent', 'markdown'];
+        // 正则说明：
+        // - 匹配 select 和 from 之间的内容（非贪婪）
+        // - 忽略大小写 (i)
+        // - 确保 from 不在字符串或注释中（这里我们假设没有嵌套括号等复杂情况）
+        const selectFromRegex = /select\s+([\s\S]*?)\s+from/ui;
+        return stmt.replace(selectFromRegex, (match, selectPart) => {
+            const existingFields = selectPart
+                .split(',')                            // 按逗号分隔字段
+                .map(f => f.trim())                    // 去空格
+                .filter(f => f);                       // 过滤空字段
+            // 合并去重
+            const combinedFields = [...new Set([...existingFields, ...extraFields])];
+            // 替换回 select 子句
+            return `select ${combinedFields.join(', ')} from`;
+        });
     }
     function extractSelectFields(sql) {
         // 1. 拿到 select ... from 之间的内容
