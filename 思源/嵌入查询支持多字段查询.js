@@ -1,6 +1,7 @@
 // 嵌入查询支持多字段查询
 // see https://ld246.com/article/1750463052773
-// version 0.0.3.1
+// version 0.0.4
+// 0.0.4 jsformat和style支持/**/多行注释
 // 0.0.3.1 修复隐藏字段正则匹配错误问题
 // 0.0.3 完全重构实现方式，为了兼容复制SQL，放弃了部分使用上的灵活性
 // 0.0.2 修复个别指令失效及被个别字符影响的问题
@@ -43,28 +44,42 @@ time 格式为 时:分:秒
 type 把类型转换为文字描述，默认type字段已格式化
 subtype 把子类型转换为文字描述，默认subtype字段已格式化
 
+高级指令：
+支持多行注释的指令，仅jsformat和style支持，如下示例
+（由于注释无法嵌套这里用#代替*表示多行注释）
+/#
+jsformat content {
+    // your codes
+}
+#/
+/#
+style content {
+    // your codes
+}
+#/
+
 其他：
 SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档id和当前嵌入块id(有时需要排除当前嵌入块时有用)
 */
 (() => {
     searchEmbedBlock(async (embedBlockID, currDocId, stmt, blocks, hideFields) => {
-        const errors = {msg: ''};
+        const errors = { msg: '' };
         if (isSiYuanDefaultSql(stmt)) {
-            if(stmt && blocks.length == 0) {
+            if (stmt && blocks.length == 0) {
                 const results = await querySql(stmt, errors);
-                if(results.length === 0 && errors.msg) {
+                if (results.length === 0 && errors.msg) {
                     showErrors(embedBlockID, errors);
                 }
             }
             return;
         }
         const meta = parseSQLMeta(stmt);
-        meta.ids = {embedBlockID, currDocId};
-        if(Array.isArray(hideFields) && hideFields.length > 0) {
+        meta.ids = { embedBlockID, currDocId };
+        if (Array.isArray(hideFields) && hideFields.length > 0) {
             hideFields.forEach(field => meta.views[field] = 'hide');
         }
         const results = await querySql(stmt, errors);
-        if(stmt && results.length === 0 && errors.msg) {
+        if (stmt && results.length === 0 && errors.msg) {
             showErrors(embedBlockID, errors);
         }
         if (results && results.length > 0) {
@@ -121,7 +136,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
         const entries = Object.entries(result);
         for (let index = 0; index < entries.length; index++) {
             const [field, originVal] = entries[index];
-            if(meta.views[field]?.toLowerCase() === 'hide') continue;
+            if (meta.views[field]?.toLowerCase() === 'hide') continue;
             let fieldVal = originVal;
             if (field === 'created' || field === 'updated') fieldVal = formatField('datetime', originVal);
             if (field === 'type') fieldVal = formatField('type', originVal);
@@ -132,14 +147,15 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             } else {
                 if (field === 'markdown') fieldVal = markdown || renderMarkdown(originVal) || originVal;
             }
-            if(meta.jsformats[field]){
+            if (meta.jsformats[field]) {
                 // 创建动态函数
                 try {
-                    const functionBody = `return (async () => { ${meta.jsformats[field]||''} })();`;
+                    const functionBody = `return (async () => { ${meta.jsformats[field] || ''} })();`;
                     const fieldFunction = new Function(
-                        "embedBlockID", "currDocId", "currBlockId", "fieldName", "fieldValue", "fieldOriginValue",  functionBody
+                        "embedBlockID", "currDocId", "currBlockId", "fieldName", "fieldValue", "fieldOriginValue", functionBody
                     );
-                    fieldVal = await fieldFunction(meta.ids.embedBlockID, meta.ids.currDocId, meta.ids.embedBlockID, field, fieldVal, originVal);
+                    const ret = await fieldFunction(meta.ids.embedBlockID, meta.ids.currDocId, meta.ids.embedBlockID, field, fieldVal, originVal);
+                    fieldVal = ret === undefined ? fieldVal : ret;
                 } catch (e) {
                     fieldVal = '<span class="ft__error">jsformat errors: ' + (e.message || '未知错误') + '</span>';
                     console.log(e);
@@ -255,19 +271,19 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                         stmt = req.stmt;
                         currDocId = getCurrDocId(embedBlockID);
                         // 替换 {{CurDocId}}
-                        if(stmt.indexOf('{{CurDocId}}') !== -1 || stmt.indexOf('{{curDocId}}') !== -1) {
+                        if (stmt.indexOf('{{CurDocId}}') !== -1 || stmt.indexOf('{{curDocId}}') !== -1) {
                             stmt = stmt.replace('{{CurDocId}}', currDocId).replace('{{curDocId}}', currDocId);
                         }
                         // 替换 {{CurBlockId}}
-                        if(stmt.indexOf('{{CurBlockId}}') !== -1 || stmt.indexOf('{{curBlockId}}') !== -1) {
+                        if (stmt.indexOf('{{CurBlockId}}') !== -1 || stmt.indexOf('{{curBlockId}}') !== -1) {
                             stmt = stmt.replace('{{CurBlockId}}', embedBlockID).replace('{{curBlockId}}', embedBlockID);
                         }
                         // 替换隐藏字段
-                        if(!/--\s+not-deal-hide\s+true/gi.test(stmt)) {
+                        if (!/--\s+not-deal-hide\s+true/gi.test(stmt)) {
                             const regex = /(\b\w+)__hide\b/gi;
-                            if(regex.test(stmt)) {
+                            if (regex.test(stmt)) {
                                 regex.lastIndex = 0;
-                                hideFields = [...stmt.matchAll(regex)].map(item=>item[1]);
+                                hideFields = [...stmt.matchAll(regex)].map(item => item[1]);
                                 stmt = stmt.replace(regex, '$1');
                             }
                         }
@@ -362,8 +378,8 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
         return breadcrumbs;
     }
     function isSiYuanDefaultSql(stmt) {
-        if(!stmt) return true;
-        if(/--\s+custom\s+true/i.test(stmt)) return false;
+        if (!stmt) return true;
+        if (/--\s+custom\s+true/i.test(stmt)) return false;
         const regex = /select\s+\*\s+from/gi;
         const matches = stmt.match(regex);
         // 如果 matches 存在且长度为 1，则表示恰好出现了一次
@@ -377,68 +393,61 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             renders: {},
             jsformats: {}
         };
-        const lines = sql.split('\n');
-        for (let line of lines) {
-            const trimmed = line.trim();
-            // -- view <key> <value>
-            if ((!type || type === 'views') && trimmed.startsWith('-- view ')) {
-                const parts = trimmed.replace(/^--\s+view\s+/, '').split(/\s+/);
-                if (parts.length >= 2) {
-                    const [key, value] = parts;
-                    result.views[key] = value;
-                }
+        // 1) 用非贪婪模式抓出所有 C-style 注释
+        const blockCommentRE = /\/\*([\s\S]*?)\*\//g;
+        for (const [, commentBody] of sql.matchAll(blockCommentRE)) {
+            const body = commentBody.trim();
+            // jsformat key { ... } （非贪婪地匹配 “{ … }”）
+            let m = body.match(/^jsformat\s+(\w+)\s*\{([\s\S]*?)\}$/);
+            if (m) {
+                const [, key, code] = m;
+                // 如果同名 key 重复，后面的会覆盖前面的
+                result.jsformats[key] = code.trim();
                 continue;
             }
-            // -- style <key> {<value>}
-            if ((!type || type === 'styles') && trimmed.startsWith('-- style ')) {
-                // remove prefix and curly braces
-                const body = trimmed.replace(/^--\s+style\s+/, '');
-                const match = body.match(/(\w+)\s*\{([^}]*)\}/);
-                if (match) {
-                    const key = match[1];
-                    const value = match[2].trim();
-                    result.styles[key] = value;
-                }
-                continue;
-            }
-            // -- format <key> <value>
-            if ((!type || type === 'formats') && trimmed.startsWith('-- format ')) {
-                const parts = trimmed.replace(/^--\s+format\s+/, '').split(/\s+/);
-                if (parts.length >= 2) {
-                    const [key, ...rest] = parts;
-                    result.formats[key] = rest.join(' ');
-                }
-                continue;
-            }
-
-            // -- render <key> <value>
-            if ((!type || type === 'renders') && trimmed.startsWith('-- render ')) {
-                const parts = trimmed.replace(/^--\s+render\s+/, '').split(/\s+/);
-                if (parts.length >= 2) {
-                    const [key, valStr] = parts;
-                    let val;
-                    if (/^(true|false)$/i.test(valStr)) {
-                        val = valStr.toLowerCase() === 'true';
-                    } else {
-                        val = valStr;
-                    }
-                    result.renders[key] = val;
-                }
-                continue;
-            }
-            // -- jsformat <key> {<code>}
-            if ((!type || type === 'jsformats') && trimmed.startsWith('-- jsformat ')) {
-                const body = trimmed.replace(/^--\s+jsformat\s+/, '');
-                const match = body.match(/(\w+)\s*\{([^}]*)\}/);
-                if (match) {
-                    const key = match[1];
-                    const code = match[2].trim();
-                    result.jsformats[key] = code;
-                }
+            // style key { ... }
+            m = body.match(/^style\s+(\w+)\s*\{([\s\S]*?)\}$/);
+            if (m) {
+                const [, key, css] = m;
+                result.styles[key] = css.trim();
                 continue;
             }
         }
-        if (type && result[type]) return result[type];
+        // 2) 去掉所有 block 注释，免得它们影响后续的单行解析
+        sql = sql.replace(blockCommentRE, '');
+        // 3) 处理你的单行注释指令
+        for (let line of sql.split('\n')) {
+            const t = line.trim();
+            if ((!type || type === 'views') && t.startsWith('-- view ')) {
+                const [, , key, val] = t.split(/\s+/);
+                if (key && val != null) result.views[key] = val;
+            }
+            else if ((!type || type === 'formats') && t.startsWith('-- format ')) {
+                const parts = t.replace(/^--\s+format\s+/, '').split(/\s+/);
+                const key = parts.shift();
+                if (key) result.formats[key] = parts.join(' ');
+            }
+            else if ((!type || type === 'renders') && t.startsWith('-- render ')) {
+                const [, , key, val] = t.split(/\s+/);
+                if (key) {
+                    result.renders[key] = /^(true|false)$/i.test(val)
+                        ? val.toLowerCase() === 'true'
+                        : val;
+                }
+            }
+            else if ((!type || type === 'styles') && t.startsWith('-- style ')) {
+                const m2 = t.replace(/^--\s+style\s+/, '').match(/^(\w+)\s*\{([^}]*)\}$/);
+                if (m2) result.styles[m2[1]] = m2[2].trim();
+            }
+            else if ((!type || type === 'jsformats') && t.startsWith('-- jsformat ')) {
+                const m3 = t.replace(/^--\s+jsformat\s+/, '').match(/^(\w+)\s*\{([^}]*)\}$/);
+                if (m3) result.jsformats[m3[1]] = m3[2].trim();
+            }
+        }
+        // 4) 如果只想取某个子集，就返回它
+        if (type && result[type]) {
+            return result[type];
+        }
         return result;
     }
     function getCurrDocId(embedBlockID) {
@@ -580,7 +589,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
         });
     }
     function showErrors(embedBlockID, errors) {
-        whenElementExist('[data-node-id="'+embedBlockID+'"] .protyle-wysiwyg__embed.ft__smaller').then((el)=>{
+        whenElementExist('[data-node-id="' + embedBlockID + '"] .protyle-wysiwyg__embed.ft__smaller').then((el) => {
             el.innerHTML = errors.msg;
             el.classList.add('ft__error');
             el.style.fontSize = '14px';
