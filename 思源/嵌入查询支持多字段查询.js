@@ -41,12 +41,15 @@ date 格式为 年-月-日
 time 格式为 时:分:秒
 type 把类型转换为文字描述，默认type字段已格式化
 subtype 把子类型转换为文字描述，默认subtype字段已格式化
+
+其他：
+SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档id和当前嵌入块id(有时需要排除当前嵌入块时有用)
 */
 (() => {
     searchEmbedBlock(async (embedBlockID, currDocId, stmt, blocks, hideFields) => {
         const errors = {msg: ''};
         if (isSiYuanDefaultSql(stmt)) {
-            if(blocks.length == 0) {
+            if(stmt && blocks.length == 0) {
                 const results = await querySql(stmt, errors);
                 if(results.length === 0 && errors.msg) {
                     showErrors(embedBlockID, errors);
@@ -60,7 +63,7 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
             hideFields.forEach(field => meta.views[field] = 'hide');
         }
         const results = await querySql(stmt, errors);
-        if(results.length === 0 && errors.msg) {
+        if(stmt && results.length === 0 && errors.msg) {
             showErrors(embedBlockID, errors);
         }
         if (results && results.length > 0) {
@@ -358,6 +361,7 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
         return breadcrumbs;
     }
     function isSiYuanDefaultSql(stmt) {
+        if(!stmt) return true;
         if(/--\s+custom\s+true/i.test(stmt)) return false;
         const regex = /select\s+\*\s+from/gi;
         const matches = stmt.match(regex);
