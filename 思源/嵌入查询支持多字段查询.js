@@ -1,6 +1,7 @@
 // 嵌入查询支持多字段查询
 // see https://ld246.com/article/1750463052773
-// version 0.0.4
+// version 0.0.5
+// 0.0.5 添加-- sort 指令
 // 0.0.4 jsformat和style支持/**/多行注释
 // 0.0.3.1 修复隐藏字段正则匹配错误问题
 // 0.0.3 完全重构实现方式，为了兼容复制SQL，放弃了部分使用上的灵活性
@@ -27,6 +28,7 @@ select content, created from blocks where type='d' and trim(content) != '' limit
 js格式化指令：-- jsformat 字段名 {js代码}，例如：-- jsformat updated {return 'hello '+fieldVal}，字段的值会被return的结果覆盖，默认可使用的变量，embedBlockID，currDocId，currBlockId，fieldName，fieldValue，fieldOriginValue
 渲染指令：-- render 字段名 true/false，例如：-- render markdown false，只有markdown字段有效，默认true
 隐藏字段指令：-- view 字段名 show/hide，例如：-- view id hide，隐藏字段也可以在sql的字段上写标记，比如，select id__hide, content from...
+字段排序指令：-- sort 字段名, 字段名, ...，例如：-- sort id, content, created，字段的将按照这个指定的顺序显示
 强制使用自定义SQL -- custom true，默认情况下只有一个select * from的SQL被认为是思源默认SQL（思源默认SQL只能返回块Markdown一个字段），但当使用该指令时，则强制认为是自定义SQL。
 强制不处理隐藏字段 -- not-deal-hide true，默认情况，使用select id__hide, content from...，会把__hide认为隐藏字段，但当使用该指令时，会忽略__hide标记
 
@@ -130,9 +132,10 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
     // -- format created datetime
     // -- render markdown false
     // -- jsformat updated {return 'hello '+fieldVal}
+    // -- sort id, content, created
     // 格式化字段的值
     async function getFieldsHtml(result, meta, markdown) {
-        let fieldsHtml = '';
+        let fieldsHtml = '', orderedFieldsHtml = [], notOrderedFieldsHtml = [];
         const entries = Object.entries(result);
         for (let index = 0; index < entries.length; index++) {
             const [field, originVal] = entries[index];
@@ -162,8 +165,13 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                 }
             }
             const defStyle = field === 'created' || field === 'updated' ? 'float:right;' : '';
-            fieldsHtml += `<span class="embed-${field}" style="display:inline-block;${index > 0 ? 'margin-left:10px;' : ''}${defStyle}${meta.styles[field] || ''}">${fieldVal}</span>`;
+            const html = `<span class="embed-${field}" style="display:inline-block;${index > 0 ? 'margin-left:10px;' : ''}${defStyle}${meta.styles[field] || ''}">${fieldVal}</span>`;
+            // 字段排序
+            const sortIndex = meta.sorts.findIndex(item=>item===field);
+            if(sortIndex !== -1) orderedFieldsHtml[sortIndex] = html;
+            else notOrderedFieldsHtml.push(html);
         }
+        fieldsHtml = orderedFieldsHtml.join('') + notOrderedFieldsHtml.join('');
         if (markdown) {
             return fieldsHtml;
         }
@@ -391,17 +399,17 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             styles: {},
             formats: {},
             renders: {},
-            jsformats: {}
+            jsformats: {},
+            sorts: []
         };
         // 1) 用非贪婪模式抓出所有 C-style 注释
         const blockCommentRE = /\/\*([\s\S]*?)\*\//g;
         for (const [, commentBody] of sql.matchAll(blockCommentRE)) {
             const body = commentBody.trim();
-            // jsformat key { ... } （非贪婪地匹配 “{ … }”）
+            // jsformat key { ... }
             let m = body.match(/^jsformat\s+(\w+)\s*\{([\s\S]*?)\}$/);
             if (m) {
                 const [, key, code] = m;
-                // 如果同名 key 重复，后面的会覆盖前面的
                 result.jsformats[key] = code.trim();
                 continue;
             }
@@ -415,7 +423,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
         }
         // 2) 去掉所有 block 注释，免得它们影响后续的单行解析
         sql = sql.replace(blockCommentRE, '');
-        // 3) 处理你的单行注释指令
+        // 3) 处理单行注释指令
         for (let line of sql.split('\n')) {
             const t = line.trim();
             if ((!type || type === 'views') && t.startsWith('-- view ')) {
@@ -443,9 +451,14 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                 const m3 = t.replace(/^--\s+jsformat\s+/, '').match(/^(\w+)\s*\{([^}]*)\}$/);
                 if (m3) result.jsformats[m3[1]] = m3[2].trim();
             }
+            else if ((!type || type === 'sorts') && t.startsWith('-- sort ')) {
+                // -- sort key1,key2, key3
+                const list = t.replace(/^--\s+sort\s+/, '').split(',').map(k => k.trim()).filter(Boolean);
+                result.sorts = list;
+            }
         }
         // 4) 如果只想取某个子集，就返回它
-        if (type && result[type]) {
+        if (type && type in result) {
             return result[type];
         }
         return result;
