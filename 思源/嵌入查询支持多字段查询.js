@@ -1,27 +1,39 @@
 // 嵌入查询支持多字段查询
 // see https://ld246.com/article/1750463052773
-// version 0.0.2
+// version 0.0.3
+// 0.0.3 完全重构实现方式，为了兼容复制SQL，放弃了部分使用上的灵活性
 // 0.0.2 修复个别指令失效及被个别字符影响的问题
+
 // 使用示例
 /*
 -- 直接使用字段查询
 select content, created from blocks where type='d' and trim(content) != '' limit 2
 
 -- 通过指令控制显示字段
--- fields content,created
+-- view id hide
 -- render markdown false
 select * from blocks where type='p' and trim(markdown) != '' limit 2
 
 -- 添加样式和格式化
--- field created {font-weight:bold;float:right;color:red;}
+-- style created {font-weight:bold;float:right;color:red;}
 -- format created datetime
 select content, created from blocks where type='d' and trim(content) != '' limit 2
 
 常用指令如下：
-字段指令：-- fields 字段名, 字段名，例如：-- fields content,created
-字段+样式指令：-- field 字段名 {样式内容}，例如：-- field created {color:red;}
+样式指令：-- style 字段名 {样式内容}，例如：-- style created {color:red;}
 格式化指令：-- format 字段名 函数名，例如：-- format created datetime，默认created，updated字段是datetime
+js格式化指令：-- jsformat 字段名 {js代码}，例如：-- jsformat updated {return 'hello '+fieldVal}，字段的值会被return的结果覆盖，默认可使用的变量，embedBlockID，currDocId，currBlockId，fieldName，fieldValue，fieldOriginValue
 渲染指令：-- render 字段名 true/false，例如：-- render markdown false，只有markdown字段有效，默认true
+隐藏字段指令：-- view 字段名 show/hide，例如：-- view id hide，隐藏字段也可以在sql的字段上写标记，比如，select id__hide, content from...
+强制使用自定义SQL -- custom true，默认情况下只有一个select * from的SQL被认为是思源默认SQL（思源默认SQL只能返回块Markdown一个字段），但当使用该指令时，则强制认为是自定义SQL。
+强制不处理隐藏字段 -- not-deal-hide true，默认情况，使用select id__hide, content from...，会把__hide认为隐藏字段，但当使用该指令时，会忽略__hide标记
+
+js格式化指令常用变量说明：
+embedBlockID，currBlockId，这两个变量是同一个意思，即当前嵌入块的块id
+currDocId，当前文档的id
+fieldName，当前字段的字段名，比如id, root_id, content等
+fieldValue，当前字段的值，可能是格式化后的结果
+fieldOriginValue，当前字段的原始值，即数据库中的值
 
 格式化指令的常用函数有：
 datetime 格式为 年-月-日 时:分:秒
@@ -31,111 +43,133 @@ type 把类型转换为文字描述，默认type字段已格式化
 subtype 把子类型转换为文字描述，默认subtype字段已格式化
 */
 (() => {
-    searchEmbedBlock(async (embedBlockID, stmt, blocks) => {
+    searchEmbedBlock(async (embedBlockID, currDocId, stmt, blocks, hideFields) => {
+        const errors = {msg: ''};
+        if (isSiYuanDefaultSql(stmt)) {
+            if(blocks.length == 0) {
+                const results = await querySql(stmt, errors);
+                if(results.length === 0 && errors.msg) {
+                    showErrors(embedBlockID, errors);
+                }
+            }
+            return;
+        }
         const meta = parseSQLMeta(stmt);
-        const fields = getFields(stmt, meta);
-        if(Object.keys(fields||{}).length === 0) return;
-        const sql = addFieldsToSelect(stmt, Object.keys(getFields(stmt, meta, false)||{}));
-        const results = await querySql(sql);
-        if(results && results.length > 0) {
+        meta.ids = {embedBlockID, currDocId};
+        if(Array.isArray(hideFields) && hideFields.length > 0) {
+            hideFields.forEach(field => meta.views[field] = 'hide');
+        }
+        const results = await querySql(stmt, errors);
+        if(results.length === 0 && errors.msg) {
+            showErrors(embedBlockID, errors);
+        }
+        if (results && results.length > 0) {
             let newBlocks = [];
-            for (let index in results) {
+            for (let index = 0; index < results.length; index++) {
                 const result = results[index];
-                if(blocks && blocks.length > 0) {
+                if (blocks && blocks.length > 0) {
                     // 如果select *查到内容
                     let block;
-                    if(result.id === blocks[index]?.block?.id) {
+                    if (result?.id === blocks[index]?.block?.id) {
                         // 如果索引匹配
                         block = blocks[index]?.block;
                     } else {
                         // 如果索引不匹配
-                       block = blocks.find(item => item.block?.id === result.id);
+                        block = blocks.find(item => item.block?.id === result?.id);
                     }
-                    if(block) {
+                    if (block) {
                         // 更新内容
-                        block.content = getContent(result, stmt, meta, block.content);
+                        block.content = await getContent(result, meta, block.content);
                         block.flag = true;
                     }
                 } else {
                     // 如果select *未查到内容
-                    const block = await getBlock(result, getContent(result, stmt, meta));
+                    const block = await getBlock(result, await getContent(result, meta));
                     block.block.flag = true;
                     newBlocks.push(block);
                 }
             }
             // 把新数据插入原blocks数据中
-            if((!blocks || blocks.length == 0) && newBlocks && newBlocks.length > 0) {
+            if ((!blocks || blocks.length == 0) && newBlocks && newBlocks.length > 0) {
                 newBlocks.forEach(block => blocks.push(block));
             }
             // 以result为准，删除多余的记录
             blocks.forEach((item, index) => {
-                if(!item.block?.flag) blocks.splice(index, 1);
+                if (!item.block?.flag) blocks.splice(index, 1);
             });
         }
     });
-    function getContent(result, stmt, meta, content) {
-        let markdown = '';
+    async function getContent(result, meta, content) {
         // 解析内容
-        if(content) {
-            let container = document.createElement('div');
-            container.innerHTML = content;
-            let contenteditable = container.querySelector('div[contenteditable="false"][spellcheck="true"]');
-            markdown = contenteditable.innerHTML;
-            const fieldsHtml = getFieldsHtml(result, stmt, meta, markdown);
-            // 替换文本内容
-            if (contenteditable) {
-                contenteditable.innerHTML = fieldsHtml;
-            }
-            return container.innerHTML;
+        if (content) {
+            return await getFieldsHtml(result, meta, content);
         }
-        return getFieldsHtml(result, stmt, meta, markdown);
+        return await getFieldsHtml(result, meta);
     }
-    function getFieldsHtml(result, stmt, meta, markdown) {
+    // -- view id hide
+    // -- style created {color:red;}
+    // -- format created datetime
+    // -- render markdown false
+    // -- jsformat updated {return 'hello '+fieldVal}
+    // 格式化字段的值
+    async function getFieldsHtml(result, meta, markdown) {
         let fieldsHtml = '';
-        const fields = getFields(stmt, meta);
-        const formats = getFormats(stmt, meta);
-        const renders = getRenders(stmt, meta);
-        Object.entries(fields).forEach(([field, style], index) => {
-            let fieldVal = result[field] || '';
-            const originVal = fieldVal;
-            if(field === 'created' || field === 'updated') fieldVal = formatField('datetime', originVal);
-            if(field === 'type') fieldVal = formatField('type', originVal);
-            if(field === 'subtype') fieldVal = formatField('subtype', originVal);
-            if(formats[field]) fieldVal = formatField(formats[field], originVal);
-            if(renders.hasOwnProperty(field)) {
-                fieldVal = renders[field] === true ? markdown : originVal;
+        const entries = Object.entries(result);
+        for (let index = 0; index < entries.length; index++) {
+            const [field, originVal] = entries[index];
+            if(meta.views[field]?.toLowerCase() === 'hide') continue;
+            let fieldVal = originVal;
+            if (field === 'created' || field === 'updated') fieldVal = formatField('datetime', originVal);
+            if (field === 'type') fieldVal = formatField('type', originVal);
+            if (field === 'subtype') fieldVal = formatField('subtype', originVal);
+            if (meta.formats[field]) fieldVal = formatField(meta.formats[field], originVal);
+            if (meta.renders.hasOwnProperty(field)) {
+                fieldVal = meta.renders[field] === true ? markdown || renderMarkdown(originVal) : originVal;
             } else {
-                if(field === 'markdown') fieldVal = markdown || originVal;
+                if (field === 'markdown') fieldVal = markdown || renderMarkdown(originVal) || originVal;
+            }
+            if(meta.jsformats[field]){
+                // 创建动态函数
+                try {
+                    const functionBody = `return (async () => { ${meta.jsformats[field]||''} })();`;
+                    const fieldFunction = new Function(
+                        "embedBlockID", "currDocId", "currBlockId", "fieldName", "fieldValue", "fieldOriginValue",  functionBody
+                    );
+                    fieldVal = await fieldFunction(meta.ids.embedBlockID, meta.ids.currDocId, meta.ids.embedBlockID, field, fieldVal, originVal);
+                } catch (e) {
+                    fieldVal = '<span class="ft__error">jsformat errors: ' + (e.message || '未知错误') + '</span>';
+                    console.log(e);
+                }
             }
             const defStyle = field === 'created' || field === 'updated' ? 'float:right;' : '';
-            fieldsHtml += `<span class="embed-${field}" style="display:inline-block;${index>0?'margin-left:10px;':''}${defStyle}${style||''}">${fieldVal}</span>`;
-        });
-        if(markdown) {
+            fieldsHtml += `<span class="embed-${field}" style="display:inline-block;${index > 0 ? 'margin-left:10px;' : ''}${defStyle}${meta.styles[field] || ''}">${fieldVal}</span>`;
+        }
+        if (markdown) {
             return fieldsHtml;
         }
-        return `<div data-node-id="${result?.id||''}" data-node-index="1" data-type="NodeParagraph" class="p" updated="${result?.updated||''}"><div contenteditable="false" spellcheck="true">${fieldsHtml}</div><div class="protyle-attr" contenteditable="false">​</div></div>`;
+        return `<div data-node-id="${result?.id || ''}" data-node-index="1" data-type="NodeParagraph" class="p" updated="${result?.updated || ''}"><div contenteditable="false" spellcheck="true">${fieldsHtml}</div><div class="protyle-attr" contenteditable="false">​</div></div>`;
     }
     function formatField(fn, val) {
-        if(fn === 'datetime') {
+        if (fn === 'datetime') {
             return formatDateTime(val);
         }
-        if(fn === 'date') {
+        if (fn === 'date') {
             return formatDate(val);
         }
-        if(fn === 'time') {
+        if (fn === 'time') {
             return formatTime(val);
         }
-        if(fn === 'type') {
+        if (fn === 'type') {
             return getTypeText(val);
         }
-        if(fn === 'subtype') {
+        if (fn === 'subtype') {
             return getSubTypeText(val);
         }
     }
     // formatStr默认'$1-$2-$3 $4:$5:$6' 分别代表年月日时分秒
     function formatDateTime(content, formatStr = '$1-$2-$3 $4:$5:$6') {
-        if(!/^\d+$/.test(content)) return content;
-        if((content+'').length === 13) {
+        if (!/^\d+$/.test(content)) return content;
+        if ((content + '').length === 13) {
             const timestamp = parseInt(content);
             // 创建一个 Date 对象
             const date = new Date(timestamp);
@@ -202,23 +236,39 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
         };
         return subtypes[subtype] || subtype;
     }
-    function searchEmbedBlock(callbak) {
+    function searchEmbedBlock(callback) {
         const originalFetch = window.fetch;
         window.fetch = async function (url, init) {
             // 只处理目标接口
             if (url.toString().endsWith('/api/search/searchEmbedBlock')) {
                 // 获取请求参数stmt，并重写获取stmt
-                let embedBlockID, stmt;
+                let embedBlockID, stmt, currDocId, hideFields;
                 if (init && init.body) {
                     try {
                         // 1. 反序列化请求 body
                         const req = JSON.parse(init.body);
                         embedBlockID = req.embedBlockID;
                         stmt = req.stmt;
-        
+                        currDocId = getCurrDocId(embedBlockID);
+                        // 替换 {{CurDocId}}
+                        if(stmt.indexOf('{{CurDocId}}') !== -1 || stmt.indexOf('{{curDocId}}') !== -1) {
+                            stmt = stmt.replace('{{CurDocId}}', currDocId).replace('{{curDocId}}', currDocId);
+                        }
+                        // 替换 {{CurBlockId}}
+                        if(stmt.indexOf('{{CurBlockId}}') !== -1 || stmt.indexOf('{{curBlockId}}') !== -1) {
+                            stmt = stmt.replace('{{CurBlockId}}', embedBlockID).replace('{{curBlockId}}', embedBlockID);
+                        }
+                        // 替换隐藏字段
+                        if(!/--\s+not-deal-hide\s+true/gi.test(stmt)) {
+                            const regex = /([ ,])(.+?)__hide([ ,])/gi;
+                            if(regex.test(stmt)) {
+                                regex.lastIndex = 0;
+                                hideFields = [...stmt.matchAll(regex)].map(item=>item[2]);
+                                stmt = stmt.replace(regex, '$1$2$3');
+                            }
+                        }
                         // 2. 在这里“重写” stmt
-                        req.stmt = stmt.replace(/select[\s\S]+?from/ui, 'select * from');
-        
+                        req.stmt = stmt;
                         // 3. 把改好的对象序列化回 init.body
                         init = {
                             ...init,
@@ -230,10 +280,8 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
                         return originalFetch(url, init);
                     }
                 }
-
                 // 真正发请求
                 const response = await originalFetch(url, init);
-                
                 // 克隆一份 response，用来读 body
                 const cloned = response.clone();
                 let bodyJson;
@@ -248,38 +296,37 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
                 const blocks = bodyJson?.data?.blocks;
                 if (Array.isArray(blocks)) {
                     // 处理返回数据
-                    await callbak(embedBlockID, stmt, blocks);
+                    await callback(embedBlockID, currDocId, stmt, blocks, hideFields);
                     // 把修改后的数据串回去，构造一个新的 Response
                     const newBody = JSON.stringify(bodyJson);
                     const { status, statusText, headers } = response;
                     return new Response(newBody, { status, statusText, headers });
                 }
             }
-            
             // 默认返回原始 response
             return originalFetch(url, init);
         };
     }
     async function getBlock(row, content) {
         let breadcrumbs = [];
-        if(siyuan.config.editor.embedBlockBreadcrumb) {
+        if (siyuan.config.editor.embedBlockBreadcrumb) {
             breadcrumbs = await getBlockBreadcrumb(row.id, row.type, row.hpath);
         }
         return {
             "block": {
-                "box": row.box||'',
-                "path": row.path||'',
-                "hPath": row.hpath||'',
-                "id": row.id||'',
-                "rootID": row.root_id||'',
-                "parentID": row.parent_id||'',
+                "box": row.box || '',
+                "path": row.path || '',
+                "hPath": row.hpath || '',
+                "id": row.id || '',
+                "rootID": row.root_id || '',
+                "parentID": row.parent_id || '',
                 "name": "",
                 "alias": "",
                 "memo": "",
                 "tag": "",
                 "content": content,
-                "fcontent": row.fcontent||'',
-                "markdown": row.markdown||'',
+                "fcontent": row.fcontent || '',
+                "markdown": row.markdown || '',
                 "folded": false,
                 "type": "NodeParagraph",
                 "subType": "",
@@ -287,7 +334,7 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
                 "refs": null,
                 "defID": "",
                 "defPath": "",
-                "ial": row.ial?JSON.parse(row.ial):{},
+                "ial": row.ial ? JSON.parse(row.ial) : {},
                 "children": null,
                 "depth": 0,
                 "count": 0,
@@ -297,7 +344,7 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
                 "riffCardID": "",
                 "riffCard": null
             },
-            "blockPaths": breadcrumbs
+            "blockPaths": breadcrumbs || []
         };
     }
     async function getBlockBreadcrumb(blockId, type = '', hpath = '') {
@@ -305,182 +352,234 @@ subtype 把子类型转换为文字描述，默认subtype字段已格式化
             id: blockId,
             excludeTypes: []
         });
-        if(!result || result.code !== 0) return [];
+        if (!result || result.code !== 0) return [];
         const breadcrumbs = result.data;
-        if(type === 'd' && breadcrumbs[0]?.name === '' && hpath) breadcrumbs[0].name = hpath;
+        if (type === 'd' && breadcrumbs[0]?.name === '' && hpath) breadcrumbs[0].name = hpath;
         return breadcrumbs;
     }
-    function addFieldsToSelect(stmt, fields = []) {
-        // 要添加的字段列表
-        const extraFields = [...fields, 'id', 'type', 'hpath', 'root_id', 'parent_id', 'fcontent', 'markdown'];
-        // 正则说明：
-        // - 匹配 select 和 from 之间的内容（非贪婪）
-        // - 忽略大小写 (i)
-        // - 确保 from 不在字符串或注释中（这里我们假设没有嵌套括号等复杂情况）
-        const selectFromRegex = /select\s+([\s\S]*?)\s+from/ui;
-        return stmt.replace(selectFromRegex, (match, selectPart) => {
-            const existingFields = selectPart
-                .split(',')                            // 按逗号分隔字段
-                .map(f => f.trim())                    // 去空格
-                .filter(f => f);                       // 过滤空字段
-            // 合并去重
-            const combinedFields = [...new Set([...existingFields, ...extraFields])];
-            // 替换回 select 子句
-            return `select ${combinedFields.join(', ')} from`;
-        });
+    function isSiYuanDefaultSql(stmt) {
+        if(/--\s+custom\s+true/i.test(stmt)) return false;
+        const regex = /select\s+\*\s+from/gi;
+        const matches = stmt.match(regex);
+        // 如果 matches 存在且长度为 1，则表示恰好出现了一次
+        return Array.isArray(matches) && matches.length === 1;
     }
-    function extractSelectFields(sql) {
-        // 1. 拿到 select ... from 之间的内容
-        const sel = sql.match(/select\s+([\s\S]*?)\s+from/i);
-        if (!sel) return [];
-        // 2. 按逗号（不在括号内）切分
-        const parts = sel[1].split(/,(?![^(]*\))/);
-        return parts.map(raw => {
-            let field = raw.trim();
-            // 3a. 有别名 as xxx
-            const asMatch = field.match(/(.+?)\s+as\s+(.+)$/i);
-            if (asMatch) {
-                return asMatch[2].trim();
-            }
-            // 3b. 函数调用 fn(...)
-            const fnMatch = field.match(/^([A-Za-z_]\w*)\s*\(\s*([\s\S]+)\s*\)$/);
-            if (fnMatch) {
-                const fnName = fnMatch[1];
-                const argsStr = fnMatch[2];
-                // 拆参数（不在更深层括号里的逗号）
-                const args = argsStr.split(/,(?![^(]*\))/).map(arg => arg.trim());
-                const newArgs = args.map(arg => {
-                    // 如果是纯标识符，给它加双引号
-                    if (/^[A-Za-z_]\w*$/.test(arg)) {
-                        return `"${arg}"`;
-                    }
-                    // 否则原样返回
-                    return arg;
-                });
-                return `${fnName}(${newArgs.join(', ')})`;
-            }
-            // 3c. 普通字段
-            return field;
-        });
-    }
-    function getFields(stmt, meta, containsSqlFields = true) {
-        let fields = {};
-        if(meta && meta.fields) fields = meta.fields;
-        else fields = parseSQLMeta(stmt, 'fields');
-        if(containsSqlFields) {
-            const sqlFields = extractSelectFields(stmt);
-            sqlFields.forEach(field => {
-                field = field.trim();
-                if(field!=='*' && !fields[field]) fields[field] = "";
-            });
-        }
-        return fields;
-    }
-    function getFormats(sql, meta) {
-        if(meta && meta.formats) return meta.formats;
-        return parseSQLMeta(sql, 'formats');
-    }
-    function getRenders(sql, meta) {
-        if(meta && meta.renders) return meta.renders;
-        return parseSQLMeta(sql, 'renders');
-    }
-    function parseSQLMeta(sql, type = null) {
-        const result = {};
-        // 如果 type 不合法或未传入，初始化所有对象
-        if (!type) {
-            result.formats = {};
-            result.renders = {};
-            result.fields = {};
-        }
+    function parseSQLMeta(sql, type = '') {
+        const result = {
+            views: {},
+            styles: {},
+            formats: {},
+            renders: {},
+            jsformats: {}
+        };
         const lines = sql.split('\n');
-        for (const line of lines) {
+        for (let line of lines) {
             const trimmed = line.trim();
-            // 匹配 -- fields 多字段列表
-            if (trimmed.startsWith('-- fields')) {
-                if (!type || type === 'fields') {
-                    // 提取字段列表，按逗号分割
-                    const listStr = trimmed.replace(/^--\s+fields\s+/, '');
-                    const keys = listStr.split(/\s*,\s*/).filter(k => k);
-                    for (const key of keys) {
-                        if (type === 'fields') {
-                            result[key] = '';
-                        } else {
-                            result.fields[key] = '';
-                        }
-                    }
+            // -- view <key> <value>
+            if ((!type || type === 'views') && trimmed.startsWith('-- view ')) {
+                const parts = trimmed.replace(/^--\s+view\s+/, '').split(/\s+/);
+                if (parts.length >= 2) {
+                    const [key, value] = parts;
+                    result.views[key] = value;
                 }
                 continue;
             }
-            // 根据 type 决定是否解析某类注释
-            if (trimmed.startsWith('-- format')) {
-                if (!type || type === 'formats') {
-                    const parts = trimmed.replace(/^--\s+format\s+/, '').split(/\s+/);
-                    if (parts.length >= 2) {
-                        const key = parts[0];
-                        const value = parts.slice(1).join(' ');
-                        if (type === 'formats') {
-                            result[key] = value;
-                        } else {
-                            result.formats[key] = value;
-                        }
-                    }
+            // -- style <key> {<value>}
+            if ((!type || type === 'styles') && trimmed.startsWith('-- style ')) {
+                // remove prefix and curly braces
+                const body = trimmed.replace(/^--\s+style\s+/, '');
+                const match = body.match(/(\w+)\s*\{([^}]*)\}/);
+                if (match) {
+                    const key = match[1];
+                    const value = match[2].trim();
+                    result.styles[key] = value;
                 }
                 continue;
             }
-            if (trimmed.startsWith('-- render')) {
-                if (!type || type === 'renders') {
-                    const parts = trimmed.replace(/^--\s+render\s+/, '').split(/\s+/);
-                    if (parts.length >= 2) {
-                        const key = parts[0];
-                        const valStr = parts[1];
-                        let val;
-                        if (valStr.toLowerCase() === 'true') val = true;
-                        else if (valStr.toLowerCase() === 'false') val = false;
-                        else val = valStr;
-                        if (type === 'renders') {
-                            result[key] = val;
-                        } else {
-                            result.renders[key] = val;
-                        }
-                    }
+            // -- format <key> <value>
+            if ((!type || type === 'formats') && trimmed.startsWith('-- format ')) {
+                const parts = trimmed.replace(/^--\s+format\s+/, '').split(/\s+/);
+                if (parts.length >= 2) {
+                    const [key, ...rest] = parts;
+                    result.formats[key] = rest.join(' ');
                 }
                 continue;
             }
-            if (trimmed.startsWith('-- field')) {
-                if (!type || type === 'fields') {
-                    const matchWithStyle = trimmed.match(/--\s+field\s+(\w+)\s+{([^}]*)}/);
-                    const matchNoStyle = trimmed.match(/--\s+field\s+(\w+)/);
-                    if (matchWithStyle) {
-                        const key = matchWithStyle[1];
-                        const style = matchWithStyle[2].trim();
-                        if (type === 'fields') {
-                            result[key] = style;
-                        } else {
-                            result.fields[key] = style;
-                        }
-                    } else if (matchNoStyle) {
-                        const key = matchNoStyle[1];
-                        if (type === 'fields') {
-                            result[key] = '';
-                        } else {
-                            result.fields[key] = '';
-                        }
+
+            // -- render <key> <value>
+            if ((!type || type === 'renders') && trimmed.startsWith('-- render ')) {
+                const parts = trimmed.replace(/^--\s+render\s+/, '').split(/\s+/);
+                if (parts.length >= 2) {
+                    const [key, valStr] = parts;
+                    let val;
+                    if (/^(true|false)$/i.test(valStr)) {
+                        val = valStr.toLowerCase() === 'true';
+                    } else {
+                        val = valStr;
                     }
+                    result.renders[key] = val;
+                }
+                continue;
+            }
+            // -- jsformat <key> {<code>}
+            if ((!type || type === 'jsformats') && trimmed.startsWith('-- jsformat ')) {
+                const body = trimmed.replace(/^--\s+jsformat\s+/, '');
+                const match = body.match(/(\w+)\s*\{([^}]*)\}/);
+                if (match) {
+                    const key = match[1];
+                    const code = match[2].trim();
+                    result.jsformats[key] = code;
                 }
                 continue;
             }
         }
+        if (type && result[type]) return result[type];
         return result;
     }
-    async function querySql(sql) {
+    function getCurrDocId(embedBlockID) {
+        const protyle = document.querySelector('[data-node-id="' + embedBlockID + '"]')?.closest('.protyle');
+        const docId = protyle?.querySelector('.protyle-title')?.dataset?.nodeId;
+        return docId;
+    }
+    async function querySql(sql, errors = {}) {
         const result = await requestApi('/api/query/sql', { "stmt": sql });
         if (result.code !== 0) {
-            console.error("查询数据库出错", result.msg);
+            errors.msg = "查询数据库出错：" + (result.msg || '未知错误');
+            console.error("查询数据库出错", result.msg || '未知错误');
             return [];
         }
         return result.data;
     }
     async function requestApi(url, data, method = 'POST') {
         return await (await fetch(url, { method: method, body: JSON.stringify(data || {}) })).json();
+    }
+    function renderMarkdown(markdown) {
+        const lute = getLute();
+        const blockDom = lute.Md2BlockDOM(markdown);
+        return blockDom.replace();
+    }
+    function getLute() {
+        const setLute = (options) => {
+            const lute = window.Lute.New();
+            lute.SetSpellcheck(window.siyuan.config.editor.spellcheck);
+            lute.SetProtyleMarkNetImg(window.siyuan.config.editor.displayNetImgMark);
+            lute.SetFileAnnotationRef(true);
+            lute.SetHTMLTag2TextMark(true);
+            lute.SetTextMark(true);
+            lute.SetHeadingID(false);
+            lute.SetYamlFrontMatter(false);
+            lute.PutEmojis(options.emojis);
+            lute.SetEmojiSite(options.emojiSite);
+            lute.SetHeadingAnchor(options.headingAnchor);
+            lute.SetInlineMathAllowDigitAfterOpenMarker(true);
+            lute.SetToC(false);
+            lute.SetIndentCodeBlock(false);
+            lute.SetParagraphBeginningSpace(true);
+            lute.SetSetext(false);
+            lute.SetFootnotes(false);
+            lute.SetLinkRef(false);
+            lute.SetSanitize(options.sanitize);
+            lute.SetChineseParagraphBeginningSpace(options.paragraphBeginningSpace);
+            lute.SetRenderListStyle(options.listStyle);
+            lute.SetImgPathAllowSpace(true);
+            lute.SetKramdownIAL(true);
+            lute.SetTag(true);
+            lute.SetSuperBlock(true);
+            lute.SetMark(true);
+            lute.SetInlineAsterisk(window.siyuan.config.editor.markdown.inlineAsterisk);
+            lute.SetInlineUnderscore(window.siyuan.config.editor.markdown.inlineUnderscore);
+            lute.SetSup(window.siyuan.config.editor.markdown.inlineSup);
+            lute.SetSub(window.siyuan.config.editor.markdown.inlineSub);
+            lute.SetTag(window.siyuan.config.editor.markdown.inlineTag);
+            lute.SetInlineMath(window.siyuan.config.editor.markdown.inlineMath);
+            lute.SetGFMStrikethrough1(false);
+            lute.SetGFMStrikethrough(window.siyuan.config.editor.markdown.inlineStrikethrough);
+            lute.SetMark(window.siyuan.config.editor.markdown.inlineMark);
+            lute.SetSpin(true);
+            lute.SetProtyleWYSIWYG(true);
+            if (options.lazyLoadImage) {
+                lute.SetImageLazyLoading(options.lazyLoadImage);
+            }
+            lute.SetBlockRef(true);
+            if (window.siyuan.emojis[0].items.length > 0) {
+                const emojis = {};
+                window.siyuan.emojis[0].items.forEach(item => {
+                    emojis[item.keywords] = options.emojiSite + "/" + item.unicode;
+                });
+                lute.PutEmojis(emojis);
+            }
+            return lute;
+        };
+        // 1. 优化查找函数（仅匹配 .editor.protyle 结尾路径）
+        function findProtylePaths(obj) {
+            const results = [];
+            const seen = new Set();
+            function walk(obj, path = '') {
+                if (!obj || seen.has(obj)) return;
+                seen.add(obj);
+                for (const [key, value] of Object.entries(obj)) {
+                    const currentPath = path ? `${path}.${key}` : key;
+                    // 检查是否以 .editor.protyle 结尾
+                    if (currentPath.endsWith('.editor.protyle')) {
+                        results.push({ path: currentPath, value });
+                    }
+                    if (typeof value === 'object') {
+                        walk(value, currentPath);
+                    }
+                }
+            }
+            walk(obj);
+            return results;
+        }
+        // 2. 获取目标对象
+        const protylePaths = findProtylePaths(window.siyuan);
+        const firstProtyle = protylePaths[0]?.value;
+        if (firstProtyle) {
+            // 3. 动态设置 lute 并调用
+            firstProtyle.lute = setLute({
+                emojiSite: firstProtyle.options?.hint?.emojiPath,
+                emojis: firstProtyle.options?.hint?.emoji,
+                headingAnchor: false,
+                listStyle: firstProtyle.options?.preview?.markdown?.listStyle,
+                paragraphBeginningSpace: firstProtyle.options?.preview?.markdown?.paragraphBeginningSpace,
+                sanitize: firstProtyle.options?.preview?.markdown?.sanitize,
+            });
+            // 4. 获取lute实例
+            return firstProtyle.lute;
+        } else {
+            console.warn('未找到符合条件的 protyle 对象');
+            return Lute.New();
+        }
+    }
+    function whenElementExist(selector, node = document, timeout = 5000) {
+        return new Promise((resolve, reject) => {
+            const start = Date.now();
+            function check() {
+                let el;
+                try {
+                    el = typeof selector === 'function'
+                        ? selector()
+                        : node.querySelector(selector);
+                } catch (err) {
+                    return resolve(null);
+                }
+                if (el) {
+                    resolve(el);
+                } else if (Date.now() - start >= timeout) {
+                    resolve(null);
+                } else {
+                    requestAnimationFrame(check);
+                }
+            }
+            check();
+        });
+    }
+    function showErrors(embedBlockID, errors) {
+        whenElementExist('[data-node-id="'+embedBlockID+'"] .protyle-wysiwyg__embed.ft__smaller').then((el)=>{
+            el.innerHTML = errors.msg;
+            el.classList.add('ft__error');
+            el.style.fontSize = '14px';
+            errors.msg = '';
+        });
     }
 })();
