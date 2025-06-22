@@ -1,6 +1,7 @@
 // 嵌入查询支持多字段查询
 // see https://ld246.com/article/1750463052773
-// version 0.0.5
+// version 0.0.6
+// 0.0.6 添加 -- hide 指令
 // 0.0.5 添加-- sort 指令
 // 0.0.4 jsformat和style支持/**/多行注释
 // 0.0.3.1 修复隐藏字段正则匹配错误问题
@@ -27,7 +28,7 @@ select content, created from blocks where type='d' and trim(content) != '' limit
 格式化指令：-- format 字段名 函数名，例如：-- format created datetime，默认created，updated字段是datetime
 js格式化指令：-- jsformat 字段名 {js代码}，例如：-- jsformat updated {return 'hello '+fieldVal}，字段的值会被return的结果覆盖，默认可使用的变量，embedBlockID，currDocId，currBlockId，fieldName，fieldValue，fieldOriginValue
 渲染指令：-- render 字段名 true/false，例如：-- render markdown false，只有markdown字段有效，默认true
-隐藏字段指令：-- view 字段名 show/hide，例如：-- view id hide，隐藏字段也可以在sql的字段上写标记，比如，select id__hide, content from...
+隐藏字段指令：-- hide 字段名, 字段名, ...，例如：-- hide id, created, ...，隐藏字段也可以在sql的字段上写标记，比如，select id__hide, content from...，有别名的需要加到别名上，比如，-- hide path2或select path as path2__hide, ...，但id不能用别名且只能小写，否则无法被识别为id
 字段排序指令：-- sort 字段名, 字段名, ...，例如：-- sort id, content, created，字段的将按照这个指定的顺序显示
 强制使用自定义SQL -- custom true，默认情况下只有一个select * from的SQL被认为是思源默认SQL（思源默认SQL只能返回块Markdown一个字段），但当使用该指令时，则强制认为是自定义SQL。
 强制不处理隐藏字段 -- not-deal-hide true，默认情况，使用select id__hide, content from...，会把__hide认为隐藏字段，但当使用该指令时，会忽略__hide标记
@@ -78,7 +79,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
         const meta = parseSQLMeta(stmt);
         meta.ids = { embedBlockID, currDocId };
         if (Array.isArray(hideFields) && hideFields.length > 0) {
-            hideFields.forEach(field => meta.views[field] = 'hide');
+            meta.hides = [...meta.hides, ...hideFields];
         }
         const results = await querySql(stmt, errors);
         if (stmt && results.length === 0 && errors.msg) {
@@ -133,13 +134,14 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
     // -- render markdown false
     // -- jsformat updated {return 'hello '+fieldVal}
     // -- sort id, content, created
+    // -- hide id, path
     // 格式化字段的值
     async function getFieldsHtml(result, meta, markdown) {
         let fieldsHtml = '', orderedFieldsHtml = [], notOrderedFieldsHtml = [];
         const entries = Object.entries(result);
         for (let index = 0; index < entries.length; index++) {
             const [field, originVal] = entries[index];
-            if (meta.views[field]?.toLowerCase() === 'hide') continue;
+            if (meta.hides.includes(field) || meta.views[field]?.toLowerCase() === 'hide') continue;
             let fieldVal = originVal;
             if (field === 'created' || field === 'updated') fieldVal = formatField('datetime', originVal);
             if (field === 'type') fieldVal = formatField('type', originVal);
@@ -400,7 +402,8 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             formats: {},
             renders: {},
             jsformats: {},
-            sorts: []
+            sorts: [],
+            hides: []
         };
         // 1) 用非贪婪模式抓出所有 C-style 注释
         const blockCommentRE = /\/\*([\s\S]*?)\*\//g;
@@ -455,6 +458,11 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                 // -- sort key1,key2, key3
                 const list = t.replace(/^--\s+sort\s+/, '').split(',').map(k => k.trim()).filter(Boolean);
                 result.sorts = list;
+            }
+            else if ((!type || type === 'hides') && t.startsWith('-- hide ')) {
+                // -- hide key1,key2, key3
+                const list = t.replace(/^--\s+hide\s+/, '').split(',').map(k => k.trim()).filter(Boolean);
+                result.hides = list;
             }
         }
         // 4) 如果只想取某个子集，就返回它
