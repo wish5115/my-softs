@@ -611,9 +611,13 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
     }
     function showErrors(embedBlockID, errors) {
         whenElementExist('[data-node-id="' + embedBlockID + '"] .protyle-wysiwyg__embed.ft__smaller').then((el) => {
+            if(!el) return;
             el.innerHTML = errors.msg;
             el.classList.add('ft__error');
             el.style.fontSize = '14px';
+            if(window.siyuan.config.appearance.mode === 1){
+                el.style.filter = 'brightness(1.8)'; /* 黑色主题，提高 180% 亮度 */
+            }
             errors.msg = '';
         });
     }
