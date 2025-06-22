@@ -1,6 +1,7 @@
 // 嵌入查询支持多字段查询
 // see https://ld246.com/article/1750463052773
-// version 0.0.3
+// version 0.0.3.1
+// 0.0.3.1 修复隐藏字段正则匹配错误问题
 // 0.0.3 完全重构实现方式，为了兼容复制SQL，放弃了部分使用上的灵活性
 // 0.0.2 修复个别指令失效及被个别字符影响的问题
 
@@ -263,11 +264,11 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                         }
                         // 替换隐藏字段
                         if(!/--\s+not-deal-hide\s+true/gi.test(stmt)) {
-                            const regex = /([ ,])(.+?)__hide([ ,])/gi;
+                            const regex = /(\b\w+)__hide\b/gi;
                             if(regex.test(stmt)) {
                                 regex.lastIndex = 0;
-                                hideFields = [...stmt.matchAll(regex)].map(item=>item[2]);
-                                stmt = stmt.replace(regex, '$1$2$3');
+                                hideFields = [...stmt.matchAll(regex)].map(item=>item[1]);
+                                stmt = stmt.replace(regex, '$1');
                             }
                         }
                         // 2. 在这里“重写” stmt
