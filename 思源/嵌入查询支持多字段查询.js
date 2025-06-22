@@ -1,6 +1,7 @@
 // 嵌入查询支持多字段查询
 // see https://ld246.com/article/1750463052773
-// version 0.0.6
+// version 0.0.6.1
+// 0.0.6.1 增加帮助链接
 // 0.0.6 添加 -- hide 指令
 // 0.0.5 添加-- sort 指令
 // 0.0.4 jsformat和style支持/**/多行注释
@@ -621,4 +622,41 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             errors.msg = '';
         });
     }
+    function observerProtyleUtil(callback) {
+        let hasEmit = false;
+        // 1. 创建 MutationObserver 实例
+        const observer = new MutationObserver((mutationsList) => {
+            mutationsList.forEach((mutation) => {
+                // 2. 获取目标元素
+                const targetElement = mutation.target;
+                // 3. 检查目标元素是否是 .protyle .protyle-util
+                if (targetElement.matches('.protyle .protyle-util')) {
+                    // 4. 检查 .fn__none 类是否被删除
+                    if (!targetElement.classList.contains('fn__none')) {
+                        if (hasEmit) return;
+                        hasEmit = true;
+                        callback(targetElement);
+                        setTimeout(() => hasEmit = false, 100);
+                    }
+                }
+            });
+        });
+        // 5. 配置并启动监听
+        observer.observe(document.body, {
+            attributes: true, // 监听属性变化
+            attributeFilter: ['class'], // 只监听 class 属性
+            subtree: true,    // 监听所有后代元素
+        });
+    }
+    observerProtyleUtil(async protyleUtil => {
+        if(!protyleUtil.querySelector('.resize__move')?.textContent?.includes(window.siyuan.languages.embedBlock)) return;
+        if (protyleUtil.querySelector('button[data-type="help"]')) return;
+        const pinBtn = protyleUtil.querySelector('[data-type="pin"]');
+        const html = `<button data-type="help" class="block__icon block__icon--show b3-tooltips b3-tooltips__nw" aria-label="使用帮助"><svg><use xlink:href="#iconHelp"></use></svg></button>`;
+        pinBtn.insertAdjacentHTML('beforebegin', html);
+        const helpBtn = protyleUtil.querySelector('[data-type="help"]');
+        helpBtn.onclick = () => {
+            window.open('https://ld246.com/article/1750463052773');
+        };
+    });
 })();
