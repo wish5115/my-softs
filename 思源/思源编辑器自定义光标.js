@@ -3,7 +3,8 @@
 // 目前仅支持在编辑器中使用
 // todo 极致性能优化，太复杂暂时不实现(可参考下文优化说明)
 // see https://pipe.b3log.org/blogs/wilsons/%E6%80%9D%E6%BA%90/%E5%AE%9E%E6%97%B6%E8%8E%B7%E5%8F%96%E5%85%89%E6%A0%87%E4%BD%8D%E7%BD%AE%E4%BC%98%E5%8C%96%E6%80%9D%E8%B7%AF
-// version 0.0.11
+// version 0.0.12
+// 0.0.12 修复0.0.11导致的滚动时光标消失问题
 // 0.0.11 彻底解决打开文档或从搜索打开文档出现意外光标问题
 // 0.0.10.5 修复公式，嵌入块，备注等关闭弹窗后光标定位不到问题
 // 0.0.10.4 修复av光标定位不准问题
@@ -112,6 +113,7 @@
         const BLINK_DELAY = 500; // 静止后开始闪烁的延迟时间
         //let editorLastLeft = 0;
         let firstProtyleIds = [];
+        let clickedProtyleIds = [];
         let currentDocId = '';
         let hidePos = null;
 
@@ -286,6 +288,7 @@
                 }
 
                 // 如果不是编辑器区域则隐藏光标(防止标签切换等出现意外光标)
+                const protyleId = output.cursorElement?.closest('.protyle:not(.fn__none)')?.dataset?.id;
                 if(eventType === 'selectionchange') {
                     if(isMobile()) {
                         // const docId =  output.cursorElement?.closest('.protyle:not(.fn__none)')?.querySelector('.protyle-title')?.dataset?.nodeId;
@@ -296,7 +299,6 @@
                         //     return;
                         // }
                     } else {
-                        const protyleId = output.cursorElement?.closest('.protyle:not(.fn__none)')?.dataset?.id;
                         if(!firstProtyleIds.includes(protyleId)){
                             if(protyleId) firstProtyleIds.push(protyleId);
                             cursor.classList.add('hidden');
@@ -347,7 +349,10 @@
                 cursor.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
                 cursor.style.height = `${pos.height}px`;
                 // click时才显示，解决打开文档或从搜索打开文档出现意外光标问题
-                if(eventType === 'click') cursor.classList.remove('hidden');
+                if(eventType === 'click' || clickedProtyleIds.includes(protyleId)) {
+                    if(eventType === 'click' && protyleId) clickedProtyleIds.push(protyleId);
+                    cursor.classList.remove('hidden');
+                }
                 //hidePos = null;
                 cursor.style.zIndex = output.cursorElement ? getEffectiveZIndex(output.cursorElement) + 1 : ++window.siyuan.zIndex;
 
