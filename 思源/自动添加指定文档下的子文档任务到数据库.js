@@ -117,8 +117,8 @@
 
         if(tasks.length === 0) return;
 
-        // 获取块ids，这里取li的父元素list的id添加到数据库
-        const blockIds = tasks.map(block => block.parent_id);
+        // 获取块ids，这里取li元素即type=i的id添加到数据库
+        const blockIds = tasks.map(block => block.id);
         
         // 绑定块（要用await等待插入完成，否则后面的读取操作可能读不到数据）
         await addBlocksToAv(blockIds, avId, avBlockId);
