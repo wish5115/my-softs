@@ -11,7 +11,7 @@
     let avId = '';
 
     // 文档编辑后添加任务延迟，单位秒，默认30秒
-    const timeout = 30;
+    const timeout = 5;
 
     // 不更新已在数据库中的任务 true 不更新 false 更新
     const notUpdateHasInAvBlocks = true;
@@ -119,6 +119,8 @@
 
         // 获取块ids
         const blockIds = tasks.map(block => block.id);
+        // 获取块父ids
+        const parentIds = tasks.map(block => block.parent_id);
         
         // 绑定块（要用await等待插入完成，否则后面的读取操作可能读不到数据）
         await addBlocksToAv(blockIds, avId, avBlockId);
@@ -136,7 +138,7 @@
             await addColsToAv(blockIds, otherCols, avId);
         }
         // 给选中块添加自定义属性
-        await setBlocksAttrs(blockIds, customAttrs);
+        await setBlocksAttrs([...blockIds, ...parentIds], customAttrs);
     }
 
     async function getAvViews(avId) {
@@ -178,7 +180,7 @@
                     // 判断值是否已存在，已存在不添加
                     const colAttrs = views.av.keyValues.find(item => item.key.name.includes(col.colName));
                     if(colAttrs) {
-                        const colAttr = colAttrs.values.find(item=>item.blockID === blockId);
+                        const colAttr = colAttrs.values?.find(item=>item.blockID === blockId);
                         if(colAttr && colAttr[colKey]) continue;
                     }
                     colData.value = colValue;
@@ -300,7 +302,6 @@
             "body": JSON.stringify({"msg": message, "timeout": delay})
         });
     }
-
     // 通过块id获取数据库id
     async function getAvIdByAvBlockId(blockId) {
         const av = await getAvBySql(`SELECT * FROM blocks where type ='av' and id='${blockId}'`);
