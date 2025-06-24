@@ -1,6 +1,7 @@
 // 嵌入查询支持多字段查询
 // see https://ld246.com/article/1750463052773
-// version 0.0.6.2
+// version 0.0.6.3
+// 0.0.6.3 增加shareData；修复-- jsformat指令某种情况下匹配错误问题
 // 0.0.6.2 修复使用-- sort指令时，字段间距显示错误问题
 // 0.0.6.1 增加帮助链接
 // 0.0.6 添加 -- hide 指令
@@ -67,6 +68,7 @@ style content {
 SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档id和当前嵌入块id(有时需要排除当前嵌入块时有用)
 */
 (() => {
+    const shareData = {};
     searchEmbedBlock(async (embedBlockID, currDocId, stmt, blocks, hideFields) => {
         const errors = { msg: '' };
         if (isSiYuanDefaultSql(stmt)) {
@@ -103,12 +105,12 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                     }
                     if (block) {
                         // 更新内容
-                        block.content = await getContent(result, meta, block.content);
+                        block.content = await getContent(result, index, meta, block.content);
                         block.flag = true;
                     }
                 } else {
                     // 如果select *未查到内容
-                    const block = await getBlock(result, await getContent(result, meta));
+                    const block = await getBlock(result, await getContent(result, index, meta));
                     block.block.flag = true;
                     newBlocks.push(block);
                 }
@@ -123,12 +125,12 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             });
         }
     });
-    async function getContent(result, meta, content) {
+    async function getContent(result, index, meta, content) {
         // 解析内容
         if (content) {
-            return await getFieldsHtml(result, meta, content);
+            return await getFieldsHtml(result, index, meta, content);
         }
-        return await getFieldsHtml(result, meta);
+        return await getFieldsHtml(result, index, meta);
     }
     // -- view id hide
     // -- style created {color:red;}
@@ -138,9 +140,10 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
     // -- sort id, content, created
     // -- hide id, path
     // 格式化字段的值
-    async function getFieldsHtml(result, meta, markdown) {
+    async function getFieldsHtml(result, rowIndex, meta, markdown) {
         let fieldsHtml = '', orderedFieldsHtml = [], notOrderedFieldsHtml = [];
-        const entries = Object.entries(result);
+        const sortedResult = sortResult(result, meta);
+        const entries = Object.entries(sortedResult);
         for (let index = 0; index < entries.length; index++) {
             const [field, originVal] = entries[index];
             if (meta.hides.includes(field) || meta.views[field]?.toLowerCase() === 'hide') continue;
@@ -155,13 +158,25 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                 if (field === 'markdown') fieldVal = markdown || renderMarkdown(originVal) || originVal;
             }
             if (meta.jsformats[field]) {
+                const setShareData = (key, val) => {
+                    if(!shareData[rowIndex]) shareData[rowIndex] = {};
+                    shareData[rowIndex][key] = val;
+                }
+                const getShareData = (key) => {
+                    if(!shareData[rowIndex]) shareData[rowIndex] = {};
+                    return shareData[rowIndex][key];
+                }
+                const removeShareData = (key) => {
+                    if(!shareData[rowIndex]) shareData[rowIndex] = {};
+                    delete shareData[rowIndex][key];
+                }
                 // 创建动态函数
                 try {
                     const functionBody = `return (async () => { ${meta.jsformats[field] || ''} })();`;
                     const fieldFunction = new Function(
-                        "embedBlockID", "currDocId", "currBlockId", "fieldName", "fieldValue", "fieldOriginValue", functionBody
+                        "embedBlockID", "currDocId", "currBlockId", "fieldName", "fieldValue", "originFieldValue", "rowIndex", "whenElementExist", "shareData", "setShareData", "getShareData", "removeShareData", functionBody
                     );
-                    const ret = await fieldFunction(meta.ids.embedBlockID, meta.ids.currDocId, meta.ids.embedBlockID, field, fieldVal, originVal);
+                    const ret = await fieldFunction(meta.ids.embedBlockID, meta.ids.currDocId, meta.ids.embedBlockID, field, fieldVal, originVal, rowIndex, whenElementExist, shareData, setShareData, getShareData, removeShareData);
                     fieldVal = ret === undefined ? fieldVal : ret;
                 } catch (e) {
                     fieldVal = '<span class="ft__error">jsformat errors: ' + (e.message || '未知错误') + '</span>';
@@ -180,7 +195,17 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
         if (markdown) {
             return fieldsHtml;
         }
-        return `<div data-node-id="${result?.id || ''}" data-node-index="1" data-type="NodeParagraph" class="p" updated="${result?.updated || ''}"><div contenteditable="false" spellcheck="true">${fieldsHtml}</div><div class="protyle-attr" contenteditable="false">​</div></div>`;
+        return `<div data-node-id="${sortedResult?.id || ''}" data-node-index="1" data-type="NodeParagraph" class="p" updated="${sortedResult?.updated || ''}"><div contenteditable="false" spellcheck="true">${fieldsHtml}</div><div class="protyle-attr" contenteditable="false">​</div></div>`;
+    }
+    function sortResult(result, meta) {
+        const newResult = {};
+        meta.sorts.forEach(field => {
+            newResult[field] = result[field];
+        });
+        Object.keys(result).forEach(field => {
+            if(!meta.sorts.includes(field)) newResult[field] = result[field];
+        });
+        return newResult;
     }
     function formatField(fn, val) {
         if (fn === 'datetime') {
@@ -454,7 +479,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                 if (m2) result.styles[m2[1]] = m2[2].trim();
             }
             else if ((!type || type === 'jsformats') && t.startsWith('-- jsformat ')) {
-                const m3 = t.replace(/^--\s+jsformat\s+/, '').match(/^(\w+)\s*\{([^}]*)\}$/);
+                const m3 = t.replace(/^--\s+jsformat\s+/, '').match(/^(\w+)\s*\{([\s\S]*?)\}$/);
                 if (m3) result.jsformats[m3[1]] = m3[2].trim();
             }
             else if ((!type || type === 'sorts') && t.startsWith('-- sort ')) {
