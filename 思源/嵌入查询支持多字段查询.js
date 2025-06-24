@@ -1,6 +1,7 @@
 // 嵌入查询支持多字段查询
 // see https://ld246.com/article/1750463052773
-// version 0.0.6.1
+// version 0.0.6.2
+// 0.0.6.2 修复使用-- sort指令时，字段间距显示错误问题
 // 0.0.6.1 增加帮助链接
 // 0.0.6 添加 -- hide 指令
 // 0.0.5 添加-- sort 指令
@@ -168,7 +169,8 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                 }
             }
             const defStyle = field === 'created' || field === 'updated' ? 'float:right;' : '';
-            const html = `<span class="embed-${field}" style="display:inline-block;${index > 0 ? 'margin-left:10px;' : ''}${defStyle}${meta.styles[field] || ''}">${fieldVal}</span>`;
+            const isFirst = meta.sorts.length > 0 ? (meta.sorts[0] === field ? true : false) : (index === 0 ? true : false);
+            const html = `<span class="embed-${field}" style="display:inline-block;${!isFirst ? 'margin-left:10px;' : ''}${defStyle}${meta.styles[field] || ''}">${fieldVal}</span>`;
             // 字段排序
             const sortIndex = meta.sorts.findIndex(item=>item===field);
             if(sortIndex !== -1) orderedFieldsHtml[sortIndex] = html;
