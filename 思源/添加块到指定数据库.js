@@ -2,7 +2,7 @@
 // see https://ld246.com/article/1746153210116
 // 注意：只能在块菜单中操作（你的右键可能不是块菜单）
 // 本应用已全部用完Achuan-2大佬提供的所有api see https://ld246.com/article/1733365731025
-// version 0.0.8
+// version 0.0.9
 // 0.0.2 （已废弃）
 // 0.0.3 修改参数配置方式
 // 0.0.4 修复仅对当前文档中的选中块起作用
@@ -10,6 +10,7 @@
 // 0.0.6 增加附加字段功能
 // 0.0.7 增加可同时对选中块增加自定义属性
 // 0.0.8 修复批量调添加可能扩展字段无法被添加的意外情况
+// 0.0.9 改进添加列表时总是添加li即type=i到数据库
 (()=>{
     // 是否开启，同时添加其他字段 true 开启 false 不开启
     // 开启时，需要配置menus中的otherCols字段信息（可参考下面的示例）
@@ -24,7 +25,7 @@
             // 菜单名，显示在块或文档右键菜单上
             name: "添加到数据库A",
             // 添加到的数据库块id列表（必填），注意是数据库所在块id，如果移动了数据库位置需要更改
-            toAvBlockId: "20241127231309-wo80aza",
+            toAvBlockId: "20250614104613-0qa055i",
             // 指定数据库的列名，不填默认是添加到主键列，该参数仅对不绑定块菜单有效，如果多个列名一样的则取第一个
             // 注意，目前仅支持文本列
             toAvColName: "",
@@ -118,6 +119,9 @@
         } else {
             // 添加普通块到数据库
             blocks = (protyle||document)?.querySelectorAll('.protyle-wysiwyg--select');
+            blocks = [...blocks].map(block => {
+                return block.matches('.list') ? block.firstElementChild : block;
+            });
         }
         // 绑定块
         if(isBindBlock){
