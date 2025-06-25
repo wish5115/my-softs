@@ -487,6 +487,7 @@
             document.addEventListener(e, h, opts);
         });
 
+        // 监控文本动态发生变化
         // onDomChange((target) => {
         //     if(target.closest('.protyle-wysiwyg')) {
         //         updateCursor();
@@ -495,7 +496,12 @@
          window.siyuan.ws.ws.addEventListener('message', async (e) => {
             const msg = JSON.parse(e.data);
             if(msg.cmd === "transactions") {
-                updateCursor();
+                const block = msg?.data
+                    ?.flatMap(item => item?.doOperations || [])
+                    ?.find(it => it?.action === 'update');
+                if(document.querySelector('.protyle-wysiwyg [data-node-id="'+block?.id+'"]')) {
+                    updateCursor();
+                }
             }
          });
     }
