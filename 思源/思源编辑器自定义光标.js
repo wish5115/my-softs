@@ -493,7 +493,7 @@
         //         updateCursor();
         //     }
         // });
-         window.siyuan.ws.ws.addEventListener('message', async (e) => {
+        window.siyuan.ws.ws.addEventListener('message', async (e) => {
             const msg = JSON.parse(e.data);
             if(msg.cmd === "transactions") {
                 const block = msg?.data
@@ -503,7 +503,7 @@
                     updateCursor();
                 }
             }
-         });
+        });
     }
 
     function onDomChange(callback, delay = 100) {
