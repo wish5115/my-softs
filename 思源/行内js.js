@@ -1,4 +1,5 @@
 // 行内js
+// 注意：需要在设置-> 编辑器配置中，开启 Markdown 行级公式语法 感谢 @Fighter93 提醒！
 // see https://ld246.com/article/1749806156975
 // version 0.0.12
 // 0.0.12 自动检测并提示用户开启Markdown行级公式语法
@@ -20,7 +21,6 @@
 // ">Loading</span>
 //或
 // $Loading${: custom-js="return 'Hello Inline JS';"}
-// todo 方案2：直接用inline-math前缀标记实现，应该更加兼容和稳定
 (() => {
     // 是否插入时弹出编辑窗空，true 弹窗 false 不弹窗
     // 注意，从模板插入不会弹窗
