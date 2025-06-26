@@ -1,10 +1,6 @@
 // 通过toolbar按钮开启和关闭块标打开属性面板
 // see https://ld246.com/article/1750855839822
 (async ()=>{
-    // 如果你的打开面板的快捷键不是ctrl/meta+alt+a，需要配置快捷键
-    // 仅支持 ctrl/meta/alt/shift组合 + 字母按键
-    const openAttrShortcut = '';
-
     // 是否记住开启状态 true 记住 false 不记住
     // 不记住时，刷新页面后默认是不开启打开属性面板
     const isStoreOpenAttrStatus = true;
@@ -58,12 +54,20 @@
         if(gutters){
             // 打开属性面板
             if(openAttrStatus.isOpenAttr) {
-                event.preventDefault();
-                event.stopPropagation();
-                press(openAttrShortcut||(isMac()?'meta':'ctrl')+'+alt+a', gutters.closest('.protyle')?.querySelector('.protyle-wysiwyg'));
-                // 打开自定义属性
-                whenElementExist('div.b3-dialog--open[data-key="dialog-attr"]').then((dialog) => {
-                    if(dialog) dialog.querySelector('.layout-tab-bar .item--full[data-type="custom"]').click();
+                // 监听块菜单
+                whenElementExist(()=>{
+                    const menuItems = document.querySelector('#commonMenu .b3-menu__items');
+                    const isBlockMenu = menuItems.querySelector('[data-id="cut"]') && menuItems.querySelector('[data-id="move"]');
+                    if(isBlockMenu) return menuItems;  
+                }).then((menuItems) => {
+                    if(!menuItems) return;
+                    // 打开属性面板
+                    const attr = menuItems.querySelector('[data-id="attr"]');
+                    if(attr) attr.click();
+                    // 打开自定义属性
+                    whenElementExist('div.b3-dialog--open[data-key="dialog-attr"]').then((dialog) => {
+                        if(dialog) dialog.querySelector('.layout-tab-bar .item--full[data-type="custom"]').click();
+                    });
                 });
             }
         }
@@ -90,31 +94,6 @@
             }
             check();
         });
-    }
-    // 仅支持 功能键+字母
-    function press(keys = [], element) {
-        if(typeof keys === 'string') keys = keys.split('+');
-        keys = keys.map(item=>item.trim().toLowerCase());
-        const key = keys.find(item=>!['ctrl','alt','meta','shift'].includes(item));
-        const code = `Key${key.toUpperCase()}`;
-        let keyInit = {
-            ctrlKey: keys.includes('ctrl'),
-            altKey: keys.includes('alt'),
-            metaKey: keys.includes('meta'),
-            shiftKey: keys.includes('shift'),
-            key: key.toUpperCase(),
-            keyCode: key.toUpperCase().charCodeAt(0),
-            code: code,
-        }
-        keyInit["bubbles"] = true;
-        let keydownEvent = new KeyboardEvent('keydown', keyInit);
-        if(typeof element === 'string') element = document.querySelector(element);
-        (element || document.getElementsByTagName("body")[0]).dispatchEvent(keydownEvent);
-        let keyUpEvent = new KeyboardEvent('keyup', keyInit);
-        (element || document.getElementsByTagName("body")[0]).dispatchEvent(keyUpEvent);
-    }
-    function isMac() {
-        return navigator.platform.indexOf("Mac") > -1;
     }
     function isMobile() {
         return !!document.getElementById("sidebar");
