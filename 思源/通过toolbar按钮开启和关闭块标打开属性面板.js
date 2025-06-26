@@ -7,7 +7,6 @@
 
     // 不支持手机版
     if(isMobile()) return;
-    
     // 获取开关状态
     let openAttrStatus = {isOpenAttr:false};
     if(isStoreOpenAttrStatus) {
@@ -17,11 +16,10 @@
             openAttrStatus = {isOpenAttr:false};
         }
     }
-    
     // 添加toolbar按钮
     whenElementExist('#toolbar .fn__ellipsis').then((el)=>{
         if(!el) return;
-        const ariaLabel = openAttrStatus.isOpenAttr ? '关闭打开属性面板' : '开启打开属性面板';
+        const ariaLabel = openAttrStatus.isOpenAttr ? '点击关闭打开属性面板' : '点击开启打开属性面板';
         const style = openAttrStatus.isOpenAttr ? 'transform: scaleX(-1);' : '';
         const html = `<div data-menu="true" id="openAttr" class="toolbar__item ariaLabel" aria-label="${ariaLabel}" data-location="right"><svg style="${style}"><use xlink:href="#iconParagraph"></use></svg></div>`;
         el.insertAdjacentHTML('afterend', html);
@@ -33,14 +31,14 @@
                 // 开启打开属性面板
                 openAttrStatus.isOpenAttr = true;
                 svg.style.transform = "scaleX(-1)";
-                openAttrBtn.setAttribute('aria-label', '关闭打开属性面板');
-                if(tooltip) tooltip.textContent = '关闭打开属性面板';
+                openAttrBtn.setAttribute('aria-label', '点击关闭打开属性面板');
+                if(tooltip) tooltip.textContent = '点击关闭打开属性面板';
             } else {
                 // 关闭打开属性面板
                 openAttrStatus.isOpenAttr = false;
                 svg.style.transform = "";
-                openAttrBtn.setAttribute('aria-label', '开启打开属性面板');
-                if(tooltip) tooltip.textContent = '开启打开属性面板';
+                openAttrBtn.setAttribute('aria-label', '点击开启打开属性面板');
+                if(tooltip) tooltip.textContent = '点击开启打开属性面板';
             }
             // 存储状态
             if(isStoreOpenAttrStatus) {
@@ -50,8 +48,7 @@
     });
     // 监听块标被点击
     document.addEventListener('click', (e)=> {
-        const gutters = e.target?.closest('.protyle-gutters');
-        if(gutters){
+        if(e.target?.closest('.protyle-gutters')){
             // 打开属性面板
             if(openAttrStatus.isOpenAttr) {
                 // 监听块菜单
