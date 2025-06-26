@@ -2,7 +2,7 @@
 // see https://ld246.com/article/1750855839822
 (async ()=>{
     // 如果你的打开面板的快捷键不是ctrl/meta+alt+a，需要配置快捷键
-    // 仅支持 ctrl/meta/alt/shift + 字母按键
+    // 仅支持 ctrl/meta/alt/shift组合 + 字母按键
     const openAttrShortcut = '';
 
     // 是否记住开启状态 true 记住 false 不记住
