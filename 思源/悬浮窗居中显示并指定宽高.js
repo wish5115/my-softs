@@ -1,4 +1,4 @@
-// 弹窗居中显示并指定宽高
+// 悬浮窗居中显示并指定宽高
 // see https://ld246.com/article/1750995959012
 (()=>{
     // 设置弹窗的宽高
@@ -56,6 +56,7 @@
         popover.style.top = `${top > 0 ? top : 0}px`;
         popover.style.width = `${popoverWidth}px`;
         popover.style.maxHeight = `${popoverHeight}px`;
+        popover.style.height = `${popoverHeight}px`;
     }
     
     /**
