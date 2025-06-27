@@ -1,13 +1,13 @@
 // 悬浮窗居中显示并指定宽高
 // see https://ld246.com/article/1750995959012
 (()=>{
-    // 设置弹窗的宽高
+    // 设置悬浮窗的宽高
     const width = 1020;
     const height = 791;
     
-    // 监听弹窗出现
+    // 监听悬浮窗出现
     observePopoverOpen((popover) => {
-        // 将弹窗居中显示
+        // 将悬浮窗居中显示
         centerPopover(popover, width, height);
         // 设置居中按钮
         addCenterButton(popover, width, height);
@@ -25,7 +25,7 @@
     }
 
     /**
-     * 将弹窗居中显示
+     * 将悬浮窗居中显示
      * @param {HTMLElement} popover - 弹窗元素
      */
     function centerPopover(popover, width, height) {
