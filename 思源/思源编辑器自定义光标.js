@@ -3,7 +3,8 @@
 // 目前仅支持在编辑器中使用
 // todo 极致性能优化，太复杂暂时不实现(可参考下文优化说明)
 // see https://pipe.b3log.org/blogs/wilsons/%E6%80%9D%E6%BA%90/%E5%AE%9E%E6%97%B6%E8%8E%B7%E5%8F%96%E5%85%89%E6%A0%87%E4%BD%8D%E7%BD%AE%E4%BC%98%E5%8C%96%E6%80%9D%E8%B7%AF
-// version 0.0.12.1
+// version 0.0.12.2
+// 0.0.12.2 修复0.0.11+引起的悬浮窗光标意外丢失问题
 // 0.0.12.1 增加文档编辑时对光标的监控，防止文本被动态改变时光标无变化
 // 0.0.12 修复0.0.11导致的滚动时光标消失问题
 // 0.0.11 彻底解决打开文档或从搜索打开文档出现意外光标问题
@@ -350,7 +351,7 @@
                 cursor.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
                 cursor.style.height = `${pos.height}px`;
                 // click时才显示，解决打开文档或从搜索打开文档出现意外光标问题
-                if(eventType === 'click' || clickedProtyleIds.includes(protyleId)) {
+                if(eventType === 'click' || clickedProtyleIds.includes(protyleId) || output.cursorElement?.closest('.block__popover')) {
                     if(eventType === 'click' && protyleId) clickedProtyleIds.push(protyleId);
                     cursor.classList.remove('hidden');
                 }
