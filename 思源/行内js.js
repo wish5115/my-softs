@@ -1,7 +1,8 @@
 // 行内js
 // 注意：需要在设置-> 编辑器配置中，开启 Markdown 行级公式语法 感谢 @Fighter93 提醒！
 // see https://ld246.com/article/1749806156975
-// version 0.0.12
+// version 0.0.12.1
+// 0.0.12.1 修复在代码块内被意外弹出菜单的问题
 // 0.0.12 自动检测并提示用户开启Markdown行级公式语法
 // 0.0.11 增加convertToHtmlForever，fetchSyncPost支持GET请求
 // 0.0.10 增加notCheckEmptyTextContent
@@ -939,7 +940,7 @@
     let lastFilterText = '';
     document.addEventListener('input', async (event) => {
         const cursorEl = getCursorElement();
-        if(!cursorEl.closest('.protyle-wysiwyg')) return;
+        if(!cursorEl.closest('.protyle-wysiwyg') || cursorEl.closest('.code-block')) return;
         const cursorText = cursorEl?.textContent;
         if (cursorText.indexOf('/') !== -1 || cursorText.indexOf('、') !== -1) {
             const sp = cursorText.indexOf('/') !== -1 ? '/' : '、';
