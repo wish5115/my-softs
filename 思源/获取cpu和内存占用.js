@@ -1,4 +1,3 @@
-// 获取cpu和内存占用
 setTimeout(() => {
     if(typeof process === 'undefined') return;
     const counter = document.querySelector('#status .status__counter');
@@ -24,7 +23,7 @@ setTimeout(() => {
             // 内存占比（%）
             // const memPercent = ((memUsage.rss / totalMemBytes) * 100).toFixed(1);
             cpu.textContent = cpuUsage.percentCPUUsage.toFixed(1)+'%';
-            mem.textContent = (memUsage.rss/1024/1204).toFixed(1);
+            mem.textContent = (memUsage.rss/1024/1204).toFixed(1)+'M';
         }, 3000);
     }
     function stop() {
