@@ -278,7 +278,10 @@
         const updateCursor = (event, eventType) => {
             if (isUpdating) return;
             isUpdating = true;
-            if(event?.target?.tagName === 'INPUT'|| event?.target?.tagName === 'TEXTAREA') return;
+            if(event?.target?.tagName === 'INPUT'|| event?.target?.tagName === 'TEXTAREA') {
+                isUpdating = false;
+                return;
+            }
             //requestAnimationFrame(() => {
                 const pos = hidePos ? hidePos : getStablePosition();
                 const output={cursorElement:null, isOuterElement: false};
