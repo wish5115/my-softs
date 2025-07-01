@@ -3,7 +3,8 @@
 // 目前仅支持在编辑器中使用
 // todo 极致性能优化，太复杂暂时不实现(可参考下文优化说明)
 // see https://pipe.b3log.org/blogs/wilsons/%E6%80%9D%E6%BA%90/%E5%AE%9E%E6%97%B6%E8%8E%B7%E5%8F%96%E5%85%89%E6%A0%87%E4%BD%8D%E7%BD%AE%E4%BC%98%E5%8C%96%E6%80%9D%E8%B7%AF
-// version 0.0.12.2
+// version 0.0.12.3
+// 0.0.12.3 修复与加密文档js冲突问题
 // 0.0.12.2 修复0.0.11+引起的悬浮窗光标意外丢失问题
 // 0.0.12.1 增加文档编辑时对光标的监控，防止文本被动态改变时光标无变化
 // 0.0.12 修复0.0.11导致的滚动时光标消失问题
@@ -48,12 +49,13 @@
     // 其他光标样式，可以在这里改，颜色，宽高什么的
     addStyle(`
         .protyle-wysiwyg{ caret-color: transparent; } /* 隐藏编辑器默认光标 */
+        .protyle-wysiwyg :is(input, texetarea) { caret-color: auto; }
         ${isApplyToTitle ? `.protyle-title__input{caret-color: transparent;}`: ''} /* 隐藏标题默认光标 */
         /* 新光标样式 */
         #custom-cursor {
           /* 光标宽度 */
           width: 1.5px;
-          
+
           /* 预设光标高度，也可以这里写死，但写死不同的元素可能有差异（这里优先级高于动态计算） */
           /* 这里行高仍然受cursorHeightRelativeToLineHeight的影响，如果想不受影响，把倍数设为1 */
           /* height: 26px; */
@@ -276,11 +278,11 @@
         const updateCursor = (event, eventType) => {
             if (isUpdating) return;
             isUpdating = true;
-
+            if(event.target?.tagName === 'INPUT'|| event.target?.tagName === 'TEXTAREA') return;
             //requestAnimationFrame(() => {
                 const pos = hidePos ? hidePos : getStablePosition();
                 const output={cursorElement:null, isOuterElement: false};
-                
+
                 if (!pos || !isInAllowElements(pos, output)) {
                     // 编辑器内的元素，但超出编辑器范围了隐藏
                     cursor.classList.add('hidden');
