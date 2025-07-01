@@ -11,7 +11,8 @@
         // 双击标题关闭
         if(!popover?.dblclickHandle){
             popover.dblclickHandle = true;
-            popover.querySelector('.resize__move').addEventListener('dblclick', () => {
+            popover.querySelector('.resize__move').addEventListener('dblclick', (e) => {
+                e.stopPropagation();
                 popover.querySelector('[data-type="close"]').click();
             });
         }
