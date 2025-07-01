@@ -1,7 +1,8 @@
 // 加密文档（非真正加密）
 // 注意： 该代码并不会加密原文，只是打开文档需要输入密码而已，且是前端加密，专业人员可以通过访问 js 源码分析出密码，因此请勿用于重要信息的保密！
 // see https://ld246.com/article/1742364416944
-//version 0.0.4
+//version 0.0.5
+// 0.0.5 修复搜索预览切换和刷新显示明文问题
 // 0.0.2 修复偶发显示原文的bug；默认密码框自动获取焦点；默认过期时间改为1秒
 // 0.0.3 修复嵌入块显示bug
 // 0.0.4 修复搜索预览和模式切换/导出预览被加载显示bug
@@ -30,6 +31,18 @@
     let pass = false;
     observeEditorLoaded((editor)=>{
         if(pass) return;
+        // 监控搜索预览切换和刷新
+        if(editor.closest('.search__preview')) {
+            const searchPreview = editor.closest('#searchPreview');
+            whenElementExist(()=>searchPreview.matches('[data-loading="finished"]') && searchPreview.querySelector('.protyle-breadcrumb__bar .popover__block')).then(async ()=>{
+                const block = searchPreview.querySelector('.protyle-breadcrumb__bar .popover__block');
+                if(!pass && encryptedDocIds.includes(block?.dataset?.id)) {
+                    searchPreview.querySelector('.protyle-wysiwyg').innerHTML = '该文档已加密';
+                }
+            });
+            return;
+        }
+        // 监控文档加载
         whenElementExist(()=>editor.closest('.protyle')?.dataset?.loading==='finished').then(() => {
             // 获取文档id
             const protyle = editor.closest('.protyle');
