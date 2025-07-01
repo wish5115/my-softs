@@ -3,6 +3,7 @@
 (()=>{
     // 监听悬浮窗出现
     observePopoverOpen((popover) => {
+        if(!popover) return;
         // 默认钉住
         if(popover?.dataset.pin === 'false') {
             popover.querySelector('[data-type="pin"]').click();
