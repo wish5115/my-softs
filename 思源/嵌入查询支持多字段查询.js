@@ -401,11 +401,11 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                         currDocId = getCurrDocId(embedBlockID);
                         // 替换 {{CurDocId}}
                         if (['{{CurDocId}}','{{curDocId}}','{{CurrDocId}}','{{currDocId}}'].some(item => stmt.indexOf(item) !== -1)) {
-                            stmt = stmt.replace('{{CurDocId}}', currDocId).replace('{{curDocId}}', currDocId).replace('{{CurrDocId}}', currDocId).replace('{{currDocId}}', currDocId);
+                            stmt = stmt.replace(/{{CurDocId}}/g, currDocId).replace(/{{curDocId}}/g, currDocId).replace(/{{CurrDocId}}/g, currDocId).replace(/{{currDocId}}/g, currDocId);
                         }
                         // 替换 {{CurBlockId}}
                         if (['{{CurBlockId}}','{{curBlockId}}','{{CurrBlockId}}','{{currBlockId}}'].some(item => stmt.indexOf(item) !== -1)) {
-                            stmt = stmt.replace('{{CurBlockId}}', embedBlockID).replace('{{curBlockId}}', embedBlockID).replace('{{CurrBlockId}}', embedBlockID).replace('{{currBlockId}}', embedBlockID);
+                            stmt = stmt.replace(/{{CurBlockId}}/g, embedBlockID).replace(/{{curBlockId}}/g, embedBlockID).replace(/{{CurrBlockId}}/g, embedBlockID).replace(/{{currBlockId}}/g, embedBlockID);
                         }
                         // 替换隐藏字段
                         if (!/--\s+not-deal-hide\s+true/gi.test(stmt)) {
