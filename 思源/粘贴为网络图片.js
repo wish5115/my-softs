@@ -1,5 +1,5 @@
 // 粘贴为网络图片
-// see 
+// see https://ld246.com/article/1751467959584
 (()=>{
     // 添加右键菜单
     document.addEventListener('contextmenu', async function (e) {
