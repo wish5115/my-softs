@@ -1,6 +1,7 @@
 // 嵌入查询支持多字段查询
 // see https://ld246.com/article/1750463052773
-// version 0.0.6.3
+// version 0.0.6.4
+// 0.0.6.4 增加-- js 指令，支持直接写js代码
 // 0.0.6.3 增加shareData；修复-- jsformat指令某种情况下匹配错误问题
 // 0.0.6.2 修复使用-- sort指令时，字段间距显示错误问题
 // 0.0.6.1 增加帮助链接
@@ -64,6 +65,13 @@ style content {
 }
 #/
 
+-- js 指令
+支持直接写js代码，比如：
+-- js
+-- style content {color:red}
+return await querySql(`select content from blocks where type='d' limit 1`, errors);
+querySql传入errors参数，当查询错误时，会返回错误信息
+
 其他：
 SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档id和当前嵌入块id(有时需要排除当前嵌入块时有用)
 */
@@ -71,6 +79,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
     const shareData = {};
     searchEmbedBlock(async (embedBlockID, currDocId, stmt, blocks, hideFields) => {
         const errors = { msg: '' };
+        // 如果思源默认SQL
         if (isSiYuanDefaultSql(stmt)) {
             if (stmt && blocks.length == 0) {
                 const results = await querySql(stmt, errors);
@@ -80,10 +89,19 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             }
             return;
         }
+        // 用户自定义查询
         const meta = parseSQLMeta(stmt);
         meta.ids = { embedBlockID, currDocId };
         if (Array.isArray(hideFields) && hideFields.length > 0) {
             meta.hides = [...meta.hides, ...hideFields];
+        }
+        // 如果-- js指令
+        if(isJsCode(stmt)) {
+            await runJsCode(embedBlockID, currDocId, stmt, blocks, meta, errors);
+            if (blocks.length === 0 && errors.msg) {
+                showErrors(embedBlockID, errors);
+            }
+            return;
         }
         const results = await querySql(stmt, errors);
         if (stmt && results.length === 0 && errors.msg) {
@@ -172,7 +190,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                 }
                 // 创建动态函数
                 try {
-                    const functionBody = `return (async () => { ${meta.jsformats[field] || ''} })();`;
+                    const functionBody = `return (async () => { ${meta.jsformats[field] || ''}\n })();`;
                     const fieldFunction = new Function(
                         "embedBlockID", "currDocId", "currBlockId", "fieldName", "fieldValue", "originFieldValue", "rowIndex", "whenElementExist", "shareData", "setShareData", "getShareData", "removeShareData", functionBody
                     );
@@ -195,7 +213,80 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
         if (markdown) {
             return fieldsHtml;
         }
-        return `<div data-node-id="${sortedResult?.id || ''}" data-node-index="1" data-type="NodeParagraph" class="p" updated="${sortedResult?.updated || ''}"><div contenteditable="false" spellcheck="true">${fieldsHtml}</div><div class="protyle-attr" contenteditable="false">​</div></div>`;
+        return getEmbedHtml(sortedResult, fieldsHtml);
+    }
+    async function runJsCode(embedBlockID, currDocId, stmt, blocks, meta, errors) {
+        // 创建动态函数
+        try {
+            if(!stmt) return;
+            const functionBody = `return (async () => { ${stmt.replace(/^--/gm, '//') || ''}\n })();`;
+            const userFunction = new Function(
+                "embedBlockID", "currDocId", "currBlockId", "whenElementExist", "fetchSyncPost", "protyle", "top", "querySql", "pick", "unpick", "errors", "showErrors", "blocks", "getFieldsHtml", "getBlock", "meta", functionBody
+            );
+            const protyleEl = document.querySelector('[data-node-id="'+embedBlockID+'"]')?.closest('.protyle');
+            const protyle = getInstanceById(protyleEl?.dataset?.id) || '';
+            const top = protyleEl.querySelector('.protyle-content')?.scrollTop || 0;
+            let result = await userFunction(embedBlockID, currDocId, embedBlockID, whenElementExist, requestApi, protyle, top, querySql, pick, unpick, errors, showErrors, blocks, getFieldsHtml, getBlock, meta);
+            result = result === undefined ? [] : result;
+            // 生成数据
+            for (let index = 0; index < result.length; index++) {
+                let block = result[index];
+                if(typeof block !== 'object') {
+                    block = (await querySql(`select * from blocks where id = '${block}'`))[0];
+                }
+                if(!block) continue;
+                let content = await getFieldsHtml(block, index, meta);
+                block = await getBlock(block, content);
+                blocks.push(block);
+            }
+        } catch (e) {
+            //const block = await getBlock({}, getEmbedHtml({}, '<span class="ft__error">js errors: ' + (e.message || '未知错误') + '</span>'));
+            //blocks.push(block);
+            errors.msg = 'js errors: ' + (e.message || '未知错误');
+            console.log(e);
+        }
+    }
+    function getEmbedHtml(result, fieldsHtml) {
+        return `<div data-node-id="${result?.id || ''}" data-node-index="1" data-type="NodeParagraph" class="p" updated="${result?.updated || ''}"><div contenteditable="false" spellcheck="true">${fieldsHtml}</div><div class="protyle-attr" contenteditable="false">​</div></div>`;
+    }
+    function getInstanceById(id, layout = window.siyuan.layout.centerLayout) {
+        const _getInstanceById = (item, id) => {
+            if (item.id === id) return item;
+            if (!item.children) return;
+            let ret;
+            for (let i = 0; i < item.children.length; i++) {
+                ret = _getInstanceById(item.children[i], id);
+                if (ret) return ret;
+            }
+        };
+        return _getInstanceById(layout, id);
+    }
+    function pick(array, ...keys) {
+        // 如果 keys[0] 是数组，则展开它作为 keys 列表
+        const keyList = Array.isArray(keys[0]) ? keys[0] : keys;
+
+        return array.map(obj => {
+            const result = {};
+            keyList.forEach(key => {
+                if (obj && obj.hasOwnProperty(key)) {
+                    result[key] = obj[key];
+                }
+            });
+            return result;
+        });
+    }
+    function unpick(array, ...keys) {
+        const keyList = Array.isArray(keys[0]) ? keys[0] : keys;
+
+        return array.map(obj => {
+            const result = {};
+            for (const key in obj) {
+                if (obj && obj.hasOwnProperty(key) && !keyList.includes(key)) {
+                    result[key] = obj[key];
+                }
+            }
+            return result;
+        });
     }
     function sortResult(result, meta) {
         const newResult = {};
@@ -366,6 +457,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
         };
     }
     async function getBlock(row, content) {
+        row = row || {}
         let breadcrumbs = [];
         if (siyuan.config.editor.embedBlockBreadcrumb) {
             breadcrumbs = await getBlockBreadcrumb(row.id, row.type, row.hpath);
@@ -392,7 +484,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                 "refs": null,
                 "defID": "",
                 "defPath": "",
-                "ial": row.ial ? JSON.parse(row.ial) : {},
+                "ial": row.ial ? parseIal(row.ial) : {},
                 "children": null,
                 "depth": 0,
                 "count": 0,
@@ -404,6 +496,19 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             },
             "blockPaths": breadcrumbs || []
         };
+    }
+    function parseIal(str) {
+        // 去除开头和结尾的括号和空格
+        const content = str.trim().replace(/^\{|\}$/g, '').trim();
+        // 匹配 key="value"
+        const regex = /(\w+)=(?:"([^"]*)")/g;
+        const result = {};
+        let match;
+        while ((match = regex.exec(content)) !== null) {
+            const [, key, value] = match;
+            result[key] = value;
+        }
+        return result;
     }
     async function getBlockBreadcrumb(blockId, type = '', hpath = '') {
         const result = await requestApi("/api/block/getBlockBreadcrumb", {
@@ -417,11 +522,14 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
     }
     function isSiYuanDefaultSql(stmt) {
         if (!stmt) return true;
-        if (/--\s+custom\s+true/i.test(stmt)) return false;
+        if (/--\s+custom\s+true/i.test(stmt) || isJsCode(stmt)) return false;
         const regex = /select\s+\*\s+from/gi;
         const matches = stmt.match(regex);
         // 如果 matches 存在且长度为 1，则表示恰好出现了一次
         return Array.isArray(matches) && matches.length === 1;
+    }
+    function isJsCode(stmt) {
+        return /\-\-\s*js(\s+true)*[\s\r\n]*$/im.test(stmt);
     }
     function parseSQLMeta(sql, type = '') {
         const result = {
