@@ -1,6 +1,7 @@
 // 嵌入查询支持多字段查询
 // see https://ld246.com/article/1750463052773
-// version 0.0.6.4
+// version 0.0.6.5
+// 0.0.6.5 增加复制查询结果按钮
 // 0.0.6.4 增加-- js 指令，支持直接写js代码
 // 0.0.6.3 增加shareData；修复-- jsformat指令某种情况下匹配错误问题
 // 0.0.6.2 修复使用-- sort指令时，字段间距显示错误问题
@@ -143,6 +144,70 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             });
         }
     });
+    let mouseInEmbed = false;
+    document.addEventListener('mouseover', (e) => {
+        if(mouseInEmbed) return;
+        mouseInEmbed = true;
+        setTimeout(()=>mouseInEmbed = false, 40);
+        const embed = e.target.closest('[data-type="NodeBlockQueryEmbed"]');
+        if(!embed) return;
+        let copy = embed.querySelector('.protyle-action__copyEmbedResult');
+        if(copy) return;
+        const menu = embed.querySelector('.protyle-icons .protyle-action__menu');
+        const html = `<span aria-label="复制查询结果" class="b3-tooltips__nw b3-tooltips protyle-icon protyle-action__copyEmbedResult"><svg><use xlink:href="#iconCopy"></use></svg></span>`;
+        menu.insertAdjacentHTML("beforebegin", html);
+        copy = embed.querySelector('.protyle-action__copyEmbedResult');
+        copy.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const embedList = embed.querySelectorAll('.protyle-wysiwyg__embed');
+            let text = "";
+            if(embedList.length > 0) {
+                embedList.forEach(item => {
+                    let colText = "";
+                    const cols = item.querySelectorAll('span.embed-col');
+                    // 查询扩展
+                    if(cols.length > 0) {
+                        const colsText = [];
+                        cols.forEach(col => {
+                            colsText.push(col.textContent.replace(/[\u200B-\u200D\uFEFF]/g, ''));
+                        });
+                        colText = colsText.join("\t") + "\n";
+                    } else {
+                        let divsText = [];
+                        const divs = item.querySelectorAll(':scope > div');
+                        if(divs.length > 0) {
+                            // div
+                            divs.forEach(div => {
+                                divsText.push(div.textContent.replace(/[\u200B-\u200D\uFEFF]/g, ''));
+                            });
+                            colText = divsText.join("\n");
+                        } else {
+                            // 默认
+                            colText = item.textContent.replace(/[\u200B-\u200D\uFEFF]/g, '') + "\n";
+                        }
+                    }
+                    text += colText;
+                });
+            } else {
+                text = embed.textContent.replace(/[\u200B-\u200D\uFEFF]/g, '');
+            }
+            copyToClipboard(text);
+            const useElement = copy.querySelector('use');
+            if (useElement) {
+                useElement.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#iconSelect');
+                setTimeout(() => {
+                    useElement.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#iconCopy');
+                }, 1000);
+            }
+        });
+    });
+    async function copyToClipboard(text) {
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch (err) {
+            console.error('复制失败:', err);
+        }
+    }
     async function getContent(result, index, meta, content) {
         // 解析内容
         if (content) {
@@ -203,7 +268,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             }
             const defStyle = field === 'created' || field === 'updated' ? 'float:right;' : '';
             const isFirst = meta.sorts.length > 0 ? (meta.sorts[0] === field ? true : false) : (index === 0 ? true : false);
-            const html = `<span class="embed-${field}" style="display:inline-block;${!isFirst ? 'margin-left:10px;' : ''}${defStyle}${meta.styles[field] || ''}">${fieldVal}</span>`;
+            const html = `<span class="embed-col embed-${field}" style="display:inline-block;${!isFirst ? 'margin-left:10px;' : ''}${defStyle}${meta.styles[field] || ''}">${fieldVal}</span>`;
             // 字段排序
             const sortIndex = meta.sorts.findIndex(item=>item===field);
             if(sortIndex !== -1) orderedFieldsHtml[sortIndex] = html;
