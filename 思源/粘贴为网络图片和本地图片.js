@@ -41,7 +41,7 @@
                     const ext = url.split('.').pop().split(/\#|\?/)[0];
                     const name = url.split('/').pop().split('.')[0] || 'image';
                     const path = `/data/assets/${name}-${Lute.NewNodeID()}.${ext}`;
-                    putFile(path, imageBuffer);
+                    await putFile(path, imageBuffer);
                     text = `![image](${'assets/' + path.split('/assets/').pop()})`;
                     insertToEditor(text);
                     window.siyuan.menus.menu.remove();
