@@ -11,12 +11,12 @@
             element.insertAdjacentHTML('afterend', pasteHtml);
             const pasteBtn = element.parentElement.querySelector('[data-id="pasteParagraph"]');
             pasteBtn.addEventListener('click', async (e) => {
+                window.siyuan.menus.menu.remove();
                 let text  = await getClipText();
                 if(!text) return;
                 text = text.replace(/\n/g, '\n\n');
                 //text = text.split('\n').join('\n\n');
                 insertToEditor(text);
-                window.siyuan.menus.menu.remove();
             });
         });
     }, true);
