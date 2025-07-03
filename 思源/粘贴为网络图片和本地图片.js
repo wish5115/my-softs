@@ -81,14 +81,20 @@
             if(pasting) return;
             pasting = true;
             setTimeout(()=>pasting = false, 100);
+            const el = getCursorElement();
+            if(el.closest('.hljs') || !el.closest('.protyle-wysiwyg')) return;
             try {
                 let url = '';
                 // 菜单粘贴
                 if(e?.detail?.textHTML) {
-                    const match = e.detail.textHTML.match(/<img[^>]+src\s*=\s*["']([^"']+)["']/i);
-                    if (match && match[1]) {
-                        url = match[1]; 
-                    }
+                    // 用 DOMParser 把 HTML 片段当文档解析
+                    const doc = new DOMParser().parseFromString(e.detail.textHTML, 'text/html');
+                    const img = doc.querySelector('img');
+                    if (img) url = img.src;
+                    // const match = e.detail.textHTML.match(/<img[^>]+src\s*=\s*["']([^"']+)["']/i);
+                    // if (match && match[1]) {
+                    //     url = match[1]; 
+                    // }
                 }
                 // 快捷键粘贴
                 if(!url) {
@@ -201,6 +207,20 @@
             "method": "POST",
             "body": JSON.stringify({ "msg": message, "timeout": delay })
         });
+    }
+    function getCursorElement() {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            // 获取选择范围的起始位置所在的节点
+            const startContainer = range.startContainer;
+            // 如果起始位置是文本节点，返回其父元素节点
+            const cursorElement = startContainer.nodeType === Node.TEXT_NODE
+                ? startContainer.parentElement
+                : startContainer;
+            return cursorElement;
+        }
+        return null;
     }
     function whenElementExist(selector, node = document, timeout = 5000) {
         return new Promise((resolve, reject) => {
