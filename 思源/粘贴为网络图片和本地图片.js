@@ -1,11 +1,17 @@
 // 粘贴为网络图片和粘贴为本地图片
-// version 0.0.3
+// version 0.0.4
+// 0.0.4 增加仅监控gif图片参数；修复图片名获取错误问题
 // 0.0.3 兼容浏览器复制图片和复制图片地址；增加对思源默认粘贴的监控；修复有时粘贴的图片无法及时显示问题
 // 0.0.2 增加粘贴为本地图片
 // see https://ld246.com/article/1751467959584
 (() => {
     // 是否监听思源默认的粘贴 true监听 false 不监听
     const isListenSiyuanPaste = true;
+
+    // （试验）是否仅监控gif粘贴，仅isListenSiyuanPaste=true时有效
+    // 通过扩展名判断，可能不准，请根据自己需求谨慎使用
+    // true 仅监控gif图片 false 监控所有网络图片
+    const isOnlyListenGifPaste = false;
     
     // 添加右键菜单
     document.addEventListener('contextmenu', async function (e) {
@@ -59,7 +65,7 @@
                         const url = text.trim();
                         const imageBuffer = await fetchImageAsBinary(url);
                         const ext = url.split('.').pop().split(/\#|\?/)[0];
-                        const name = url.split('/').pop().split('.')[0] || 'image';
+                        const name = url.split(/\#|\?/)[0].split('/').pop().split('.')[0] || 'image';
                         const path = `/data/assets/${name}-${Lute.NewNodeID()}.${ext}`;
                         await putFile(path, imageBuffer);
                         text = `![image](${'assets/' + path.split('/assets/').pop()})`;
@@ -107,11 +113,15 @@
                 }
                 url  = url?.trim();
                 if(!url || !url.toLowerCase().startsWith('http')) return;
+                if(isOnlyListenGifPaste) {
+                    const ext = url.split('.').pop().split(/\#|\?/)[0];
+                    if(ext.trim().toLowerCase() !== 'gif') return;
+                }
                 e.preventDefault();
                 e.stopPropagation();
                 const imageBuffer = await fetchImageAsBinary(url);
                 const ext = url.split('.').pop().split(/\#|\?/)[0];
-                const name = url.split('/').pop().split('.')[0] || 'image';
+                const name = url.split(/\#|\?/)[0].split('/').pop().split('.')[0] || 'image';
                 const path = `/data/assets/${name}-${Lute.NewNodeID()}.${ext}`;
                 await putFile(path, imageBuffer);
                 text = `![image](${'assets/' + path.split('/assets/').pop()})`;
@@ -163,7 +173,6 @@
         range.collapse(true);
         selection.removeAllRanges();
         selection.addRange(range);
-
         // 触发input事件
         const editableElement = range.startContainer.parentElement.closest('[contenteditable]');
         if (editableElement) editableElement.dispatchEvent(new Event('input', { bubbles: true }));
