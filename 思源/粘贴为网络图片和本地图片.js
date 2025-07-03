@@ -29,7 +29,7 @@
                         let text = await getClipText();
                         if (!text.trim() || !text.trim().toLowerCase().startsWith('http')) {
                             const img = await readClipboardItems();
-                            if(img.type === 'url') text = img.data;
+                            if(img?.type === 'url') text = img.data;
                             if (!text.trim().toLowerCase().startsWith('http')) {
                                 window.siyuan.menus.menu.remove();
                                 showMessage('不是有效的图片地址', true);
@@ -55,7 +55,7 @@
                         let text = await getClipText();
                         if (!text.trim() || !text.trim().toLowerCase().startsWith('http')) {
                             const img = await readClipboardItems();
-                            if(img.type === 'url') text = img.data;
+                            if(img?.type === 'url') text = img.data;
                             if (!text.trim().toLowerCase().startsWith('http')) {
                                 window.siyuan.menus.menu.remove();
                                 showMessage('不是有效的图片地址', true);
