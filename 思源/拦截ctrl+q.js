@@ -15,6 +15,7 @@ document.addEventListener('keydown', async (e) => {
     async function requestApi(url, data, method = 'POST') {
         return await (await fetch(url, {method: method, body: JSON.stringify(data||{})})).json();
     }
+    // see https://github.com/siyuan-note/siyuan/blob/a2a678c5fbb560e3b265dc2c690f568bcf15a663/app/stage/auth.html#L421
     function exitApp() {
         try {
             const {ipcRenderer} = require('electron')
