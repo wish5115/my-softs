@@ -79,6 +79,9 @@ querySql传入errors参数，当查询错误时，会返回错误信息
 SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档id和当前嵌入块id(有时需要排除当前嵌入块时有用)
 */
 (() => {
+    // 是否在嵌入块右上角增加复制查询结果按钮 true 增加 false 不增加
+    const isUseCopyBtn = true;
+
     const shareData = {};
     searchEmbedBlock(async (embedBlockID, currDocId, stmt, blocks, hideFields) => {
         const errors = { msg: '' };
@@ -148,7 +151,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
     });
     // 复制嵌入块查询结果
     let mouseInEmbed = false;
-    document.addEventListener('mouseover', (e) => {
+    if(isUseCopyBtn) document.addEventListener('mouseover', (e) => {
         if (mouseInEmbed) return;
         mouseInEmbed = true;
         setTimeout(() => mouseInEmbed = false, 40);
