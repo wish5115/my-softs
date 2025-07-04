@@ -1,6 +1,7 @@
 // 嵌入查询支持多字段查询
 // see https://ld246.com/article/1750463052773
-// version 0.0.6.6
+// version 0.0.6.7
+// 0.0.6.7 改进嵌入块复制查询结果时对代码块的支持等
 // 0.0.6.6 改进嵌入块复制查询结果，复制结果更符合真实情况
 // 0.0.6.5 增加复制查询结果按钮
 // 0.0.6.4 增加-- js 指令，支持直接写js代码
@@ -163,7 +164,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             e.stopPropagation();
             let text = "";
             const hasEmbedCol = embed.querySelector('.protyle-wysiwyg__embed span.embed-col');
-            if(hasEmbedCol) {
+            if (hasEmbedCol) {
                 const embedList = embed.querySelectorAll('.protyle-wysiwyg__embed');
                 if (embedList.length > 0) {
                     let rowsText = [];
@@ -183,10 +184,10 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                     text = rowsText.join("\n");
                 }
             }
-            if(text.trim() == "") {
+            if (text.trim() == "") {
                 text = extractFormattedText(embed);
             }
-            if(!text.trim()) return;
+            if (!text.trim()) return;
             copyToClipboard(text);
             const useElement = copy.querySelector('use');
             if (useElement) {
@@ -835,12 +836,11 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
         function cleanText(str) {
             return str
                 .replace(/[\u200B-\u200D\uFEFF]/g, '')
-                .replace(/\s+/g, ' ')
                 .trim();
         }
         let lines = [];
         function processCustomTable(tableEl) {
-            lines.push('');  // 占位，后续会被过滤掉
+            lines.push('');
             const rows = Array.from(tableEl.querySelectorAll('.av__row'));
             rows.forEach(row => {
                 const cols = Array.from(row.querySelectorAll('.av__celltext'))
@@ -850,15 +850,23 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             lines.push('');
         }
         function walk(node) {
+            // —— 新增：.hljs 代码块，直接取 textContent ——
+            if (node.nodeType === Node.ELEMENT_NODE
+                && node.classList.contains('hljs')) {
+                const txt = cleanText(node.textContent);
+                if (txt) lines.push(txt);
+                return;
+            }
+            // —— 自定义 av 表格  ——
             if (node.nodeType === Node.ELEMENT_NODE
                 && node.getAttribute('data-av-type') === 'table') {
                 processCustomTable(node);
                 return;
             }
+            // —— 原有逻辑，不变 ——
             if (node.nodeType === Node.ELEMENT_NODE) {
                 const style = window.getComputedStyle(node);
                 const disp = style.display;
-
                 if (disp === 'table') {
                     lines.push('');
                     node.childNodes.forEach(walk);
@@ -891,7 +899,6 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             node.childNodes.forEach(walk);
         }
         walk(root);
-        // 最终：只保留非空行
         return lines
             .map(l => l.trim())
             .filter(l => l.length > 0)
