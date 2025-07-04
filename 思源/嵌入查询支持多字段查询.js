@@ -1,6 +1,7 @@
 // 嵌入查询支持多字段查询
 // see https://ld246.com/article/1750463052773
-// version 0.0.6.5
+// version 0.0.6.6
+// 0.0.6.6 改进嵌入块复制查询结果，复制结果更符合真实情况
 // 0.0.6.5 增加复制查询结果按钮
 // 0.0.6.4 增加-- js 指令，支持直接写js代码
 // 0.0.6.3 增加shareData；修复-- jsformat指令某种情况下匹配错误问题
@@ -97,7 +98,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             meta.hides = [...meta.hides, ...hideFields];
         }
         // 如果-- js指令
-        if(isJsCode(stmt)) {
+        if (isJsCode(stmt)) {
             await runJsCode(embedBlockID, currDocId, stmt, blocks, meta, errors);
             if (blocks.length === 0 && errors.msg) {
                 showErrors(embedBlockID, errors);
@@ -144,53 +145,48 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             });
         }
     });
+    // 复制嵌入块查询结果
     let mouseInEmbed = false;
     document.addEventListener('mouseover', (e) => {
-        if(mouseInEmbed) return;
+        if (mouseInEmbed) return;
         mouseInEmbed = true;
-        setTimeout(()=>mouseInEmbed = false, 40);
+        setTimeout(() => mouseInEmbed = false, 40);
         const embed = e.target.closest('[data-type="NodeBlockQueryEmbed"]');
-        if(!embed) return;
+        if (!embed) return;
         let copy = embed.querySelector('.protyle-action__copyEmbedResult');
-        if(copy) return;
+        if (copy) return;
         const menu = embed.querySelector('.protyle-icons .protyle-action__menu');
         const html = `<span aria-label="复制查询结果" class="b3-tooltips__nw b3-tooltips protyle-icon protyle-action__copyEmbedResult"><svg><use xlink:href="#iconCopy"></use></svg></span>`;
         menu.insertAdjacentHTML("beforebegin", html);
         copy = embed.querySelector('.protyle-action__copyEmbedResult');
         copy.addEventListener("click", (e) => {
             e.stopPropagation();
-            const embedList = embed.querySelectorAll('.protyle-wysiwyg__embed');
             let text = "";
-            if(embedList.length > 0) {
-                embedList.forEach(item => {
-                    let colText = "";
-                    const cols = item.querySelectorAll('span.embed-col');
-                    // 查询扩展
-                    if(cols.length > 0) {
-                        const colsText = [];
-                        cols.forEach(col => {
-                            colsText.push(col.textContent.replace(/[\u200B-\u200D\uFEFF]/g, ''));
-                        });
-                        colText = colsText.join("\t") + "\n";
-                    } else {
-                        let divsText = [];
-                        const divs = item.querySelectorAll(':scope > div');
-                        if(divs.length > 0) {
-                            // div
-                            divs.forEach(div => {
-                                divsText.push(div.textContent.replace(/[\u200B-\u200D\uFEFF]/g, ''));
+            const hasEmbedCol = embed.querySelector('.protyle-wysiwyg__embed span.embed-col');
+            if(hasEmbedCol) {
+                const embedList = embed.querySelectorAll('.protyle-wysiwyg__embed');
+                if (embedList.length > 0) {
+                    let rowsText = [];
+                    embedList.forEach(item => {
+                        let colText = "";
+                        const cols = item.querySelectorAll('span.embed-col');
+                        // 查询扩展
+                        if (cols.length > 0) {
+                            const colsText = [];
+                            cols.forEach(col => {
+                                colsText.push(extractFormattedText(col));
                             });
-                            colText = divsText.join("\n");
-                        } else {
-                            // 默认
-                            colText = item.textContent.replace(/[\u200B-\u200D\uFEFF]/g, '') + "\n";
+                            colText = colsText.join("\t");
                         }
-                    }
-                    text += colText;
-                });
-            } else {
-                text = embed.textContent.replace(/[\u200B-\u200D\uFEFF]/g, '');
+                        rowsText.push(colText);
+                    });
+                    text = rowsText.join("\n");
+                }
             }
+            if(text.trim() == "") {
+                text = extractFormattedText(embed);
+            }
+            if(!text.trim()) return;
             copyToClipboard(text);
             const useElement = copy.querySelector('use');
             if (useElement) {
@@ -242,15 +238,15 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             }
             if (meta.jsformats[field]) {
                 const setShareData = (key, val) => {
-                    if(!shareData[rowIndex]) shareData[rowIndex] = {};
+                    if (!shareData[rowIndex]) shareData[rowIndex] = {};
                     shareData[rowIndex][key] = val;
                 }
                 const getShareData = (key) => {
-                    if(!shareData[rowIndex]) shareData[rowIndex] = {};
+                    if (!shareData[rowIndex]) shareData[rowIndex] = {};
                     return shareData[rowIndex][key];
                 }
                 const removeShareData = (key) => {
-                    if(!shareData[rowIndex]) shareData[rowIndex] = {};
+                    if (!shareData[rowIndex]) shareData[rowIndex] = {};
                     delete shareData[rowIndex][key];
                 }
                 // 创建动态函数
@@ -270,8 +266,8 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             const isFirst = meta.sorts.length > 0 ? (meta.sorts[0] === field ? true : false) : (index === 0 ? true : false);
             const html = `<span class="embed-col embed-${field}" style="display:inline-block;${!isFirst ? 'margin-left:10px;' : ''}${defStyle}${meta.styles[field] || ''}">${fieldVal}</span>`;
             // 字段排序
-            const sortIndex = meta.sorts.findIndex(item=>item===field);
-            if(sortIndex !== -1) orderedFieldsHtml[sortIndex] = html;
+            const sortIndex = meta.sorts.findIndex(item => item === field);
+            if (sortIndex !== -1) orderedFieldsHtml[sortIndex] = html;
             else notOrderedFieldsHtml.push(html);
         }
         fieldsHtml = orderedFieldsHtml.join('') + notOrderedFieldsHtml.join('');
@@ -283,12 +279,12 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
     async function runJsCode(embedBlockID, currDocId, stmt, blocks, meta, errors) {
         // 创建动态函数
         try {
-            if(!stmt) return;
+            if (!stmt) return;
             const functionBody = `return (async () => { ${stmt.replace(/^--/gm, '//') || ''}\n })();`;
             const userFunction = new Function(
                 "embedBlockID", "currDocId", "currBlockId", "whenElementExist", "fetchSyncPost", "protyle", "top", "querySql", "pick", "unpick", "errors", "showErrors", "blocks", "getFieldsHtml", "getBlock", "meta", functionBody
             );
-            const protyleEl = document.querySelector('[data-node-id="'+embedBlockID+'"]')?.closest('.protyle');
+            const protyleEl = document.querySelector('[data-node-id="' + embedBlockID + '"]')?.closest('.protyle');
             const protyle = getInstanceById(protyleEl?.dataset?.id) || '';
             const top = protyleEl.querySelector('.protyle-content')?.scrollTop || 0;
             let result = await userFunction(embedBlockID, currDocId, embedBlockID, whenElementExist, requestApi, protyle, top, querySql, pick, unpick, errors, showErrors, blocks, getFieldsHtml, getBlock, meta);
@@ -296,10 +292,10 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             // 生成数据
             for (let index = 0; index < result.length; index++) {
                 let block = result[index];
-                if(typeof block !== 'object') {
+                if (typeof block !== 'object') {
                     block = (await querySql(`select * from blocks where id = '${block}'`))[0];
                 }
-                if(!block) continue;
+                if (!block) continue;
                 let content = await getFieldsHtml(block, index, meta);
                 block = await getBlock(block, content);
                 blocks.push(block);
@@ -359,7 +355,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             newResult[field] = result[field];
         });
         Object.keys(result).forEach(field => {
-            if(!meta.sorts.includes(field)) newResult[field] = result[field];
+            if (!meta.sorts.includes(field)) newResult[field] = result[field];
         });
         return newResult;
     }
@@ -465,11 +461,11 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                         stmt = req.stmt;
                         currDocId = getCurrDocId(embedBlockID);
                         // 替换 {{CurDocId}}
-                        if (['{{CurDocId}}','{{curDocId}}','{{CurrDocId}}','{{currDocId}}'].some(item => stmt.indexOf(item) !== -1)) {
+                        if (['{{CurDocId}}', '{{curDocId}}', '{{CurrDocId}}', '{{currDocId}}'].some(item => stmt.indexOf(item) !== -1)) {
                             stmt = stmt.replace(/{{CurDocId}}/g, currDocId).replace(/{{curDocId}}/g, currDocId).replace(/{{CurrDocId}}/g, currDocId).replace(/{{currDocId}}/g, currDocId);
                         }
                         // 替换 {{CurBlockId}}
-                        if (['{{CurBlockId}}','{{curBlockId}}','{{CurrBlockId}}','{{currBlockId}}'].some(item => stmt.indexOf(item) !== -1)) {
+                        if (['{{CurBlockId}}', '{{curBlockId}}', '{{CurrBlockId}}', '{{currBlockId}}'].some(item => stmt.indexOf(item) !== -1)) {
                             stmt = stmt.replace(/{{CurBlockId}}/g, embedBlockID).replace(/{{curBlockId}}/g, embedBlockID).replace(/{{CurrBlockId}}/g, embedBlockID).replace(/{{currBlockId}}/g, embedBlockID);
                         }
                         // 替换隐藏字段
@@ -812,15 +808,94 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
     }
     function showErrors(embedBlockID, errors) {
         whenElementExist('[data-node-id="' + embedBlockID + '"] .protyle-wysiwyg__embed.ft__smaller').then((el) => {
-            if(!el) return;
+            if (!el) return;
             el.innerHTML = errors.msg;
             el.classList.add('ft__error');
             el.style.fontSize = '14px';
-            if(window.siyuan.config.appearance.mode === 1){
+            if (window.siyuan.config.appearance.mode === 1) {
                 el.style.filter = 'brightness(1.8)'; /* 黑色主题，提高 180% 亮度 */
             }
             errors.msg = '';
         });
+    }
+    /**
+     * 提取指定元素下的文本内容：
+     * – data-av-type="table" 按 .av__row 为行、.av__celltext 为列，用 \t 分隔
+     * – 标准 table/display:table/display:table-row 同样支持
+     * – 其他块元素前后各加换行占位（但最终空行会被过滤）
+     * – 去除零宽字符、合并空白、去掉所有空行
+     * @param {HTMLElement} root - 起始元素
+     * @returns {string} 纯文本输出
+     */
+    function extractFormattedText(root) {
+        const blockDisplays = new Set([
+            'block', 'flex', 'grid', 'list-item',
+            'table', 'table-caption'
+        ]);
+        function cleanText(str) {
+            return str
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+        let lines = [];
+        function processCustomTable(tableEl) {
+            lines.push('');  // 占位，后续会被过滤掉
+            const rows = Array.from(tableEl.querySelectorAll('.av__row'));
+            rows.forEach(row => {
+                const cols = Array.from(row.querySelectorAll('.av__celltext'))
+                    .map(cell => cleanText(cell.textContent));
+                lines.push(cols.join('\t'));
+            });
+            lines.push('');
+        }
+        function walk(node) {
+            if (node.nodeType === Node.ELEMENT_NODE
+                && node.getAttribute('data-av-type') === 'table') {
+                processCustomTable(node);
+                return;
+            }
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const style = window.getComputedStyle(node);
+                const disp = style.display;
+
+                if (disp === 'table') {
+                    lines.push('');
+                    node.childNodes.forEach(walk);
+                    lines.push('');
+                    return;
+                }
+                if (disp === 'table-row') {
+                    const cells = Array.from(node.querySelectorAll('td, th'))
+                        .map(td => cleanText(td.textContent));
+                    lines.push(cells.join('\t'));
+                    return;
+                }
+                if (blockDisplays.has(disp)) {
+                    lines.push('');
+                    node.childNodes.forEach(walk);
+                    lines.push('');
+                    return;
+                }
+            }
+            if (node.nodeType === Node.TEXT_NODE) {
+                const txt = cleanText(node.nodeValue);
+                if (!txt) return;
+                if (lines.length === 0) {
+                    lines.push(txt);
+                } else {
+                    lines[lines.length - 1] += (lines[lines.length - 1] ? ' ' : '') + txt;
+                }
+                return;
+            }
+            node.childNodes.forEach(walk);
+        }
+        walk(root);
+        // 最终：只保留非空行
+        return lines
+            .map(l => l.trim())
+            .filter(l => l.length > 0)
+            .join('\n');
     }
     function observerProtyleUtil(callback) {
         let hasEmit = false;
@@ -849,7 +924,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
         });
     }
     observerProtyleUtil(async protyleUtil => {
-        if(!protyleUtil.querySelector('.resize__move')?.textContent?.includes(window.siyuan.languages.embedBlock)) return;
+        if (!protyleUtil.querySelector('.resize__move')?.textContent?.includes(window.siyuan.languages.embedBlock)) return;
         if (protyleUtil.querySelector('button[data-type="help"]')) return;
         const pinBtn = protyleUtil.querySelector('[data-type="pin"]');
         const html = `<button data-type="help" class="block__icon block__icon--show b3-tooltips b3-tooltips__nw" aria-label="使用帮助"><svg><use xlink:href="#iconHelp"></use></svg></button>`;
