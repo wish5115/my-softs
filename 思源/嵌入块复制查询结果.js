@@ -75,12 +75,11 @@
         function cleanText(str) {
             return str
                 .replace(/[\u200B-\u200D\uFEFF]/g, '')
-                .replace(/\s+/g, ' ')
                 .trim();
         }
         let lines = [];
         function processCustomTable(tableEl) {
-            lines.push('');  // 占位，后续会被过滤掉
+            lines.push('');
             const rows = Array.from(tableEl.querySelectorAll('.av__row'));
             rows.forEach(row => {
                 const cols = Array.from(row.querySelectorAll('.av__celltext'))
@@ -90,15 +89,23 @@
             lines.push('');
         }
         function walk(node) {
+            // —— 新增：.hljs 代码块，直接取 textContent ——
+            if (node.nodeType === Node.ELEMENT_NODE
+                && node.classList.contains('hljs')) {
+                const txt = cleanText(node.textContent);
+                if (txt) lines.push(txt);
+                return;
+            }
+            // —— 自定义 av 表格  ——
             if (node.nodeType === Node.ELEMENT_NODE
                 && node.getAttribute('data-av-type') === 'table') {
                 processCustomTable(node);
                 return;
             }
+            // —— 原有逻辑，不变 ——
             if (node.nodeType === Node.ELEMENT_NODE) {
                 const style = window.getComputedStyle(node);
                 const disp = style.display;
-
                 if (disp === 'table') {
                     lines.push('');
                     node.childNodes.forEach(walk);
@@ -131,7 +138,6 @@
             node.childNodes.forEach(walk);
         }
         walk(root);
-        // 最终：只保留非空行
         return lines
             .map(l => l.trim())
             .filter(l => l.length > 0)
