@@ -6,7 +6,7 @@
 (()=>{
     if(!isElectron()) return;
     document.addEventListener('keydown', async (e) => {
-        // 判断是否按下了 Command+Q（即Meta+Q）
+        // 判断是否按下了 Command+Q（即Meta+Q）或 Alt+F4（windows）
         if (
             (isMac() && e.metaKey && e.code === 'KeyQ' && !e.ctrlKey && !e.shiftKey && !e.altKey) ||
             (isWindows() && e.altKey && e.code === 'F4' && !e.ctrlKey && !e.metaKey && !e.shiftKey)
