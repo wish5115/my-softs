@@ -1,25 +1,30 @@
-// 拦截Command+Q退出事件
-// 仅 Mac 系统上有这个问题
-// Mac 上任何应用按 Command+Q（即 Meta+Q）均退出应用。
-// 感谢 @JeffreyChen 的提醒。
-// version 0.0.3
+// 拦截思源全局退出快捷键，防止意外退出
+// Ma上是Command+Q，windows上是Alt+F4
+// 感谢 @JeffreyChen 的提醒
+// version 0.0.4
 // see https://ld246.com/article/1751671702656
 (()=>{
-    if(!(isMac() && isElectron())) return;
+    if(!isElectron()) return;
     document.addEventListener('keydown', async (e) => {
         // 判断是否按下了 Command+Q（即Meta+Q）
-        if (e.metaKey && e.code === 'KeyQ' && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+        if (
+            (isMac() && e.metaKey && e.code === 'KeyQ' && !e.ctrlKey && !e.shiftKey && !e.altKey) ||
+            (isWindows() && e.altKey && e.code === 'F4' && !e.ctrlKey && !e.metaKey && !e.shiftKey)
+        ) {
             // 阻止事件冒泡和默认行为
             e.stopPropagation();
             e.preventDefault();
-            if(window.confirm('即将退出思源，您确定要退出吗？')) {
-                // 内核退出
-                await requestApi('/api/system/exit');
-                // 渲染进程退出
-                exitApp();
-            }
+            confirmExit();
         }
     }, true);
+    async function confirmExit() {
+        if(window.confirm('即将退出思源，您确定要退出吗？')) {
+            // 内核退出
+            await requestApi('/api/system/exit');
+            // 渲染进程退出
+            exitApp();
+        }
+    }
     async function requestApi(url, data, method = 'POST') {
         return await (await fetch(url, {method: method, body: JSON.stringify(data||{})})).json();
     }
@@ -41,5 +46,8 @@
     }
     function isElectron() {
         return navigator.userAgent.includes('Electron');
+    }
+    function isWindows() {
+        return document.body.classList.contains("body--win32");
     }
 })();
