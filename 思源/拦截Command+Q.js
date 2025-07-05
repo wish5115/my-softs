@@ -1,9 +1,14 @@
-// 拦截ctrl/meta + q 退出事件
+// 拦截Command+Q退出事件
+// 仅 Mac 系统上有这个问题
+// Mac 上任何应用按 Command+Q（即 Meta+Q）均退出应用。
+// 感谢 @JeffreyChen 的提醒。
+// version 0.0.3
 // see https://ld246.com/article/1751671702656
 (()=>{
+    if(!(isMac() && isElectron())) return;
     document.addEventListener('keydown', async (e) => {
-        // 判断是否按下了 Ctrl+Q 或 Meta+Q
-        if ((e.ctrlKey || e.metaKey) && e.code === 'KeyQ' && !e.shiftKey && !e.altKey) {
+        // 判断是否按下了 Command+Q（即Meta+Q）
+        if (e.metaKey && e.code === 'KeyQ' && !e.ctrlKey && !e.shiftKey && !e.altKey) {
             // 阻止事件冒泡和默认行为
             e.stopPropagation();
             e.preventDefault();
@@ -30,5 +35,11 @@
                 window.location.reload()
             }
         }
+    }
+    function isMac() {
+        return navigator.platform.indexOf("Mac") > -1;
+    }
+    function isElectron() {
+        return navigator.userAgent.includes('Electron');
     }
 })();
