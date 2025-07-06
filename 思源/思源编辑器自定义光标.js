@@ -3,7 +3,8 @@
 // 目前仅支持在编辑器中使用
 // todo 极致性能优化，太复杂暂时不实现(可参考下文优化说明)
 // see https://pipe.b3log.org/blogs/wilsons/%E6%80%9D%E6%BA%90/%E5%AE%9E%E6%97%B6%E8%8E%B7%E5%8F%96%E5%85%89%E6%A0%87%E4%BD%8D%E7%BD%AE%E4%BC%98%E5%8C%96%E6%80%9D%E8%B7%AF
-// version 0.0.12.3
+// version 0.0.12.4
+// 0.0.12.4 修复手机版，弹出输入法时光标丢失问题
 // 0.0.12.3 修复与加密文档js冲突问题
 // 0.0.12.2 修复0.0.11+引起的悬浮窗光标意外丢失问题
 // 0.0.12.1 增加文档编辑时对光标的监控，防止文本被动态改变时光标无变化
@@ -163,17 +164,14 @@
         function getStablePosition() {
             const sel = window.getSelection();
             if (!sel.rangeCount) return null;
-        
             // 克隆并 collapse Range
             const range = sel.getRangeAt(0).cloneRange();
             range.collapse(true);
-        
             // 找到可编辑容器，用于取行高
             let hitNode = sel.focusNode;
             if (hitNode.nodeType === Node.TEXT_NODE) hitNode = hitNode.parentElement;
             if(hitNode.closest('.av')||hitNode.closest('.av__mask')) return null; // av不返回光标
             let lineEl = hitNode.closest('[contenteditable="true"]');
-        
             // 尝试浏览器原生的 clientRects
             const rects = Array.from(range.getClientRects());
             let baseRect, rangePos;
@@ -219,10 +217,8 @@
             // 获取 padding 和 border
             const paddingLeft = style ? parseFloat(style.paddingLeft) || 0 : 0;
             const borderLeft = style ? parseFloat(style.borderLeftWidth) || 0 : 0;
-        
             // 计算高度：统一用行高 * 比例
             const height = lineH * cursorHeightRelativeToLineHeight;
-        
             // 计算 y：把原生/marker 获取的 rect.top 对齐到行高
             // rectTop + (rect.height - height)/2  可能让光标在垂直居中
             const gap = (baseRect.height - height) / 2;
@@ -230,7 +226,6 @@
             // 定位光标位置(空白行+左边距和边框)
             const x =  rangePos ? rangePos + paddingLeft + borderLeft : baseRect.right;
             const y = baseRect.top + gap;
-        
             return baseRect.width + baseRect.height > 0 ? { x, y, height } : null;
         }
 
@@ -295,7 +290,9 @@
                 }
 
                 // 如果不是编辑器区域则隐藏光标(防止标签切换等出现意外光标)
-                const protyleId = output.cursorElement?.closest('.protyle:not(.fn__none)')?.dataset?.id;
+                const protyleId = isMobile()
+                    ? output.cursorElement?.closest('.protyle')?.querySelector('.protyle-title')?.dataset?.nodeId
+                    : output.cursorElement?.closest('.protyle:not(.fn__none)')?.dataset?.id;
                 if(eventType === 'selectionchange') {
                     if(isMobile()) {
                         // const docId =  output.cursorElement?.closest('.protyle:not(.fn__none)')?.querySelector('.protyle-title')?.dataset?.nodeId;
