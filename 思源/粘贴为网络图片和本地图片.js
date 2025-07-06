@@ -1,5 +1,6 @@
 // 粘贴为网络图片和粘贴为本地图片
-// version 0.0.4
+// version 0.0.5
+// 0.0.5 增加下载图片失败时从剪切板获取；改进扩展名的获取方式；默认粘贴图片时，仅监控gif图片的粘贴
 // 0.0.4 增加仅监控gif图片参数；修复图片名获取错误问题
 // 0.0.3 兼容浏览器复制图片和复制图片地址；增加对思源默认粘贴的监控；修复有时粘贴的图片无法及时显示问题
 // 0.0.2 增加粘贴为本地图片
@@ -8,10 +9,9 @@
     // 是否监听思源默认的粘贴 true监听 false 不监听
     const isListenSiyuanPaste = true;
 
-    // （试验）是否仅监控gif粘贴，仅isListenSiyuanPaste=true时有效
-    // 通过扩展名判断，可能不准，请根据自己需求谨慎使用
+    // 是否仅监控gif粘贴，仅isListenSiyuanPaste=true时有效
     // true 仅监控gif图片 false 监控所有网络图片
-    const isOnlyListenGifPaste = false;
+    const isOnlyListenGifPaste = true;
     
     // 添加右键菜单
     document.addEventListener('contextmenu', async function (e) {
@@ -28,7 +28,7 @@
                     try {
                         let text = await getClipText();
                         if (!text.trim() || !text.trim().toLowerCase().startsWith('http')) {
-                            const img = await readClipboardItems();
+                            const img = await readClipboardImageUrl();
                             if(img?.type === 'url') text = img.data;
                             if (!text.trim().toLowerCase().startsWith('http')) {
                                 window.siyuan.menus.menu.remove();
@@ -53,8 +53,9 @@
                 pasteBtn.addEventListener('click', async (e) => {
                     try {
                         let text = await getClipText();
+                        const imgInfo = {ext: ''};
                         if (!text.trim() || !text.trim().toLowerCase().startsWith('http')) {
-                            const img = await readClipboardItems();
+                            const img = await readClipboardImageUrl(imgInfo);
                             if(img?.type === 'url') text = img.data;
                             if (!text.trim().toLowerCase().startsWith('http')) {
                                 window.siyuan.menus.menu.remove();
@@ -63,8 +64,13 @@
                             }
                         }
                         const url = text.trim();
-                        const imageBuffer = await fetchImageAsBinary(url);
-                        const ext = url.split('.').pop().split(/\#|\?/)[0];
+                        const imageBuffer = await fetchImageAsBinary(url, e, imgInfo);
+                        if(!imageBuffer) {
+                            window.siyuan.menus.menu.remove();
+                            showMessage('读取图片失败', true);
+                            return;
+                        }
+                        const ext = imgInfo.ext || url.split('.').pop().split(/\#|\?/)[0];
                         const name = url.split(/\#|\?/)[0].split('/').pop().split('.')[0] || 'image';
                         const path = `/data/assets/${name}-${Lute.NewNodeID()}.${ext}`;
                         await putFile(path, imageBuffer);
@@ -90,7 +96,7 @@
             const el = getCursorElement();
             if(el.closest('.hljs') || !el.closest('.protyle-wysiwyg')) return;
             try {
-                let url = '';
+                let url = '', ext = '';
                 // 菜单粘贴
                 if(e?.detail?.textHTML) {
                     // 用 DOMParser 把 HTML 片段当文档解析
@@ -101,6 +107,7 @@
                     // if (match && match[1]) {
                     //     url = match[1]; 
                     // }
+                    ext = (e.detail?.files||[])[0]?.type?.split('/')[1] || '';
                 }
                 // 快捷键粘贴
                 if(!url) {
@@ -110,17 +117,24 @@
                     const doc = new DOMParser().parseFromString(html, 'text/html');
                     const img = doc.querySelector('img');
                     if (img) url = img.src;
+                    ext = (e.clipboardData?.files||[])[0]?.type?.split('/')[1] || '';
                 }
                 url  = url?.trim();
                 if(!url || !url.toLowerCase().startsWith('http')) return;
+                if(!ext) ext = url.split('.').pop().split(/\#|\?/)[0];
                 if(isOnlyListenGifPaste) {
-                    const ext = url.split('.').pop().split(/\#|\?/)[0];
                     if(ext.trim().toLowerCase() !== 'gif') return;
                 }
                 e.preventDefault();
                 e.stopPropagation();
-                const imageBuffer = await fetchImageAsBinary(url);
-                const ext = url.split('.').pop().split(/\#|\?/)[0];
+                const imgInfo = {ext: ''};
+                const imageBuffer = await fetchImageAsBinary(url, e, imgInfo);
+                if(!imageBuffer) {
+                    window.siyuan.menus.menu.remove();
+                    showMessage('读取图片失败', true);
+                    return;
+                }
+                if(imgInfo.ext) ext = imgInfo.ext;
                 const name = url.split(/\#|\?/)[0].split('/').pop().split('.')[0] || 'image';
                 const path = `/data/assets/${name}-${Lute.NewNodeID()}.${ext}`;
                 await putFile(path, imageBuffer);
@@ -140,10 +154,13 @@
             return '';
         }
     }
-    async function readClipboardItems() {
+    async function readClipboardImageUrl(imgInfo = {ext:''}) {
         // 必须在用户动作（点击、按键、粘贴事件回调）中调用
         const items = await navigator.clipboard.read();
         for (const item of items) {
+            // 获取扩展名
+            const ext = item.types?.find(type => type?.startsWith('image/'))?.split('/')[1] || '';
+            if(ext) imgInfo.ext = ext;
             // item.types 里可能有 'text/html'、'text/plain'、'image/png' 等
             if (item.types.includes('text/html')) {
                 const blob = await item.getType('text/html');
@@ -155,10 +172,10 @@
                 }
             }
             // 检查 image/* 类型，获取 Blob
-            if (item.types.some(t => t.startsWith('image/'))) {
-                const imgBlob = await item.getType(item.types.find(t => t.startsWith('image/')));
-                return { type: 'blob', data: imgBlob };
-            }
+            // if (item.types.some(t => t.startsWith('image/'))) {
+            //     const imgBlob = await item.getType(item.types.find(t => t.startsWith('image/')));
+            //     return { type: 'blob', data: imgBlob };
+            // }
         }
     }
     function insertToEditor(processedText) {
@@ -187,28 +204,70 @@
         }).then((response) => {
             if (response.ok) {
                 //console.log("File saved successfully");
-            }
-            else {
+            } else {
                 throw new Error("Failed to save file");
             }
         }).catch((error) => {
             console.error(error);
         });
     }
-    async function fetchImageAsBinary(url) {
+    async function fetchImageAsBinary(url, e, imgInfo = {ext:''}) {
         try {
             const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`请求失败，状态码: ${response.status}`);
             }
+            const ext = response?.headers?.get('Content-Type')?.split('/')[1] || '';
+            if(ext) imgInfo.ext = ext;
             // 获取 ArrayBuffer（原始二进制数据）
             const arrayBuffer = await response.arrayBuffer();
             // 如果你需要 Blob 对象用于预览或下载，也可以这样获取：
             // const blob = await response.blob();
             return arrayBuffer;
-        } catch (err) {
-            console.error('获取图片失败:', err);
-            throw err;
+        } catch (error) {
+            // 下载报错时从剪切板读取二进制
+            try {
+                return readClipboardImageAsBinary(e);
+            } catch (err) {
+                console.error('获取图片失败:', err);
+                throw err;
+            }
+        }
+    }
+    async function readClipboardImageAsBinary(e) {
+        // 粘贴菜单事件
+        if((e?.detail?.files||[])[0]) {
+             const arrayBuffer = await e.detail.files[0].arrayBuffer();
+            return arrayBuffer;
+        }
+        // ctrl+v 事件
+        if(e?.clipboardData?.items) {
+            const items = e.clipboardData?.items;
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                // 只处理 image 类型
+                if (item.type.startsWith('image/')) {
+                    // 获取 File/Blob 对象
+                    const blob = item.getAsFile();
+                    if (!blob) continue;
+                    // 读取 ArrayBuffer（二进制）
+                    const arrayBuffer = await blob.arrayBuffer();
+                    return arrayBuffer;
+                }
+            }
+        }
+        // 直接读取剪切板
+        const clipboardItems = await navigator.clipboard.read();
+        for (const clipItem of clipboardItems) {
+            // 每个 item 可能有多种类型，找 image/*
+            for (const type of clipItem.types) {
+                if (type.startsWith('image/')) {
+                    const blob = await clipItem.getType(type);
+                    // 读取二进制
+                    const arrayBuffer = await blob.arrayBuffer();
+                    return arrayBuffer;
+                }
+            }
         }
     }
     function showMessage(message, isError = false, delay = 7000) {
