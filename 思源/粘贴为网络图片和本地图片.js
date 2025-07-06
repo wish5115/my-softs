@@ -104,7 +104,7 @@
                 }
                 // 快捷键粘贴
                 if(!url) {
-                    const html = e.clipboardData.getData('text/html');
+                    const html = e?.clipboardData?.getData('text/html');
                     if (!html) return;
                     // 用 DOMParser 把 HTML 片段当文档解析
                     const doc = new DOMParser().parseFromString(html, 'text/html');
