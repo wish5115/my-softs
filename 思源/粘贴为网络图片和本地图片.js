@@ -70,7 +70,7 @@
                             showMessage('读取图片失败', true);
                             return;
                         }
-                        const ext = imgInfo.ext || url.split('.').pop().split(/\#|\?/)[0];
+                        const ext = url.split('.').pop().split(/\#|\?/)[0] || imgInfo.ext;
                         const name = url.split(/\#|\?/)[0].split('/').pop().split('.')[0] || 'image';
                         const path = `/data/assets/${name}-${Lute.NewNodeID()}.${ext}`;
                         await putFile(path, imageBuffer);
@@ -96,7 +96,8 @@
             const el = getCursorElement();
             if(el.closest('.hljs') || !el.closest('.protyle-wysiwyg')) return;
             try {
-                let url = '', ext = '';
+                let url = '';
+                const imgInfo = {ext: ''};
                 // 菜单粘贴
                 if(e?.detail?.textHTML) {
                     // 用 DOMParser 把 HTML 片段当文档解析
@@ -107,7 +108,7 @@
                     // if (match && match[1]) {
                     //     url = match[1]; 
                     // }
-                    ext = (e.detail?.files||[])[0]?.type?.split('/')[1] || '';
+                    imgInfo.ext = (e.detail?.files||[])[0]?.type?.split('/')[1] || '';
                 }
                 // 快捷键粘贴
                 if(!url) {
@@ -117,24 +118,22 @@
                     const doc = new DOMParser().parseFromString(html, 'text/html');
                     const img = doc.querySelector('img');
                     if (img) url = img.src;
-                    ext = (e.clipboardData?.files||[])[0]?.type?.split('/')[1] || '';
+                    imgInfo.ext = (e.clipboardData?.files||[])[0]?.type?.split('/')[1] || '';
                 }
                 url  = url?.trim();
                 if(!url || !url.toLowerCase().startsWith('http')) return;
-                if(!ext) ext = url.split('.').pop().split(/\#|\?/)[0];
+                const ext = url.split('.').pop().split(/\#|\?/)[0] || imgInfo.ext;
                 if(isOnlyListenGifPaste) {
                     if(ext.trim().toLowerCase() !== 'gif') return;
                 }
                 e.preventDefault();
                 e.stopPropagation();
-                const imgInfo = {ext: ''};
-                const imageBuffer = await fetchImageAsBinary(url, e, imgInfo);
+                const imageBuffer = await fetchImageAsBinary(url, e);
                 if(!imageBuffer) {
                     window.siyuan.menus.menu.remove();
                     showMessage('读取图片失败', true);
                     return;
                 }
-                if(imgInfo.ext) ext = imgInfo.ext;
                 const name = url.split(/\#|\?/)[0].split('/').pop().split('.')[0] || 'image';
                 const path = `/data/assets/${name}-${Lute.NewNodeID()}.${ext}`;
                 await putFile(path, imageBuffer);
