@@ -1,5 +1,6 @@
 // 粘贴为网络图片和粘贴为本地图片
-// version 0.0.5
+// version 0.0.5.1
+// 0.0.5.1 改进扩展名的获取方式和菜单尽早隐藏
 // 0.0.5 增加下载图片失败时从剪切板获取；改进扩展名的获取方式；默认粘贴图片时，仅监控gif图片的粘贴
 // 0.0.4 增加仅监控gif图片参数；修复图片名获取错误问题
 // 0.0.3 兼容浏览器复制图片和复制图片地址；增加对思源默认粘贴的监控；修复有时粘贴的图片无法及时显示问题
@@ -63,6 +64,7 @@
                                 return;
                             }
                         }
+                        window.siyuan.menus.menu.remove();
                         const url = text.trim();
                         const imageBuffer = await fetchImageAsBinary(url, e, imgInfo);
                         if(!imageBuffer) {
@@ -70,13 +72,13 @@
                             showMessage('读取图片失败', true);
                             return;
                         }
-                        const ext = url.split('.').pop().split(/\#|\?/)[0] || imgInfo.ext;
-                        const name = url.split(/\#|\?/)[0].split('/').pop().split('.')[0] || 'image';
-                        const path = `/data/assets/${name}-${Lute.NewNodeID()}.${ext}`;
+                        const imgPathInfo = parseImageNameAndExt(url);
+                        const ext = imgPathInfo?.ext || imgInfo.ext || 'png';
+                        const name = imgPathInfo?.name || url.split(/\#|\?/)[0].split('/').pop().split('.')[0] || 'image';
+                        const path = `/data/assets/${decodeURIComponent(name)}-${Lute.NewNodeID()}.${ext}`;
                         await putFile(path, imageBuffer);
                         text = `![image](${'assets/' + path.split('/assets/').pop()})`;
                         insertToEditor(text);
-                        window.siyuan.menus.menu.remove();
                     } catch (e) {
                         window.siyuan.menus.menu.remove();
                         showMessage(e.message || '粘贴失败', true);
@@ -122,24 +124,26 @@
                 }
                 url  = url?.trim();
                 if(!url || !url.toLowerCase().startsWith('http')) return;
-                const ext = url.split('.').pop().split(/\#|\?/)[0] || imgInfo.ext;
+                const imgPathInfo = parseImageNameAndExt(url);
+                let ext = imgPathInfo?.ext || imgInfo.ext;
                 if(isOnlyListenGifPaste) {
-                    if(ext.trim().toLowerCase() !== 'gif') return;
+                    if(ext.trim() && ext.trim().toLowerCase() !== 'gif') return;
                 }
                 e.preventDefault();
                 e.stopPropagation();
-                const imageBuffer = await fetchImageAsBinary(url, e);
+                window.siyuan.menus.menu.remove();
+                const imageBuffer = await fetchImageAsBinary(url, e, imgInfo);
                 if(!imageBuffer) {
                     window.siyuan.menus.menu.remove();
                     showMessage('读取图片失败', true);
                     return;
                 }
-                const name = url.split(/\#|\?/)[0].split('/').pop().split('.')[0] || 'image';
-                const path = `/data/assets/${name}-${Lute.NewNodeID()}.${ext}`;
+                ext = imgInfo.ext || ext || 'png';
+                const name = imgPathInfo?.name || url.split(/\#|\?/)[0].split('/').pop().split('.')[0] || 'image';
+                const path = `/data/assets/${decodeURIComponent(name)}-${Lute.NewNodeID()}.${ext}`;
                 await putFile(path, imageBuffer);
                 text = `![image](${'assets/' + path.split('/assets/').pop()})`;
                 insertToEditor(text);
-                window.siyuan.menus.menu.remove();
             } catch (e) {}
         };
         document.addEventListener('paste', pastehandle, true);
@@ -288,6 +292,49 @@
             return cursorElement;
         }
         return null;
+    }
+    function parseImageNameAndExt(url) {
+        const IMG_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
+        let fallbackName = '', fallbackExt = '';
+        try {
+            const u = new URL(url);
+            // —— 1. Pathname 优先 ——
+            const base = u.pathname.split('/').pop() || '';
+            const idxDot = base.lastIndexOf('.');
+            if (idxDot !== -1) {
+                const pathExt = base.slice(idxDot + 1).toLowerCase();
+                const pathName = base.slice(0, idxDot);
+                if (IMG_EXTS.includes(pathExt)) {
+                    // 确认是图片格式，直接返回
+                    return { name: pathName, ext: pathExt };
+                } else {
+                    // 记住一个“备用”的名字和扩展
+                    fallbackName = pathName;
+                    fallbackExt = pathExt;
+                }
+            }
+            // —— 2. 全局正则匹配 URL 中最后一个图片文件名 ——
+            const re = /([^\/?#=]+\.(?:jpg|jpeg|png|gif|webp|bmp|svg))(?=[?#]|$)/gi;
+            let match, lastMatch = null;
+            while ((match = re.exec(url)) !== null) {
+                lastMatch = match[1];
+            }
+            if (lastMatch) {
+                const dot = lastMatch.lastIndexOf('.');
+                return {
+                    name: lastMatch.slice(0, dot),
+                    ext: lastMatch.slice(dot + 1).toLowerCase()
+                };
+            }
+        } catch (e) {
+            // 如果 URL 构造失败，就跳到兜底
+        }
+        // —— 3. 兜底：若 path 上有其它扩展，返回它 —— 
+        if (fallbackName) {
+            return { name: fallbackName, ext: fallbackExt };
+        }
+        // 全无匹配
+        return { name: '', ext: '' };
     }
     function whenElementExist(selector, node = document, timeout = 5000) {
         return new Promise((resolve, reject) => {
