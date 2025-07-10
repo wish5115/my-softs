@@ -138,9 +138,10 @@
                             // 检查当前节点是否匹配 selector
                             if (node.matches?.(selector)) {
                                 callback(node);
+                            } else {
+                                // 检查后代节点是否匹配 selector
+                                node.querySelectorAll(selector).forEach(callback);
                             }
-                            // 检查子节点是否匹配 selector（递归查找）
-                            //node.querySelectorAll(selector).forEach(callback);
                         }
                     });
                 }
