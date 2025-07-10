@@ -10,8 +10,8 @@
 // see 
 (()=>{
     setTimeout(()=>{
-        // 获取容器元素
-        const targetNode = document.querySelector('.layout__center, #editor') || document.body;
+        // 获取容器元素，这里为了兼容悬浮窗，必须用body
+        const targetNode = document.body;
         
         // 监听引用插入
         observeBlockRef(async (blockRef)=>{
