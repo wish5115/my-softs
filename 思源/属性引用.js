@@ -15,7 +15,6 @@
         
         // 监听引用插入
         observeBlockRef(async (blockRef)=>{
-            console.log(blockRef);
             const blockId = blockRef?.dataset?.id;
             if(!blockId) return;
             // 如果已存在custom-id返回
@@ -50,6 +49,7 @@
             blocks = await querySql(`select id, content, hpath from blocks where ial like '%custom-id="${customId}"%'`);
             if(blocks.length === 0) return;
             let id = blocks[0]?.id;
+            let content = blocks[0]?.content;
             if(blocks.length > 1) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -59,9 +59,11 @@
                 });
                 const item = await optionsDialog(blockRef, blocks);
                 id = item?.dataset?.id;
+                content = item?.querySelector('.b3-list-item__text')?.textContent;
             }
             if(!id) return;
             blockRef.dataset.id = id;
+            blockRef.textContent = content;
             // 更新块
             updateBlock(blockRef);
         }, true);
@@ -82,8 +84,10 @@
             if(blocks.length === 0) return;
             const item = await optionsDialog(blockRef, blocks);
             const id = item?.dataset?.id;
+            const content = item?.querySelector('.b3-list-item__text')?.textContent;
             if(!id) return;
             blockRef.dataset.id = id;
+            blockRef.textContent = content;
             // 更新块
             updateBlock(blockRef);
         }, true);
@@ -279,11 +283,11 @@
         function escapeHtml(html) {
             if (!html) return html;
             if(typeof html !== 'string') html = html.toString();
-            return html.replace(/&/g, "&").replace(/</g, "<");
+            return html.replace(/&/g, "&amp;").replace(/</g, "&lt;");
         }
         function escapeGreat(html) {
             if(typeof html !== 'string') html = html.toString();
-            return html.replace(/</g, "<");
+            return html.replace(/</g, "&lt;");
         }
         function isNormalItem(currentHintElement, className) {
             return !currentHintElement.classList.contains(className) || currentHintElement.getBoundingClientRect().height === 0;
