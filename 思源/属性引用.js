@@ -63,7 +63,7 @@
             }
             if(!id) return;
             blockRef.dataset.id = id;
-            blockRef.textContent = content;
+            if(blockRef.dataset.subtype === 'd') blockRef.textContent = content;
             // 更新块
             updateBlock(blockRef);
         }, true);
@@ -87,7 +87,7 @@
             const content = item?.querySelector('.b3-list-item__text')?.textContent;
             if(!id) return;
             blockRef.dataset.id = id;
-            blockRef.textContent = content;
+            if(blockRef.dataset.subtype === 'd') blockRef.textContent = content;
             // 更新块
             updateBlock(blockRef);
         }, true);
