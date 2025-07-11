@@ -87,7 +87,7 @@
             e.stopPropagation();
             // 通过属性获取块
             const customId = blockRef.getAttribute('custom-id');
-            blocks = await querySql(`select id, content, hpath from blocks where ial like '%custom-id="${customId}"%'`);
+            const blocks = await querySql(`select id, content, hpath from blocks where ial like '%custom-id="${customId}"%'`);
             if(blocks.length === 0) return;
             const item = await optionsDialog(blockRef, blocks);
             const id = item?.dataset?.id;
