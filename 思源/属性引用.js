@@ -6,7 +6,8 @@
 // 3. 当有多个块具有相同的custom-id属性时，自动弹出选项对话框，让用户选择引用哪个块，用户选择后更新引用链接的id为用户选择块的id
 // 4. 在情况3时，如果你不小心选错了要引用的块，也不要紧，只需要在引用链接上ctrl+点击，会再次弹出选项对话框，可以再次选择
 // 5. 已删除的块无法引用，恢复块删除即可
-// version 0.0.1
+// version 0.0.2
+// 0.0.2 修复id不存在时偶尔提示错误问题
 // see https://ld246.com/article/1752202438621
 (()=>{
     setTimeout(()=>{
@@ -41,27 +42,33 @@
             // 获取引用元素
             const blockRef = e.target.closest('[data-type="block-ref"][custom-id]');
             if(!blockRef) return;
+            // 去除找不到id报错
+            whenElementExist('#message .b3-snackbar--error [data-type="textMenu"]').then((message)=>{
+                if(message && message?.textContent?.includes(`[${blockRef?.dataset?.id}]`)) message.click();
+            });
             // 检查块是否存在
             let blocks = await querySql(`select id from blocks where id='${blockRef.dataset.id}'`);
             if(blocks.length > 0) return;
             // 通过属性获取块
             const customId = blockRef.getAttribute('custom-id');
             blocks = await querySql(`select id, content, hpath from blocks where ial like '%custom-id="${customId}"%'`);
-            if(blocks.length === 0) return;
+            if(blocks.length === 0) {
+                showMessage(`未找到 ID 为 [${blockRef?.dataset?.id}] 的内容块`, true, 0);
+                return;
+            }
             let id = blocks[0]?.id;
             let content = blocks[0]?.content;
             if(blocks.length > 1) {
                 e.preventDefault();
                 e.stopPropagation();
-                // 去除找不到id报错
-                whenElementExist('#message .b3-snackbar--error [data-type="textMenu"]').then((message)=>{
-                    if(message && message?.textContent?.includes(`[${blockRef.dataset.id}]`)) message.click();
-                });
                 const item = await optionsDialog(blockRef, blocks);
                 id = item?.dataset?.id;
                 content = item?.querySelector('.b3-list-item__text')?.textContent;
             }
-            if(!id) return;
+            if(!id) {
+                showMessage(`未找到 ID 为 [${blockRef?.dataset?.id}] 的内容块`, true, 0);
+                return;
+            }
             blockRef.dataset.id = id;
             if(blockRef.dataset.subtype === 'd') blockRef.textContent = content;
             // 更新块
@@ -125,6 +132,13 @@
             return [];
         }
         return result.data;
+    }
+
+    function showMessage(message, isError = false, delay = 7000) {
+        return fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
+            "method": "POST",
+            "body": JSON.stringify({"msg": message, "timeout": delay})
+        });
     }
     
     function observeBlockRef(callback, targetNode, selector = 'span[data-type="block-ref"]:not(.av__celltext--ref)') {
