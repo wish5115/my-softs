@@ -306,7 +306,7 @@
         }
         function isNormalItem(currentHintElement, className) {
             return !currentHintElement.classList.contains(className) || currentHintElement.getBoundingClientRect().height === 0;
-        };
+        }
         // see https://github.com/siyuan-note/siyuan/blob/a2a678c5fbb560e3b265dc2c690f568bcf15a663/app/src/util/upDownHint.ts#L5
         function upDownHint(listElement, event, classActiveName = "b3-list-item--focus", defaultElement) {
             let currentHintElement = listElement.querySelector("." + classActiveName);
