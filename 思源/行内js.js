@@ -940,7 +940,7 @@
     let lastFilterText = '';
     document.addEventListener('input', async (event) => {
         const cursorEl = getCursorElement();
-        if(!cursorEl.closest('.protyle-wysiwyg') || cursorEl.closest('.code-block')) return;
+        if(!cursorEl?.closest('.protyle-wysiwyg') || cursorEl?.closest('.code-block')) return;
         const cursorText = cursorEl?.textContent;
         if (cursorText.indexOf('/') !== -1 || cursorText.indexOf('、') !== -1) {
             const sp = cursorText.indexOf('/') !== -1 ? '/' : '、';
