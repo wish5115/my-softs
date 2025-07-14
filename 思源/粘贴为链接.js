@@ -92,7 +92,7 @@
     function isDesktop() {
         return typeof window !== 'undefined' && !!window.require;
     }
-    async function forwardProxy(url, method = 'GET', payload = {}, headers = [], timeout = 7000, contentType = 'text/html') {
+    async function forwardProxy(url, method = 'GET', payload = {}, headers = [], timeout = 30000, contentType = 'text/html') {
         const data = {
             url: url,
             method: method,
@@ -119,7 +119,7 @@
                 const result = await forwardProxy(
                     href, 'GET', null,
                     [{ 'User-Agent': userAgent }],
-                    5000, 'text/html'
+                    30000, 'text/html'
                 );
                 const data = result?.data;
                 if (!data || (data.status / 100) !== 2) {
