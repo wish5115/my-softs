@@ -1,5 +1,5 @@
 // 粘贴为链接（自动把一个链接或思源超级链接变为链接）
-// see 
+// see https://ld246.com/article/1752462022192
 // author: wilsons
 // version 0.0.1
 (()=>{
