@@ -1,7 +1,8 @@
 // 粘贴为链接（自动把一个链接或思源超级链接变为链接）
 // see https://ld246.com/article/1752462022192
 // author: wilsons
-// version 0.0.2
+// version 0.0.3
+// 0.0.3 修复匹配网页编码时的正则错误
 // 0.0.2 修复手机粘贴失败的问题；参考@frostime的Titled Url插件代码解决了浏览器跨域无法获取问题 see https://github.com/frostime/sy-titled-link/blob/1b70c09631da0058f3229ac45681feaadd477604/src/index.ts#L17
 (()=>{
     // main by wilsons
@@ -147,7 +148,7 @@
                 //@ts-ignore - assuming Lute is available in global scope
                 title = window.Lute?.UnEscapeHTMLStr(title) || title;
                 // Charset detection
-                const charsetReg = /<meta\b[^>]*charset=['"]?([^'"]*)['"]?[^>]*>/i;
+                const charsetReg = /<meta\b[^>]*?charset=['"]?([^'">]+)['"]?[^>]*?>/i;
                 const charsetMatch = html.match(charsetReg);
                 const charset = charsetMatch ? charsetMatch[1].toLowerCase() : "utf-8";
                 if (charset !== "utf-8") {
