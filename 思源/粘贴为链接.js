@@ -1,13 +1,14 @@
 // 粘贴为链接（自动把一个链接或思源超级链接变为链接）
 // see https://ld246.com/article/1752462022192
 // author: wilsons
-// version 0.0.1
+// version 0.0.2
+// 0.0.2 修复手机粘贴失败的问题；参考@frostime的Titled Url插件代码解决了浏览器跨域无法获取问题 see https://github.com/frostime/sy-titled-link/blob/1b70c09631da0058f3229ac45681feaadd477604/src/index.ts#L17
 (()=>{
     // main by wilsons
-    const main = async (e) => {
+    const main = async (e, wysiwyg) => {
         const hljs = e.target.closest('.hljs');
         if(hljs) return;
-        const wysiwyg = e.target.closest('.protyle-wysiwyg');
+        wysiwyg = wysiwyg||e.target.closest('.protyle-wysiwyg');
         whenElementExist('#commonMenu [data-id="pasteEscaped"], #editor .protyle-util--mobile [data-action="pasteEscaped"]').then(element => {
             if(!element || element.parentElement.querySelector('[data-id="pasteLink"], [data-action="pasteLink"]')) return;
             let pasteHtml = `<button data-id="pasteLink" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#"></use></svg><span class="b3-menu__label">粘贴为链接</span></button>`;
@@ -15,7 +16,11 @@
             element.insertAdjacentHTML('afterend', pasteHtml);
             const pasteBtn = element.parentElement.querySelector('[data-id="pasteLink"], [data-action="pasteLink"]');
             pasteBtn.addEventListener('click', async (e) => {
-                window.siyuan.menus.menu.remove();
+                if(isMobile()) {
+                   element.closest('#editor .protyle-util--mobile').classList.add("fn__none"); 
+                } else {
+                    window.siyuan.menus.menu.remove();
+                }
                 let text  = await getClipText();
                 if(!text) return;
                 text = text.trim();
@@ -49,11 +54,12 @@
     if(isMobile()) {
         // 手机版添加右键菜单
         document.addEventListener('contextmenu', (e)=>{
+            const wysiwyg = e.target.closest('.protyle-wysiwyg');
             const protyleUtil = document.querySelector('#editor .protyle-util--mobile');
             if(protyleUtil && !protyleUtil.clickHandle) {
                 protyleUtil.clickHandle = true;
                 protyleUtil.addEventListener('click', (evt) => {
-                    if(evt.target.closest('[data-action="more"]')) main(e);
+                    if(evt.target.closest('[data-action="more"]')) main(e, wysiwyg);
                 });
             }
         }, true);
@@ -63,59 +69,96 @@
     }
     async function getClipText() {
         try {
-          const text = await navigator.clipboard.readText();
-          return text;
-        } catch (error) {
-          return '';
-        }
-    }
-    async function getBlockContent(blockId) {
-        const content = await querySql(`select content from blocks where id = '${blockId}'`);
-        return content[0]?.content || '';
-    }
-    async function getWebTitle(url) {
-        try {
-            let text = '';
-            if(isElectron()){
-                text = await fetchByCurl(url);
-            } else {
-                const response = await fetch(url);
-                text = await response.text();
+            if (isInAndroid()) {
+                return window.JSAndroid.readClipboard();
+            } else if (isInHarmony()) {
+                return window.JSHarmony.readClipboard();
             }
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(text, "text/html");
-            return doc?.title || '';
+            return navigator.clipboard.readText();
         } catch (error) {
             return '';
         }
     }
-    async function fetchByCurl(url) {
-        const { exec } = require('child_process');
-        const util = require('util');
-        const execAsync = util.promisify(exec);
-        const cmd = [
-              'curl -sL', 
-              `-H 'accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7'`,
-              `-H 'accept-language: zh-CN,zh;q=0.9,en;q=0.8'`,
-              `-H 'cache-control: no-cache'`,
-              `-H 'pragma: no-cache'`,
-              `-H 'priority: u=0, i'`,
-              `-H 'sec-ch-ua: "Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"'`,
-              `-H 'sec-ch-ua-mobile: ?0'`,
-              `-H 'sec-ch-ua-platform: "macOS"'`,
-              `-H 'sec-fetch-dest: document'`,
-              `-H 'sec-fetch-mode: navigate'`,
-              `-H 'sec-fetch-site: none'`,
-              `-H 'sec-fetch-user: ?1'`,
-              `-H 'upgrade-insecure-requests: 1'`,
-              `-H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36'`,
-              `"${url}"`
-        ].join(' ');
-        const { stdout: html } = await execAsync(cmd);
-        return html;
+    function isInAndroid() {
+        return window.siyuan.config.system.container === "android" && window.JSAndroid;
+    };
+    function isInHarmony() {
+        return window.siyuan.config.system.container === "harmony" && window.JSHarmony;
+    };
+    async function getBlockContent(blockId) {
+        const content = await querySql(`select content from blocks where id = '${blockId}'`);
+        return content[0]?.content || '';
     }
-    function isElectron() {
-        return navigator.userAgent.includes('Electron');
+    function isDesktop() {
+        return typeof window !== 'undefined' && !!window.require;
+    }
+    async function forwardProxy(url, method = 'GET', payload = {}, headers = [], timeout = 7000, contentType = 'text/html') {
+        const data = {
+            url: url,
+            method: method,
+            timeout: timeout,
+            contentType: contentType,
+            headers: headers,
+            payload: payload
+        };
+        return requestApi('/api/network/forwardProxy', data);
+    }
+    async function getWebTitle(href) {
+        let title = '';
+        // Normalize URL
+        if (href.startsWith("www.")) {
+            href = "https://" + href;
+        } else if (!href.toLowerCase().startsWith('http://') && !href.toLowerCase().startsWith('https://')) {
+            return '';
+        }
+        try {
+            let html;
+            const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 Edg/116.0.1938.76";
+            if (!isDesktop()) {
+                // 浏览器环境必须依赖内核 API
+                const result = await forwardProxy(
+                    href, 'GET', null,
+                    [{ 'User-Agent': userAgent }],
+                    5000, 'text/html'
+                );
+                const data = result?.data;
+                if (!data || (data.status / 100) !== 2) {
+                    return '';
+                }
+                html = data?.body;
+            } else {
+                const response = await fetch(href, {
+                    method: 'GET',
+                    headers: {
+                        'User-Agent': userAgent
+                    },
+                    redirect: 'follow'
+                });
+                if (!response.ok) {
+                    return '';
+                }
+                html = await response.text();
+            }
+            // Common HTML parsing logic
+            const titleReg = /<title\b[^>]*>(.*?)<\/title>/i;
+            const matchRes = html.match(titleReg);
+            if (matchRes) {
+                title = matchRes[1];
+                //@ts-ignore - assuming Lute is available in global scope
+                title = window.Lute?.UnEscapeHTMLStr(title) || title;
+                // Charset detection
+                const charsetReg = /<meta\b[^>]*charset=['"]?([^'"]*)['"]?[^>]*>/i;
+                const charsetMatch = html.match(charsetReg);
+                const charset = charsetMatch ? charsetMatch[1].toLowerCase() : "utf-8";
+                if (charset !== "utf-8") {
+                    title = '';
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching URL:', error);
+            return '';
+        }
+        return title;
     }
     function insertToEditor(processedText) {
         // 插入处理后的文本
