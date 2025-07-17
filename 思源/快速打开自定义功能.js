@@ -72,7 +72,8 @@
     
     // 刷新页面
     addMenu('刷新页面', (event, {}) => {
-        location.reload();
+        reloadUI();
+        //location.reload();
     }, 'R');
 
     // 全屏
@@ -129,12 +130,14 @@
     }, '', '', true, '切换客户端');
 
     // eruda see https://eruda.liriliri.io/zh/docs/
-    addMenu('eruda console', (event, {}) => {
+    addMenu('eruda console', async (event, {}) => {
         const shouldLoad = event?.isLoading ? localStorage.getItem('eruda_running') === 'true' : !window.eruda;
         if(shouldLoad) {
-            //const src = 'https://cdn.bootcdn.net/ajax/libs/eruda/3.4.1/eruda.js';
-            const src = 'https://jsd.onmicrosoft.cn/npm/eruda';
-            //const src = '/snippets/libs/eruda.js';
+            let src = '/snippets/libs/eruda.js';
+            const erudaJs = await getFile('/data' + src);
+            if(erudaJs.startsWith('{"code":404') && erudaJs.includes('no such file or directory"')) {
+                src = 'https://jsd.onmicrosoft.cn/npm/eruda';
+            }
             const script = document.createElement('script');
             script.onload = () => {
                 window.eruda.init();
