@@ -1,6 +1,7 @@
 // name 快速打开自定义功能
 // see https://ld246.com/article/1745488922117
-// version 0.0.4
+// version 0.0.5
+// updateDesc 0.0.5 增加手机/pc版切换
 // updateDesc 0.0.4 增加移动端支持
 // updateDesc 0.0.3.1 增加eruda调试工具
 // updateDesc 0.0.3 增加 刷新页面，全屏，宽屏，断点调试，打开网页版等功能
@@ -65,8 +66,6 @@
   
     // 打开查词
     addMenu('打开查词', (event, {getSelectedText}) => {
-        fdddfff
-        gfffgfgfgfgff
         const url = 'https://www.iciba.com/word?w=%s%';
         window.open(url.replace('%s%', getSelectedText()));
     });
@@ -122,11 +121,20 @@
         setTimeout('debugger', 5000);
     });
 
+    // 桌面版，手机版转换
+    addMenu(isMobile()?'切换桌面版':'切换手机版', (event, {}) => {
+        const mode = isMobile()?(isBrowser()?'desktop':'app'):'mobile';
+        reloadUI(mode);
+        //location.href = location.origin + `/stage/build/${mode}/` + '?r='+Lute.NewNodeID().split('-').pop();
+    }, '', '', true, '切换客户端');
+
     // eruda see https://eruda.liriliri.io/zh/docs/
     addMenu('eruda console', (event, {}) => {
         const shouldLoad = event?.isLoading ? localStorage.getItem('eruda_running') === 'true' : !window.eruda;
         if(shouldLoad) {
-            const src = 'https://cdn.bootcdn.net/ajax/libs/eruda/3.4.1/eruda.js';
+            //const src = 'https://cdn.bootcdn.net/ajax/libs/eruda/3.4.1/eruda.js';
+            const src = 'https://jsd.onmicrosoft.cn/npm/eruda';
+            //const src = '/snippets/libs/eruda.js';
             const script = document.createElement('script');
             script.onload = () => {
                 window.eruda.init();
@@ -316,7 +324,7 @@
         const selection = window.getSelection();
         const range = selection.getRangeAt(0);
         const selectedText = selection.toString();
-        const lastSelected = await getStorageVal('local-quickopen-selected');console.log(lastSelected,2222);
+        const lastSelected = await getStorageVal('local-quickopen-selected');
         if(lastSelected) {
             const lastSelectedItem = menus.find(item=>item.selected);
             if(lastSelectedItem) lastSelectedItem.selected=false;
@@ -338,8 +346,8 @@
         const selectedOption = await functions.showOptionsMenu(menus, {width:'min(800px, 100%)',maxWidth:'min(1000px, 100%)', height:'min(800px, calc(100% - 80px))', maxHeight:'min(800px, calc(100% - 80px))', search:true, menuItemStyle: 'text-align:left', searchFocus});
         if (selectedOption !== null) {
             if(typeof selectedOption.callback === 'function') {
-                selectedOption.callback(event, functions, selectedOption, {selectedText, selection, range});
-                setStorageVal('local-quickopen-selected', selectedOption.value);console.log(selectedOption.value,1111);
+                await selectedOption.callback(event, functions, selectedOption, {selectedText, selection, range});
+                await setStorageVal('local-quickopen-selected', selectedOption.value);
             } else {
                 alert(selectedOption.callback+' 不是有效的函数');
             }
@@ -646,5 +654,35 @@
         a.style.right = '0';
         a.style.top = '22px';
         node.appendChild(a);
+    }
+
+    function isBrowser() {
+        return !navigator.userAgent.startsWith("SiYuan") ||
+            navigator.userAgent.indexOf("iPad") > -1 ||
+            (/Android/.test(navigator.userAgent) && !/(?:Mobile)/.test(navigator.userAgent));
+    }
+    
+    // 刷新UI
+    // mode app客户端 desktop浏览器桌面端 mobile移动端
+    function reloadUI(mode) {
+        // 未安装插件
+        if(window.siyuan.ws.app.plugins?.length === 0) {
+            if (mode) window.location.pathname = `stage/build/${mode}/`;
+            else fetch('/api/ui/reloadUI', { method: 'POST' });
+            return;
+        }
+        // 获取plugin
+        const plugin = window.siyuan.ws.app.plugins[0];
+        // 旧版
+        if(!plugin?.saveLayout) {
+            if (mode) window.location.pathname = `stage/build/${mode}/`;
+            else fetch('/api/ui/reloadUI', { method: 'POST' });
+            return;
+        }
+        // 新版
+        plugin.saveLayout(() => {
+            if (mode) window.location.pathname = `stage/build/${mode}/`;
+            else window.location.reload();
+        });
     }
 })();
