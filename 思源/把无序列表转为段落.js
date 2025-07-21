@@ -1,5 +1,4 @@
 // 把无序列表转为段落
-// see https://ld246.com/article/1753082550538
 (async ()=>{
     // 右键菜单名
     const menuText = '把无序列表转为段落';
@@ -7,7 +6,8 @@
     // 该键为转换为段落的系统快捷键，思源默认 command/ctrl+alt+0，如果你未修改过保持空即可
     // 仅支持功能键+一个字母
     const hotKey = '';
-    
+
+    if(isMobile()) return;
     whenElementExist('#commonMenu .b3-menu__items').then((menuItems) => {
         observeBlockMenu(menuItems, async ()=>{
             if(menuItems.querySelector('.ulist-to-paragraph')) return;
@@ -71,6 +71,9 @@
     }
     function isMac() {
         return navigator.platform.indexOf("Mac") > -1;
+    }
+    function isMobile() {
+        return !!document.getElementById("sidebar");
     }
     function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
