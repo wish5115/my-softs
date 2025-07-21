@@ -18,6 +18,7 @@
             turnInto.insertAdjacentHTML('afterend', menuButtonHtml);
             const turnBtn = menuItems.querySelector('.ulist-to-paragraph');
             turnBtn.onclick = async () => {
+                window.siyuan.menus.menu.remove();
                 cancelUnOrderList();
             };
         });
