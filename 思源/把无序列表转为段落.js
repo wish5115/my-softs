@@ -1,4 +1,5 @@
 // 把无序列表转为段落
+// see https://ld246.com/article/1753082550538
 (async ()=>{
     // 右键菜单名
     const menuText = '把无序列表转为段落';
