@@ -1,10 +1,11 @@
 // 清理未引用数据库
 // 默认会移动到/data/trash/av目录中
-// version: 0.0.2
+// version: 0.0.3
 // 使用方法：
 // 1. 思源主菜单底部 -> 清理未引用数据库（如果打开了控制台，可以在控制台查看详情）
 // 2. 在控制台执行 clearUnRefAvs() 即可
 // 更新记录
+// 0.0.3 兼容一个块有多个数据库的情况
 // 0.0.2 增加删除前确认是否删除，防止误删除
 (()=>{
     // 定义未引用的数据库移动到哪
@@ -35,7 +36,9 @@
     async function clearUnRefAvs(showMsg = false) {
          // 查询在用数据库
         const avs = await querySql(`select * from blocks where type = 'av' limit 999999;`);
-        const avIds = avs.map(av => getAvIdFromHtml(av.markdown));
+        let avIds = [];
+        avs.forEach(av => avIds = [...avIds, ...getAllAvIdsFromHtml(av.markdown)]);
+        //const avIds = avs.map(av => getAvIdFromHtml(av.markdown));
     
         // 获取待删除数据库文件
         const fileRes = await requestApi('/api/file/readDir', {path: '/data/storage/av/'});
@@ -96,13 +99,20 @@
     }
     
     // 获取avid
-    function getAvIdFromHtml(htmlString) {
-        // 使用正则表达式匹配data-av-id的值
-        const match = htmlString.match(/data-av-id="([^"]+)"/);
-        if (match && match[1]) {
-        return match[1];  // 返回匹配的值
-        }
-        return "";  // 如果没有找到匹配项，则返回空
+    // function getAvIdFromHtml(htmlString) {
+    //     // 使用正则表达式匹配data-av-id的值
+    //     const match = htmlString.match(/data-av-id="([^"]+)"/);
+    //     if (match && match[1]) {
+    //     return match[1];  // 返回匹配的值
+    //     }
+    //     return "";  // 如果没有找到匹配项，则返回空
+    // }
+    function getAllAvIdsFromHtml(htmlString) {
+        const regex = /data-av-id="([^"]+)"/g;
+        const matches = [...htmlString.matchAll(regex)];
+        return matches.length > 0
+            ? matches.map(match => match[1])  // 提取所有捕获组中的值
+            : [];
     }
     async function querySql(sql) {
         try {
