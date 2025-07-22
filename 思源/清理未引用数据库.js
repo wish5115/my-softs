@@ -85,8 +85,8 @@
     async function checkClosedNotes(delFiles) {
         // 获取关闭的数据库列表
         const dbs = await requestApi('/api/notebook/lsNotebooks', {"flashcard": false});
-        const dbIds = dbs?.data?.notebooks?.filter(db=>db.closed).map(db=>db.id) || [];
-        // 变量dbs下的所有.sy文件
+        const dbIds = dbs?.data?.notebooks?.filter(db=>db.closed)?.map(db=>db.id) || [];
+        // 遍历dbs下的所有.sy文件
         for(const dbId of dbIds) {
             const files = await getAllFiles('/data/' + dbId);
             for(const file of files) {
