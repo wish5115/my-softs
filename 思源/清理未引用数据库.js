@@ -1,10 +1,12 @@
 // 清理未引用数据库
 // 默认会移动到/data/trash/av目录中
-// version: 0.0.3
+// 感谢
+// version: 0.0.4
 // 使用方法：
 // 1. 思源主菜单底部 -> 清理未引用数据库（如果打开了控制台，可以在控制台查看详情）
 // 2. 在控制台执行 clearUnRefAvs() 即可
 // 更新记录
+// 0.0.4 修复已关闭的笔记被误删除的问题，感谢@EmptyLight发现和提出，感谢@player和@JeffreyChen大佬的帮助！
 // 0.0.3 兼容一个块有多个数据库的情况
 // 0.0.2 增加删除前确认是否删除，防止误删除
 (()=>{
@@ -48,6 +50,7 @@
             return;
         }
         const delFiles = fileRes.data.filter(file => !file.isDir && file.name.endsWith('.json') && !avIds.includes(file.name.replace('.json', '')));
+        await checkClosedNotes(delFiles); // 排除关闭的笔记
         if(delFiles.length === 0) {
             console.log('没找到未引用的数据库');
             if(showMsg) showMessage('没找到未引用的数据库', true);
@@ -77,6 +80,57 @@
         // 输出结果
         console.log(`已成功删除${dels.length}个未引用的数据库`, dels);
         if(showMsg) showMessage(`已成功删除${dels.length}个未引用的数据库`);
+    }
+
+    async function checkClosedNotes(delFiles) {
+        // 获取关闭的数据库列表
+        const dbs = await requestApi('/api/notebook/lsNotebooks', {"flashcard": false});
+        const dbIds = dbs?.data?.notebooks?.filter(db=>db.closed).map(db=>db.id) || [];
+        // 变量dbs下的所有.sy文件
+        for(const dbId of dbIds) {
+            const files = await getAllFiles('/data/' + dbId);
+            for(const file of files) {
+                const fileContent = await getFile(file);
+                if(fileContent.startsWith('{"code":404') && fileContent.includes('no such file or directory"')) {
+                    continue;
+                }
+                if(fileContent.includes(`"AttributeViewID":`) && fileContent.includes('"NodeAttributeView"')) {
+                    const avId = getAttributeViewID(fileContent);
+                    if(!avId) continue;
+                    if(delFiles.some(f=>f?.name === `${avId}.json`)) removeArrayByKeyValue(delFiles, 'name', `${avId}.json`);
+                }
+            }
+        }
+    }
+
+    async function getAllFiles(path) {
+        let files = [];
+        const walkDir = async (currentPath) => {
+            const response = await fetch('/api/file/readDir', {
+                method: 'POST',
+                body: JSON.stringify({ path: currentPath }),
+            });
+            const json = await response.json();
+            const data = json.data;
+            for (const entry of data) {
+                const fullPath = `${currentPath}/${entry.name}`;
+                if (
+                    // 过滤隐藏文件
+                    currentPath.startsWith(".") ||
+                    entry.name.startsWith(".") ||
+                    (!entry.isDir && !entry.name.endsWith('.sy'))
+                ) {
+                    continue;
+                }
+                if (entry.isDir) {
+                    await walkDir(fullPath);
+                } else {
+                    files.push(fullPath);
+                }
+            }
+        };
+        await walkDir(path);
+        return files;
     }
 
     async function moveFile(file, tries = 0) {
@@ -126,6 +180,23 @@
             console.error("查询数据库出错", e.message);
             return [];
         }
+    }
+    async function getFile(path, type = 'text') {
+        return fetch("/api/file/getFile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path }),
+        }).then((response) => {
+            if (response.ok) {
+                if(type==='json') return response.json();
+                else if(type==='blob') return response.blob();
+                else return response.text();
+            } else {
+                throw new Error("Failed to get file content");
+            }
+        }).catch((error) => {
+            console.error(error);
+        });
     }
     async function putFile(path, content = '', isDir = false) {
         const formData = new FormData();
@@ -207,5 +278,16 @@
     
         // 返回 observer 实例，便于后续断开监听
         return observer;
+    }
+    function getAttributeViewID(str) {
+        const match = str.match(/"AttributeViewID"\s*:\s*"([^"]+)"/);
+        return match ? match[1] : '';
+    }
+    function removeArrayByKeyValue(arr, key, value) {
+        let index;
+        while ((index = arr.findIndex(item => item[key] === value)) !== -1) {
+            arr.splice(index, 1);
+        }
+        return arr;
     }
 })();
