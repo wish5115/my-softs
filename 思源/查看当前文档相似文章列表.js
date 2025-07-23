@@ -74,12 +74,12 @@
     // docId 文档id，即哪个文档作为参考
     // showNum 返回多少条相似文章，默认20条
     // keywordNum 允许传入的最大分词个数
-    // blockNum 参与提取分词关键词的块数量，0 全部块 >0 前n个块
+    // wordNum 参与提取分词的字数，0 全部块 >0 前n个块
     // titleTagWeight 标题和tag权重 默认0.7，代表70%
     // contentWeight 内容权重 默认0.3，代表30%
     // 返回 相似文章列表，如 [{id:'',title:'',score:-0,root_id:''}]
     // 调用示例 await getSimilarDocs('20250702014415-7rk1d1g');
-    async function getSimilarDocs(docId, showNum = 20, keywordNum = 0, blockNum = 0, titleTagWeight=0.7, contentWeight=0.3) {
+    async function getSimilarDocs(docId, showNum = 20, keywordNum = 100, wordNum = 2000, titleTagWeight=0.7, contentWeight=0.3) {
         if(!docId) return [];
         // 获取文章信息
         const blockBlacks = ['c', 'html', 'iframe', 'm', 'query_embed', 'tb', 'video', 'audio', 'widget']; // 过滤块，在此列表中的不筛选
@@ -89,8 +89,8 @@
         let contents = await querySql(`SELECT id, content, type FROM blocks WHERE root_id = '${docId}' AND type not in (${blockBlacks.map(i=>`'${i}'`).join(',')});`);
         const ids = contents.map(item => item.id);
         const indexs = (await requestApi('/api/block/getBlocksIndexes', {ids}))?.data || {};
-        contents = sortContentsByIndexs(contents, indexs);
-        doc.content = contents.slice(0, blockNum || undefined).map(item => item.content).join("\n");
+        contents = moveHeadersToFront(sortContentsByIndexs(contents, indexs));
+        doc.content = contents.map(item => item.content).join("\n")?.trim()?.slice(0, wordNum || undefined);
         // 加载分词js
         if(!window.Segmentit) {
             await loadJs([
@@ -113,9 +113,10 @@
             segmentit.stopedWords = stopedWords;
             window.segmentit1 = segmentit;
         }
-        const titleKeywords = segmentit.doSegment(doc.title).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p)).slice(0, keywordNum || undefined);
-        const contentKeywords = segmentit.doSegment(doc.content).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p)).slice(0, keywordNum || undefined);
-        const tagKeywords = segmentit.doSegment(doc.tag).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p)).slice(0, keywordNum || undefined);
+        // 从内到外依次是，过滤空值和停用词，去除不重要词性，去重，按词性重要程度排序，取前n个分词
+        const titleKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.title).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p)))).slice(0, keywordNum || undefined);
+        const contentKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.content).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p)))).slice(0, keywordNum || undefined);
+        const tagKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.tag).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p)))).slice(0, keywordNum || undefined);
         // 根据分词查询相似文章
         // 原理：通过查询标题和tag的匹配结果的rank，然后与查询内容的匹配结果的rank进行加权计算得分
         // sql说明：1 MATCH中的关键词必须替换双引号和单引号为两个进行转义
@@ -191,7 +192,61 @@
             });
         }
         return result;
-        //////// 辅助函数 /////////
+        ///////////////////// 辅助函数 ////////////////////
+        function moveHeadersToFront(blocks) {
+            const headers = [];
+            const others = [];
+            // 一次遍历，分类
+            blocks.forEach(block => {
+                if (block.type === 'h') {
+                    headers.push(block);
+                } else {
+                    others.push(block);
+                }
+            });
+            // 合并：headers 在前，others 在后
+            return [...headers, ...others];
+        }
+        function sortWordsByPriority(segmentit, words) {
+            const priorityOrder = [
+                segmentit.POSTAG.D_N,   // 名词
+                segmentit.POSTAG.A_NR,  // 人名
+                segmentit.POSTAG.A_NS,  // 地名
+                segmentit.POSTAG.A_NT,  // 机构团体
+                segmentit.POSTAG.A_NZ,  // 其他专名
+                segmentit.POSTAG.D_V,   // 动词
+                segmentit.POSTAG.D_A,   // 形容词
+                segmentit.POSTAG.D_I,   // 成语
+                segmentit.POSTAG.D_L,   // 习语
+                segmentit.POSTAG.D_MQ,  // 数量词
+                segmentit.POSTAG.A_M    // 数词
+            ];
+            // 用 Map 作为哈希表分组
+            const inPriority = new Map(); // Map<POSTAG, Array<Word>>
+            const notInPriority = [];
+            words.forEach(word => {
+                const p = Array.isArray(word.p) ? word.p[0] : word.p;
+                if (priorityOrder.includes(p)) {
+                    if (!inPriority.has(p)) {
+                        inPriority.set(p, []);
+                    }
+                    inPriority.get(p).push(word);
+                } else {
+                    notInPriority.push(word);
+                }
+            });
+            // 最终结果数组
+            const newWords = [];
+            // 按优先级顺序拼接，使用 push(...), 性能最优
+            priorityOrder.forEach(postag => {
+                const wordsOfPos = inPriority.get(postag);
+                if (wordsOfPos) {
+                    newWords.push(...wordsOfPos); // ✅ 原地添加，性能最好
+                }
+            });
+            newWords.push(...notInPriority);
+            return newWords;
+        }
         function getExcludeWords(segmentit, p) {
             if(Array.isArray(p)) p = p[0];
             return [
@@ -204,8 +259,14 @@
                 segmentit.POSTAG.D_X,  // 非语素字
                 segmentit.POSTAG.D_Y,  // 语气词
                 segmentit.POSTAG.D_Z,  // 状态词
+                segmentit.POSTAG.D_E,  // 叹词
+                segmentit.POSTAG.D_K,  // 后接成分
+                segmentit.POSTAG.D_ZH, // 前接成分
                 segmentit.POSTAG.UNK  // 未知词性
             ].includes(p);
+        }
+        function uniqueWords(words) {
+             return [...new Map(words.map(item => [item.w, item])).values()];
         }
         function getKeywordsSql(keywords) {
             if(!Array.isArray(keywords) || keywords.length === 0) return '';
