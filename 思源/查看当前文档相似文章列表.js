@@ -19,7 +19,6 @@
             icon.classList.add('fn__rotate');
             iconUse.setAttribute('xlink:href', '#iconRefresh');
             const data = await getSimilarDocs(docId, 50);
-            data.forEach(doc=>doc.id = doc.doc_id);
             icon.classList.remove('fn__rotate');
             iconUse.setAttribute('xlink:href', '#iconList');
             const item = await optionsDialog(newBtn, data);
@@ -78,7 +77,7 @@
     // blockNum 参与提取分词关键词的块数量，0 全部块 >0 前n个块
     // titleTagWeight 标题和tag权重 默认0.7，代表70%
     // contentWeight 内容权重 默认0.3，代表30%
-    // 返回 相似文章列表，如 [{doc_id:'',title:'',final_score:-0,root_id:''}]
+    // 返回 相似文章列表，如 [{id:'',title:'',score:-0,root_id:''}]
     // 调用示例 await getSimilarDocs('20250702014415-7rk1d1g');
     async function getSimilarDocs(docId, showNum = 20, keywordNum = 0, blockNum = 0, titleTagWeight=0.7, contentWeight=0.3) {
         if(!docId) return [];
@@ -120,7 +119,7 @@
         // 根据分词查询相似文章
         // 原理：通过查询标题和tag的匹配结果的rank，然后与查询内容的匹配结果的rank进行加权计算得分
         // sql说明：1 MATCH中的关键词必须替换双引号和单引号为两个进行转义
-        //         2 MAX(title)， MAX(doc_id)为了防止GROUP BY时出现null的情况
+        //         2 MAX(title)， MAX(id)为了防止GROUP BY时出现null的情况
         //         3 MATCH不允许有空值存在，否则完全匹配不到，因此SQL需要按需动态拼接
         //         4 得分用ROUND防止浮点数溢出
         const sqlParts = [];
@@ -180,13 +179,13 @@
         `;
         const result = await querySql(sql);
         // 补全标题（当标题或tag未匹配到，仅内容匹配到时，此时标题和标题id为null，需要补全）
-        const nullTitleIds = result.filter(doc=>doc.doc_id === null || doc.title === null).map(doc=>doc.root_id);
+        const nullTitleIds = result.filter(doc=>doc.id === null || doc.title === null).map(doc=>doc.root_id);
         if(nullTitleIds.length) {
             const docs = await querySql(`select id, content, hpath from blocks where type='d' and id in (${nullTitleIds.map(id=>`'${id}'`).join(',')});`);
             const docsMap = {};
             docs.forEach(doc=>docsMap[doc.id] = doc);
             result.forEach(doc=>{
-                if(doc.doc_id === null) doc.doc_id = docsMap[doc.root_id]?.id;
+                if(doc.id === null) doc.id = docsMap[doc.root_id]?.id;
                 if(doc.title === null) doc.title = docsMap[doc.root_id]?.content;
                 if(doc.hpath === null) doc.hpath = docsMap[doc.root_id]?.hpath;
             });
