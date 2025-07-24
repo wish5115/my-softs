@@ -113,7 +113,7 @@
             Segmentit.stopwords.push(cnStopWords);
             Segmentit.stopwords.push(`a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np\nq\nr\ns\nt\nu\nv\nw\nx\ny\nz\nA\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN\nO\nP\nQ\nR\nS\nT\nU\nV\nW\nX\nY\nZ`);
         }
-        // 获取分词信息（过滤标点符号2048）
+        // 获取分词对象
         const segmentit = window.segmentit1 || Segmentit.useDefault(new Segmentit.Segment());
         let stopedWords = window?.segmentit1?.stopedWords || [];
         if(!window.segmentit1) {
@@ -121,15 +121,15 @@
             segmentit.stopedWords = stopedWords;
             window.segmentit1 = segmentit;
         }
-        // 从内到外依次是，过滤空值和停用词，去除不重要词性，去重，按词性重要程度排序，取前n个分词
-        const titleKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.title).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p) && !isLink(word.w)))).slice(0, keywordNum || undefined);
-        const contentKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.content).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p) && !isLink(word.w)))).slice(0, keywordNum || undefined);
-        const tagKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.tag).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p) && !isLink(word.w)))).slice(0, keywordNum || undefined);
+        // 获取分词信息，从内到外依次是，过滤空值和停用词，去除不重要词性，去重，按词性重要程度排序，取前n个分词
+        const titleKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.title).filter(word => word.w && word.p && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p) && !isLink(word.w)))).slice(0, keywordNum || undefined);
+        const contentKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.content).filter(word => word.w && word.p && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p) && !isLink(word.w)))).slice(0, keywordNum || undefined);
+        const tagKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.tag).filter(word => word.w && word.p && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p) && !isLink(word.w)))).slice(0, keywordNum || undefined);
         // 根据分词查询相似文章
         // 原理：通过查询标题和tag的匹配结果的rank，然后与查询内容的匹配结果的rank进行加权计算得分
-        // sql说明：1 MATCH中的关键词必须替换双引号和单引号为两个进行转义
+        // sql说明：1 MATCH中的关键词需加双引号以精确匹配，然后，必须替换关键词中的双引号和单引号为两个进行转义
         //         2 MAX(title)， MAX(id)为了防止GROUP BY时出现null的情况
-        //         3 MATCH不允许有空值存在，否则完全匹配不到，因此SQL需要按需动态拼接
+        //         3 MATCH不允许有空值存在，否则整个SQL都匹配不到，因此关键词为空时需要用""代替空
         //         4 得分用ROUND防止浮点数溢出
         const whereParts = [];
         if(tagKeywords.length) whereParts.push(`tag MATCH '${getKeywordsSql(tagKeywords)}'`);
