@@ -21,6 +21,7 @@
             const data = await getSimilarDocs(docId, 50);
             icon.classList.remove('fn__rotate');
             iconUse.setAttribute('xlink:href', '#iconList');
+            if(data.length === 0) {showMessage('没有找到相关文章'); return;}
             const item = await optionsDialog(newBtn, data);
             if(item) {
                 openBlock(item.dataset.id);
@@ -34,6 +35,13 @@
     setTimeout(()=>initSegmentit(), 2000);
 
     ///////////////// 辅助函数 ////////////////////////////////////
+
+    function showMessage(message, isError = false, delay = 7000) {
+        return fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
+            "method": "POST",
+            "body": JSON.stringify({"msg": message, "timeout": delay})
+        });
+    }
     
     function eventBusOn(eventName, callback) {
         const pluginName = 'my-custom-plugin';
@@ -74,7 +82,7 @@
     // docId 文档id，即哪个文档作为参考
     // showNum 返回多少条相似文章，默认20条
     // keywordNum 允许传入的最大分词个数
-    // wordNum 参与提取分词的字数，0 全部块 >0 前n个块
+    // wordNum 参与提取分词的字数，0 全部 >0 前n个字符
     // titleTagWeight 标题和tag权重 默认0.7，代表70%
     // contentWeight 内容权重 默认0.3，代表30%
     // 返回 相似文章列表，如 [{id:'',title:'',score:-0,root_id:''}]
@@ -114,51 +122,18 @@
             window.segmentit1 = segmentit;
         }
         // 从内到外依次是，过滤空值和停用词，去除不重要词性，去重，按词性重要程度排序，取前n个分词
-        const titleKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.title).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p)))).slice(0, keywordNum || undefined);
-        const contentKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.content).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p)))).slice(0, keywordNum || undefined);
-        const tagKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.tag).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p)))).slice(0, keywordNum || undefined);
+        const titleKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.title).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p) && !isLink(word.w)))).slice(0, keywordNum || undefined);
+        const contentKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.content).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p) && !isLink(word.w)))).slice(0, keywordNum || undefined);
+        const tagKeywords = sortWordsByPriority(segmentit, uniqueWords(segmentit.doSegment(doc.tag).filter(word => word.w && word.p && word.p !== 2048 && !stopedWords.includes(word.w) && !getExcludeWords(segmentit, word.p) && !isLink(word.w)))).slice(0, keywordNum || undefined);
         // 根据分词查询相似文章
         // 原理：通过查询标题和tag的匹配结果的rank，然后与查询内容的匹配结果的rank进行加权计算得分
         // sql说明：1 MATCH中的关键词必须替换双引号和单引号为两个进行转义
         //         2 MAX(title)， MAX(id)为了防止GROUP BY时出现null的情况
         //         3 MATCH不允许有空值存在，否则完全匹配不到，因此SQL需要按需动态拼接
         //         4 得分用ROUND防止浮点数溢出
-        const sqlParts = [];
-        if(tagKeywords.length || titleKeywords.length) {
-            const whereParts = [];
-            if(tagKeywords.length) whereParts.push(`tag MATCH '${getKeywordsSql(tagKeywords)}'`);
-            if(titleKeywords.length) whereParts.push(`content MATCH '${getKeywordsSql(titleKeywords)}'`);
-            sqlParts.push(`
-                -- 文档元信息：标题和tag（type='d'）
-                SELECT 
-                    id AS root_id,
-                    hpath,
-                    content AS title,
-                    id,
-                    -bm25(blocks_fts_case_insensitive) AS doc_score,
-                    NULL AS content_score
-                FROM blocks_fts_case_insensitive
-                WHERE type = 'd'
-                  AND id != '${docId}'
-                  AND (${whereParts.join(' OR ')})
-            `);
-        }
-        if(contentKeywords.length) {
-            sqlParts.push(`
-                -- 文档内容（type≠'d'）
-                SELECT 
-                    root_id,
-                    NULL AS hpath,
-                    NULL AS title,
-                    NULL AS id,
-                    NULL AS doc_score,
-                    -bm25(blocks_fts_case_insensitive) AS content_score
-                FROM blocks_fts_case_insensitive
-                WHERE type not in (${blockBlacks.map(i=>`'${i}'`).join(',')})
-                  AND root_id != '${docId}'
-                  AND content MATCH '${getKeywordsSql(contentKeywords)}'
-            `);
-        }
+        const whereParts = [];
+        if(tagKeywords.length) whereParts.push(`tag MATCH '${getKeywordsSql(tagKeywords)}'`);
+        if(titleKeywords.length) whereParts.push(`content MATCH '${getKeywordsSql(titleKeywords)}'`);
         const sql = `
             SELECT 
                 root_id,
@@ -171,7 +146,33 @@
                     6
                 ) AS score
             FROM (
-                ${sqlParts.join(' UNION ALL ')}
+                -- 文档元信息：标题和tag（type='d'）
+                SELECT 
+                    id AS root_id,
+                    hpath,
+                    content AS title,
+                    id,
+                    -bm25(blocks_fts_case_insensitive) AS doc_score,
+                    NULL AS content_score
+                FROM blocks_fts_case_insensitive
+                WHERE type = 'd'
+                  AND id != '${docId}'
+                  AND (${whereParts.join(' OR ')})
+                
+                UNION ALL
+                
+                -- 文档内容（type≠'d'）
+                SELECT 
+                    root_id,
+                    NULL AS hpath,
+                    NULL AS title,
+                    NULL AS id,
+                    NULL AS doc_score,
+                    -bm25(blocks_fts_case_insensitive) AS content_score
+                FROM blocks_fts_case_insensitive
+                WHERE type not in (${blockBlacks.map(i=>`'${i}'`).join(',')})
+                  AND root_id != '${docId}'
+                  AND content MATCH '${getKeywordsSql(contentKeywords)}'
             ) AS combined
             GROUP BY root_id
             HAVING score > 0
@@ -265,11 +266,21 @@
                 segmentit.POSTAG.UNK  // 未知词性
             ].includes(p);
         }
+        function isLink(word) {
+            word = word.toLowerCase();
+            return word.startsWith('http://')||word.startsWith('https://')||word.startsWith('file://')||word.startsWith('assets/');
+        }
+        // 当出现重复时，保留第一个
         function uniqueWords(words) {
-             return [...new Map(words.map(item => [item.w, item])).values()];
+            const seen = new Set();
+            return words.filter(item => {
+                if (seen.has(item.w)) return false;
+                seen.add(item.w);
+                return true;
+            });
         }
         function getKeywordsSql(keywords) {
-            if(!Array.isArray(keywords) || keywords.length === 0) return '';
+            if(!Array.isArray(keywords) || keywords.length === 0) return '""';
             // 把关键词中的双引号和单引号都转换为双个以转义
             return keywords.map(w=>`"${w.w.replace(/"/g, '""').replace(/'/, "''")}"`).join(' OR ');
         }
