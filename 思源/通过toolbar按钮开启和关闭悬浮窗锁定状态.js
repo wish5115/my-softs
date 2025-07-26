@@ -2,7 +2,7 @@
 // see https://ld246.com/article/1751379117488/comment/1753415643697?r=wilsons#comments
 (async ()=>{
     // 是否记住开启状态 true 记住 false 不记住
-    // 不记住时，刷新页面后默认是不开启打开属性面板
+    // 不记住时，刷新页面后默认是不开启悬浮窗锁定
     const isStoreOpenStatus = true;
 
     // 不支持手机版
