@@ -6,11 +6,12 @@
 // 3. 当有多个块具有相同的custom-id属性时，自动弹出选项对话框，让用户选择引用哪个块，用户选择后更新引用链接的id为用户选择块的id
 // 4. 在情况3时，如果你不小心选错了要引用的块，也不要紧，只需要在引用链接上ctrl+点击，会再次弹出选项对话框，可以再次选择
 // 5. 已删除的块无法引用，恢复块删除即可
-// version 0.0.3
+// version 0.0.4
+// 0.0.4 修复导致搜索框失去焦点的问题
 // 0.0.3 兼容块有命名的情况
 // 0.0.2 修复id不存在时偶尔提示错误问题
 // see https://ld246.com/article/1752202438621
-(()=>{
+(()=>{return;
     setTimeout(()=>{
         // 获取容器元素，这里为了兼容悬浮窗，必须用body
         const targetNode = document.body;
@@ -36,6 +37,10 @@
                 "attrs": {"custom-id": blockId}
             });
             if(!result || result.code !== 0) console.warn(result);
+            // 防止搜索框失去焦点
+            if(blockRef.closest('#searchPreview')) setTimeout(() => {
+                document.getElementById('searchInput')?.focus();
+            }, 100);
         }, targetNode);
 
         // 监听鼠标移入事件
