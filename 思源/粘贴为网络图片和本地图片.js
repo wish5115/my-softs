@@ -1,5 +1,6 @@
 // 粘贴为网络图片和粘贴为本地图片
-// version 0.0.5.1
+// version 0.0.6
+// 0.0.6 修复图文混排时思源默认粘贴失败的问题；在粘贴图片时增加loading文本
 // 0.0.5.1 改进扩展名的获取方式和菜单尽早隐藏
 // 0.0.5 增加下载图片失败时从剪切板获取；改进扩展名的获取方式；默认粘贴图片时，仅监控gif图片的粘贴
 // 0.0.4 增加仅监控gif图片参数；修复图片名获取错误问题
@@ -64,11 +65,13 @@
                                 return;
                             }
                         }
+                        insertLoadingIcon();
                         window.siyuan.menus.menu.remove();
                         const url = text.trim();
                         const imageBuffer = await fetchImageAsBinary(url, e, imgInfo);
                         if(!imageBuffer) {
                             window.siyuan.menus.menu.remove();
+                            removeLoadingIcon();
                             showMessage('读取图片失败', true);
                             return;
                         }
@@ -78,9 +81,11 @@
                         const path = `/data/assets/${decodeURIComponent(name)}-${Lute.NewNodeID()}.${ext}`;
                         await putFile(path, imageBuffer);
                         text = `![image](${'assets/' + path.split('/assets/').pop()})`;
+                        removeLoadingIcon();
                         insertToEditor(text);
                     } catch (e) {
                         window.siyuan.menus.menu.remove();
+                        removeLoadingIcon();
                         showMessage(e.message || '粘贴失败', true);
                     }
                 });
@@ -96,12 +101,13 @@
             pasting = true;
             setTimeout(()=>pasting = false, 100);
             const el = getCursorElement();
+            const contenteditable = el.closest('[contenteditable="true"]');
             if(el.closest('.hljs') || !el.closest('.protyle-wysiwyg')) return;
             try {
                 let url = '';
                 const imgInfo = {ext: ''};
                 // 菜单粘贴
-                if(e?.detail?.textHTML) {
+                if(e?.detail?.textHTML && /^<img [^>]*?\/?>$/i.test(e?.detail?.textHTML)) {
                     // 用 DOMParser 把 HTML 片段当文档解析
                     const doc = new DOMParser().parseFromString(e.detail.textHTML, 'text/html');
                     const img = doc.querySelector('img');
@@ -115,7 +121,7 @@
                 // 快捷键粘贴
                 if(!url) {
                     const html = e?.clipboardData?.getData('text/html');
-                    if (!html) return;
+                    if (!html || !/^<meta [^>]*?><img [^>]*?\/?>$/i.test(html)) return;
                     // 用 DOMParser 把 HTML 片段当文档解析
                     const doc = new DOMParser().parseFromString(html, 'text/html');
                     const img = doc.querySelector('img');
@@ -131,10 +137,12 @@
                 }
                 e.preventDefault();
                 e.stopPropagation();
+                insertLoadingIcon();
                 window.siyuan.menus.menu.remove();
                 const imageBuffer = await fetchImageAsBinary(url, e, imgInfo);
                 if(!imageBuffer) {
                     window.siyuan.menus.menu.remove();
+                    removeLoadingIcon(contenteditable);
                     showMessage('读取图片失败', true);
                     return;
                 }
@@ -143,8 +151,11 @@
                 const path = `/data/assets/${decodeURIComponent(name)}-${Lute.NewNodeID()}.${ext}`;
                 await putFile(path, imageBuffer);
                 text = `![image](${'assets/' + path.split('/assets/').pop()})`;
+                removeLoadingIcon(contenteditable);
                 insertToEditor(text);
-            } catch (e) {}
+            } catch (e) {
+                removeLoadingIcon(contenteditable);
+            }
         };
         document.addEventListener('paste', pastehandle, true);
     }
@@ -181,7 +192,7 @@
             // }
         }
     }
-    function insertToEditor(processedText) {
+    function insertToEditor(processedText, triggerInput = true) {
         // 插入处理后的文本
         const selection = window.getSelection();
         if (selection.rangeCount === 0) return;
@@ -194,8 +205,26 @@
         selection.removeAllRanges();
         selection.addRange(range);
         // 触发input事件
-        const editableElement = range.startContainer.parentElement.closest('[contenteditable]');
-        if (editableElement) editableElement.dispatchEvent(new Event('input', { bubbles: true }));
+        if(triggerInput) {
+            const editableElement = range.startContainer.parentElement.closest('[contenteditable]');
+            if (editableElement) editableElement.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    }
+    function insertLoadingIcon() {
+        const html = `<span data-type="text imgLoadingText">loading</span>`;
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        const fragment = range.createContextualFragment(html);
+        range.insertNode(fragment);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    }
+    function removeLoadingIcon(node) {
+        const imgLoading = node?.querySelector('[data-type~="imgLoadingText"]');
+        if(imgLoading) imgLoading?.remove();
     }
     function putFile(storagePath, data) {
         const formData = new FormData();
