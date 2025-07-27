@@ -211,7 +211,7 @@
         }
     }
     function insertLoadingIcon() {
-        const html = `<span data-type="text imgLoadingText">loading</span>`;
+        const html = `<span data-type="text imgLoadingText">Loading</span>`;
         const selection = window.getSelection();
         if (!selection.rangeCount) return;
         const range = selection.getRangeAt(0);
