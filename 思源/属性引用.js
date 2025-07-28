@@ -11,7 +11,7 @@
 // 0.0.3 兼容块命名的情况，优先显示块命名
 // 0.0.2 修复id不存在时偶尔提示错误问题
 // see https://ld246.com/article/1752202438621
-(()=>{return;
+(()=>{
     setTimeout(()=>{
         // 获取容器元素，这里为了兼容悬浮窗，必须用body
         const targetNode = document.body;
