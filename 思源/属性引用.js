@@ -6,7 +6,8 @@
 // 3. 当有多个块具有相同的custom-id属性时，自动弹出选项对话框，让用户选择引用哪个块，用户选择后更新引用链接的id为用户选择块的id
 // 4. 在情况3时，如果你不小心选错了要引用的块，也不要紧，只需要在引用链接上ctrl+点击，会再次弹出选项对话框，可以再次选择
 // 5. 已删除的块无法引用，恢复块删除即可
-// version 0.0.4
+// version 0.0.5
+// 0.0.5 支持超级链接的丢失问题；去除0.0.4调试代码（导致代码不生效的问题）
 // 0.0.4 修复可能引起搜索框失去焦点的问题
 // 0.0.3 兼容块命名的情况，优先显示块命名
 // 0.0.2 修复id不存在时偶尔提示错误问题
@@ -18,7 +19,7 @@
         
         // 监听引用插入
         observeBlockRef(async (blockRef)=>{
-            const blockId = blockRef?.dataset?.id;
+            const blockId = blockRef?.dataset?.id || blockRef.dataset?.href?.split('/')?.pop() || '';
             if(!blockId) return;
             // 如果已存在custom-id返回
             if(blockRef.getAttribute('custom-id')) return;
@@ -46,20 +47,21 @@
         // 监听鼠标移入事件
         targetNode.addEventListener('mouseover', async (e) => {
             // 获取引用元素
-            const blockRef = e.target.closest('[data-type="block-ref"][custom-id]');
+            const blockRef = e.target.closest('[data-type="block-ref"][custom-id], span[data-type="a"][data-href^="siyuan://blocks/"][custom-id]');
             if(!blockRef) return;
             // 去除找不到id报错
+            const blockId = blockRef?.dataset?.id || blockRef.dataset?.href?.split('/')?.pop() || '';
             whenElementExist('#message .b3-snackbar--error [data-type="textMenu"]').then((message)=>{
-                if(message && message?.textContent?.includes(`[${blockRef?.dataset?.id}]`)) message.click();
+                if(message && message?.textContent?.includes(`[${blockId}]`)) message.click();
             });
             // 检查块是否存在
-            let blocks = await querySql(`select id from blocks where id='${blockRef.dataset.id}'`);
+            let blocks = await querySql(`select id from blocks where id='${blockId}'`);
             if(blocks.length > 0) return;
             // 通过属性获取块
             const customId = blockRef.getAttribute('custom-id');
             blocks = await querySql(`select id, content, name as title, hpath from blocks where ial like '%custom-id="${customId}"%'`);
             if(blocks.length === 0) {
-                showMessage(`未找到 ID 为 [${blockRef?.dataset?.id}] 的内容块`, true, 0);
+                showMessage(`未找到 ID 为 [${blockId}] 的内容块`, true, 0);
                 return;
             }
             let id = blocks[0]?.id;
@@ -72,11 +74,17 @@
                 content = item?.querySelector('.b3-list-item__text')?.textContent;
             }
             if(!id) {
-                showMessage(`未找到 ID 为 [${blockRef?.dataset?.id}] 的内容块`, true, 0);
+                showMessage(`未找到 ID 为 [${blockId}] 的内容块`, true, 0);
                 return;
             }
-            blockRef.dataset.id = id;
-            if(blockRef.dataset.subtype === 'd') blockRef.textContent = content;
+            if(blockRef.dataset.type === 'block-ref') {
+                blockRef.dataset.id = id;
+                if(blockRef.dataset.subtype === 'd') blockRef.textContent = content;
+            }
+            if(blockRef.dataset.type === 'a') {
+                blockRef.dataset.href = 'siyuan://blocks/' + id;
+                //blockRef.textContent = content;
+            }
             // 更新块
             updateBlock(blockRef);
         }, true);
@@ -87,7 +95,7 @@
             const controlKey = isMac() ? e.ctrlKey : e.metaKey;
             if(e.shiftKey || e.altKey || controlKey || !ctrlKey) return;
             // 获取引用元素
-            const blockRef = e.target.closest('[data-type="block-ref"][custom-id]');
+            const blockRef = e.target.closest('[data-type="block-ref"][custom-id], span[data-type="a"][data-href^="siyuan://blocks/"][custom-id]');
             if(!blockRef) return;
             e.preventDefault();
             e.stopPropagation();
@@ -99,8 +107,14 @@
             const id = item?.dataset?.id;
             const content = item?.querySelector('.b3-list-item__text')?.textContent;
             if(!id) return;
-            blockRef.dataset.id = id;
-            if(blockRef.dataset.subtype === 'd') blockRef.textContent = content;
+            if(blockRef.dataset.type === 'block-ref') {
+                blockRef.dataset.id = id;
+                if(blockRef.dataset.subtype === 'd') blockRef.textContent = content;
+            }
+            if(blockRef.dataset.type === 'a') {
+                blockRef.dataset.href = 'siyuan://blocks/' + id;
+                //blockRef.textContent = content;
+            }
             // 更新块
             updateBlock(blockRef);
         }, true);
@@ -147,7 +161,7 @@
         });
     }
     
-    function observeBlockRef(callback, targetNode, selector = 'span[data-type="block-ref"]:not(.av__celltext--ref)') {
+    function observeBlockRef(callback, targetNode, selector = 'span[data-type="block-ref"]:not(.av__celltext--ref), span[data-type="a"][data-href^="siyuan://blocks/"]') {
         targetNode = targetNode || document.querySelector('.layout__center, #editor') || document.body;
         const observer = new MutationObserver(mutationsList => {
             for (const mutation of mutationsList) {
