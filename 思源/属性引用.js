@@ -6,7 +6,8 @@
 // 3. 当有多个块具有相同的custom-id属性时，自动弹出选项对话框，让用户选择引用哪个块，用户选择后更新引用链接的id为用户选择块的id
 // 4. 在情况3时，如果你不小心选错了要引用的块，也不要紧，只需要在引用链接上ctrl+点击，会再次弹出选项对话框，可以再次选择
 // 5. 已删除的块无法引用，恢复块删除即可
-// version 0.0.5
+// version 0.0.6
+// 0.0.6 彻底解决全局搜索时，可能导致搜索框失去焦点问题
 // 0.0.5 去除 0.0.4 调试代码（导致代码不生效的问题）；新增支持超级链接的引用丢失问题
 // 0.0.4 修复可能引起搜索框失去焦点的问题
 // 0.0.3 兼容块命名的情况，优先显示块命名
@@ -30,7 +31,7 @@
             // 添加custom-id
             blockRef.setAttribute('custom-id', customId);
             // 触发 input 事件
-            dispatchInputEvent(blockRef);
+            //dispatchInputEvent(blockRef);
             // 给块添加属性
             if(blockHasCustomId) return;
             const result = await requestApi('/api/attr/setBlockAttrs', {
@@ -38,10 +39,6 @@
                 "attrs": {"custom-id": blockId}
             });
             if(!result || result.code !== 0) console.warn(result);
-            // 防止搜索框失去焦点
-            if(blockRef.closest('#searchPreview')) setTimeout(() => {
-                document.getElementById('searchInput')?.focus();
-            }, 100);
         }, targetNode);
 
         // 监听鼠标移入事件
@@ -124,6 +121,10 @@
         const wysiwyg = blockRef.closest('.protyle-wysiwyg');
         const inputEvent = new Event('input', { bubbles: true });
         wysiwyg.dispatchEvent(inputEvent);
+        // 防止搜索框失去焦点
+        if(blockRef.closest('#searchPreview')) setTimeout(() => {
+            document.getElementById('searchInput')?.focus();
+        }, 100);
     }
 
     function isMac() {
