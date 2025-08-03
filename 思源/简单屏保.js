@@ -29,8 +29,8 @@
      思之有源，行之深远
   `;
   // 心灵毒鸡汤数据地址，当textMode=2时有效（建议下载到本地）
-  const dujitangData = '/snippets/libs/xldjt.txt';
-  //const dujitangData = 'https://jsd.onmicrosoft.cn/gh/wish5115/my-softs@main/%E6%95%B0%E6%8D%AE/%E5%BF%83%E7%81%B5%E6%AF%92%E9%B8%A1%E6%B1%A4.txt';
+  //const dujitangData = '/snippets/libs/xldjt.txt';
+  const dujitangData = 'https://jsd.onmicrosoft.cn/gh/wish5115/my-softs@main/%E6%95%B0%E6%8D%AE/%E5%BF%83%E7%81%B5%E6%AF%92%E9%B8%A1%E6%B1%A4.txt';
   const textMode = 1; // 文本模式，1 静态文本（即上文texts参数的值） 2 心灵毒鸡汤
   const idleTime = 10;   // 空闲多少分钟后启动屏保，默认10分钟
   const minFontSize = 20;   // 文本最小字号
