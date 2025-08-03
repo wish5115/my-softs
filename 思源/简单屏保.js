@@ -1,6 +1,6 @@
 // 简单屏保
 // 支持密码解锁、自适应大小、兼容手机
-// see 
+// see https://ld246.com/article/1754182872078
 // 灵感来自@zxkmm大佬的帖子 https://ld246.com/article/1754143462043
 (async () => {
   const enableTextMove = true; // 是否开启移动文本
@@ -31,12 +31,12 @@
   // 心灵毒鸡汤数据地址，当textMode=2时有效（建议下载到本地）
   const dujitangData = '/snippets/libs/xldjt.txt';
   //const dujitangData = 'https://jsd.onmicrosoft.cn/gh/wish5115/my-softs@main/%E6%95%B0%E6%8D%AE/%E5%BF%83%E7%81%B5%E6%AF%92%E9%B8%A1%E6%B1%A4.txt';
-  const textMode = 1; // 文本模式，1 静态文本（即上文text参数的值） 2 心灵毒鸡汤
+  const textMode = 1; // 文本模式，1 静态文本（即上文texts参数的值） 2 心灵毒鸡汤
   const idleTime = 10;   // 空闲多少分钟后启动屏保，默认10分钟
   const minFontSize = 20;   // 文本最小字号
   const maxFontSize = 60;   // 文本最大字号
   const padding = 0;       // 文本元素与边缘的最小距离
-  const textMoveInterval = 7000; // 文本移动间隔，单位毫秒（间隔过小会较耗资源）
+      const textMoveInterval = 7000; // 文本移动间隔，单位毫秒（间隔过小会较耗资源）
   
   const enablePassword = false; // 是否启用密码输入框
   const password = "   "; // 设置密码，默认密码3个空格，方便快速输入
