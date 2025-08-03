@@ -36,7 +36,7 @@
   const minFontSize = 20;   // 文本最小字号
   const maxFontSize = 60;   // 文本最大字号
   const padding = 0;       // 文本元素与边缘的最小距离
-      const textMoveInterval = 7000; // 文本移动间隔，单位毫秒（间隔过小会较耗资源）
+  const textMoveInterval = 7000; // 文本移动间隔，单位毫秒（间隔过小会较耗资源）
   
   const enablePassword = false; // 是否启用密码输入框
   const password = "   "; // 设置密码，默认密码3个空格，方便快速输入
