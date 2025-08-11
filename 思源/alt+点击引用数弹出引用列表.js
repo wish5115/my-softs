@@ -2,7 +2,7 @@
 // see https://ld246.com/article/1754877297383
 setTimeout(()=>{
     document.querySelector('.layout__center, #editor').addEventListener('click', async (e)=>{
-        if(!e.altKey || e.shiftKey || e.ctrlKey || e.metaKey || !e.target.closest('.protyle-attr--refcount')) return;
+        if((isMobile()?e.altKey:!e.altKey) || e.shiftKey || e.ctrlKey || e.metaKey || !e.target.closest('.protyle-attr--refcount')) return;
         e.stopImmediatePropagation();
         e.preventDefault();
         const target = e.target;
@@ -48,6 +48,9 @@ setTimeout(()=>{
         } else {
             window.open('siyuan://blocks/' + id);
         }
+    }
+    function isMobile() {
+        return !!document.getElementById("sidebar");
     }
     // ui
     // const item = await optionsDialog(target, data); // data格式 [{title:'', value: '', hpath:'', id: 'blockId', extends:'{}'},...]
