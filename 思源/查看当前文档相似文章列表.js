@@ -22,7 +22,7 @@
             icon.classList.remove('fn__rotate');
             iconUse.setAttribute('xlink:href', '#iconList');
             if(data.length === 0) {showMessage('没有找到相关文章'); return;}
-            const item = await optionsDialog(newBtn, data);
+            const item = await optionsDialog(newBtn, data, {focusInput: isMobile()?false:true});
             if(item) {
                 openBlock(item.dataset.id);
                 window.siyuan.menus.menu.remove();
@@ -35,6 +35,9 @@
     setTimeout(()=>initSegmentit(), 2000);
 
     ///////////////// 辅助函数 ////////////////////////////////////
+    function isMobile() {
+        return !!document.getElementById("sidebar");
+    }
 
     function showMessage(message, isError = false, delay = 7000) {
         return fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
@@ -387,9 +390,11 @@
     // const item = await optionsDialog(target, (keyword) => {}) // 回调函数需返回 [{title:'', value: '', hpath:'', id: 'blockId', extends:'{}'}, ...]
     // target 对话框显示在哪个元素附近，也可以是对象，指定显示位置，如果{left:0, top:0}
     // data 是对象数组或数据返回函数；afterRender 是渲染完成后的回调，一般不需要
+    // options 选项 {showInput: true/false, focusInput: true/false} focusInput仅移动端false有效
     // 返回值 item是列表选项的dom元素，可通过item.dataset.xxx获取对应的值，比如item.dataset.value
     // see https://github.com/siyuan-note/siyuan/blob/a2a678c5fbb560e3b265dc2c690f568bcf15a663/app/src/protyle/render/av/relation.ts#L55
-    function optionsDialog(target, data, afterRender) {
+    function optionsDialog(target, data, options, afterRender) {
+        options = { showInput: true, focusInput: true, ...options };
         return new Promise((resolve) => {
             const menu = window.siyuan.menus.menu;
             menu.remove();
@@ -398,8 +403,8 @@
                 type: "empty",
                 label: `
                     <div class="fn__flex-column b3-menu__filter">
-                        <input class="b3-text-field fn__flex-shrink"/>
-                        <div class="fn__hr"></div>
+                        <input class="b3-text-field fn__flex-shrink ${options.showInput?'':'fn__none'}"/>
+                        <div class="fn__hr ${options.showInput?'':'fn__none'}"></div>
                         <div class="b3-list fn__flex-1 b3-list--background">
                             <img style="margin: 0 auto;display: block;width: 64px;height: 64px" src="/stage/loading-pure.svg">
                         </div>
@@ -454,7 +459,7 @@
                         h: rect.height,
                         //isLeft: rect.isLeft
                     });
-                    setTimeout(()=>element.querySelector("input").focus(), 100);
+                    if(options.showInput && options.focusInput) setTimeout(()=>element.querySelector("input").focus(), 100);
                     if(typeof afterRender === 'function') await afterRender(element);
                 }
             });
