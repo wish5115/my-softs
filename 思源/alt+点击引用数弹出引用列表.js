@@ -6,7 +6,7 @@ setTimeout(()=>{
         e.stopImmediatePropagation();
         e.preventDefault();
         const target = e.target;
-        const node = e.target.closest('[data-node-id][data-type]');
+        const node = e.target.closest('.protyle-title[data-node-id], [data-node-id][data-type]');
         const nodeId = node?.dataset?.nodeId;
         if(!nodeId) return;
         // 获取引用列表
