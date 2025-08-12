@@ -1,6 +1,6 @@
 // alt+点击引用数弹出引用列表
 // version 0.0.2
-// 0.0.2 禁用思源默认的悬浮窗；菜单项前添加了序号；可通过该序号搜索；当直仅有一个引用时，直接跳转，不再弹窗菜单
+// 0.0.2 禁用思源默认的悬浮窗；不再需要按 alt；菜单项前添加了序号；可通过该序号搜索；当直仅有一个引用时，直接跳转，不再弹窗菜单
 // see https://ld246.com/article/1754877297383
 setTimeout(()=>{
     const container = document.querySelector('.layout__center, #editor');
