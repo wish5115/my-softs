@@ -1,5 +1,6 @@
 // alt+点击引用数弹出引用列表
-// version 0.0.2
+// version 0.0.3
+// 0.0.3 修复仅一个引用时，无法闪烁的bug
 // 0.0.2 禁用思源默认的悬浮窗；不再需要按 alt；菜单项前添加了序号；可通过该序号搜索；当直仅有一个引用时，直接跳转，不再弹窗菜单
 // see https://ld246.com/article/1754877297383
 setTimeout(()=>{
@@ -26,18 +27,21 @@ setTimeout(()=>{
         if(refIds.length === 0) return;
         const results = await querySql(`select id, hpath, content from blocks where id in(${refIds.map(id=>`'${id}'`).join(',')})`);
         const data = refIds.map((id, index) => {const item = results.find(item=>item.id === id); item.content = `${index+1}. ${item.content}`; return item;});
+        let refId = '';
         if(data?.length === 1) {
             // 仅一条引用时直接打开
-            openBlock(data[0].id);
+            refId = data[0].id;
+            openBlock(refId);
         } else {
             // 2条及以上引用时展示菜单
             const item = await optionsDialog(target, data, {focusInput: isMobile()?false:true});
-            openBlock(item.dataset.id);
+            refId = item.dataset.id;
+            openBlock(refId);
         }
         // 闪烁引用块
         setTimeout(()=>{
             const editor = document.querySelector('[data-type="wnd"].layout__wnd--active .protyle:not(.fn__none) .protyle-wysiwyg.protyle-wysiwyg--attr')||document.querySelector('[data-type="wnd"] .protyle:not(.fn__none) .protyle-wysiwyg.protyle-wysiwyg--attr');
-            const refNode = editor.querySelector(`[data-node-id="${item.dataset.id}"]`);
+            const refNode = editor.querySelector(`[data-node-id="${refId}"]`);
             refNode.classList.add('protyle-wysiwyg--hl');
             setTimeout(()=>refNode.classList.remove('protyle-wysiwyg--hl'), 100);
         }, 500);
