@@ -1,8 +1,19 @@
 // alt+点击引用数弹出引用列表
+// version 0.0.2
+// 0.0.2 禁用思源默认的悬浮窗；菜单项前添加了序号；可通过该序号搜索；当直仅有一个引用时，直接跳转，不再弹窗菜单
 // see https://ld246.com/article/1754877297383
 setTimeout(()=>{
-    document.querySelector('.layout__center, #editor').addEventListener('click', async (e)=>{
-        if((isMobile()?e.altKey:!e.altKey) || e.shiftKey || e.ctrlKey || e.metaKey || !e.target.closest('.protyle-attr--refcount')) return;
+    const container = document.querySelector('.layout__center, #editor');
+    if(!container) return;
+    // 禁用mouseover
+    container.addEventListener('mouseover', (e) => {
+        if(e.altKey || e.shiftKey || e.ctrlKey || e.metaKey || !e.target.closest('.protyle-attr--refcount')) return;
+        e.stopImmediatePropagation();
+        e.preventDefault();
+    }, true);
+    // 增加点击事件
+    container.addEventListener('click', async (e)=>{
+        if(e.altKey || e.shiftKey || e.ctrlKey || e.metaKey || !e.target.closest('.protyle-attr--refcount')) return;
         e.stopImmediatePropagation();
         e.preventDefault();
         const target = e.target;
@@ -14,10 +25,15 @@ setTimeout(()=>{
         const refIds = refs?.data?.refDefs?.map(ref=>ref.refID);
         if(refIds.length === 0) return;
         const results = await querySql(`select id, hpath, content from blocks where id in(${refIds.map(id=>`'${id}'`).join(',')})`);
-        const data = refIds.map(id => results.find(item=>item.id === id));
-        // 展示菜单
-        const item = await optionsDialog(target, data, {focusInput: isMobile()?false:true});
-        openBlock(item.dataset.id);
+        const data = refIds.map((id, index) => {const item = results.find(item=>item.id === id); item.content = `${index+1}. ${item.content}`; return item;});
+        if(data?.length === 1) {
+            // 仅一条引用时直接打开
+            openBlock(data[0].id);
+        } else {
+            // 2条及以上引用时展示菜单
+            const item = await optionsDialog(target, data, {focusInput: isMobile()?false:true});
+            openBlock(item.dataset.id);
+        }
         // 闪烁引用块
         setTimeout(()=>{
             const editor = document.querySelector('[data-type="wnd"].layout__wnd--active .protyle:not(.fn__none) .protyle-wysiwyg.protyle-wysiwyg--attr')||document.querySelector('[data-type="wnd"] .protyle:not(.fn__none) .protyle-wysiwyg.protyle-wysiwyg--attr');
