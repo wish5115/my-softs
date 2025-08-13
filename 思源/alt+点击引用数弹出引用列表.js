@@ -43,7 +43,7 @@ setTimeout(()=>{
             const editor = document.querySelector('[data-type="wnd"].layout__wnd--active .protyle:not(.fn__none) .protyle-wysiwyg.protyle-wysiwyg--attr')||document.querySelector('[data-type="wnd"] .protyle:not(.fn__none) .protyle-wysiwyg.protyle-wysiwyg--attr');
             const refNode = editor.querySelector(`[data-node-id="${refId}"]`);
             refNode.classList.add('protyle-wysiwyg--hl');
-            setTimeout(()=>refNode.classList.remove('protyle-wysiwyg--hl'), 100);
+            setTimeout(()=>refNode.classList.remove('protyle-wysiwyg--hl'), 1000);
         }, 500);
     }, true);
     async function requestApi(url, data, method = 'POST') {
