@@ -1,5 +1,6 @@
 // 导出并清理未引用的资源文件
 // 默认会移动到/data/trash/assets目录中
+// see https://ld246.com/article/1755229850801
 (()=>{
     // 定义未引用的数据库移动到哪
     let trashPath = '/data/trash/';
