@@ -28,7 +28,7 @@
             sp2.insertAdjacentHTML('beforebegin', btnString);
             const clearBtn = mainMenu.querySelector('button[data-id="clearUnRefAvs"]');
             clearBtn.onclick = (event) => {
-                document.body.click(); // 关闭主菜单
+                window.siyuan.menus.menu.remove(); // 关闭主菜单
                 clearUnRefAvs(true); // 开始清理
             };
         });
