@@ -26,7 +26,7 @@
         });
     });
 
-    // 清理未引用数据库函数
+    // 清理未引用资源文件函数
     async function exportUnUsedAssets(showMsg = false) {
 
         // 创建文件夹
@@ -40,8 +40,13 @@
         
         // 查询所有未引用的资源文件
         const delFiles = (await requestApi('/api/asset/getUnusedAssets'))?.data?.unusedAssets || [];
+        if(delFiles.length === 0) {
+            console.log('没有找到未引用的资源文件');
+            if(showMsg) showMessage('没有找到未引用的资源文件');
+            return;
+        }
         
-        //移动数据库文件
+        //移动资源文件文件
         const dels = [];
         await Promise.all(delFiles.map(async (file) => {
             const ret = await moveFile(file);
