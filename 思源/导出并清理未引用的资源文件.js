@@ -2,7 +2,7 @@
 // 默认会移动到/data/trash/assets目录中
 // see https://ld246.com/article/1755229850801
 (()=>{
-    // 定义未引用的数据库移动到哪
+    // 定义未引用的资源文件移动到哪
     let trashPath = '/data/trash/';
 
     // 把函数导出，以便控制台调用，如果有冲突可以在这里修改或关闭
