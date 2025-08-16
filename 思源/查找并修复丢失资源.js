@@ -1,5 +1,7 @@
-// 查找并修复丢失资源（仅限同名资源）
+//  查找并修复丢失资源（仅限同名资源）
 // see https://ld246.com/article/1755320264420
+// version 0.0.2
+// 0.0.2 改进非资源文件链接不再显示查找按钮
 // 支持图片资源，zip，pdf等资源（仅限本地资源）
 // 注意：并不通用，仅适用于特定需求，比如扩展名不一致的情况
 // 注意：当包含多个同名文件时（不包括扩展名），默认取第一个匹配的文件
@@ -16,13 +18,13 @@ setTimeout(()=>{
         const copyBtn = await whenElementExist('[data-id="copy"]', commonMenu);
         if(!copyBtn) return;
         if(commonMenu.querySelector('[data-id="findAsset"]')) return;
+        const assetSrcInput = commonMenu.querySelector(':is([data-id="imageUrlAndTitleAndTooltipText"], [data-id="linkAndAnchorAndTitle"]) textarea');
+        const src = assetSrcInput.value;
+        if(!src.toLowerCase().startsWith('assets')) return;
         const html = `<button data-id="findAsset" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconSearch"></use></svg><span class="b3-menu__label">查找并修复丢失资源</span></button>`;
         copyBtn.insertAdjacentHTML('beforebegin', html);
         const findAssetBtn = commonMenu.querySelector('[data-id="findAsset"]');
         findAssetBtn.addEventListener('click', async ()=>{
-            const assetSrcInput = commonMenu.querySelector(':is([data-id="imageUrlAndTitleAndTooltipText"], [data-id="linkAndAnchorAndTitle"]) textarea');
-            const src = assetSrcInput.value;
-            if(!src.toLowerCase().startsWith('assets')) return;
             let assetName = getAssetName(src);
             assetName = assetName + (findAssetExt?'.'+findAssetExt:'');
             const results = await requestApi('/api/search/searchAsset', {"k": assetName});
