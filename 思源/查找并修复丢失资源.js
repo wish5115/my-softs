@@ -1,6 +1,7 @@
 //  查找并修复丢失资源（仅限同名资源）
 // see https://ld246.com/article/1755320264420
-// version 0.0.2
+// version 0.0.3
+// 0.0.3 改进当资源未丢失时不显示查找按钮
 // 0.0.2 改进非资源文件链接不再显示查找按钮
 // 支持图片资源，zip，pdf等资源（仅限本地资源）
 // 注意：并不通用，仅适用于特定需求，比如扩展名不一致的情况
@@ -13,17 +14,26 @@ setTimeout(()=>{
     const commonMenu = document.querySelector('#commonMenu');
     if(!wrapper || !commonMenu) return;
     const main = async (event) => {
+        // 右键，非图片和资源链接返回
         if(event.type === 'contextmenu' && (!event.target.matches('img') && !event.target.matches('[data-type="a"]'))) return;
+        // 点击，非图片菜单返回
         if(event.type === 'click' && !event.target.closest('span[data-type="img"] .protyle-icons')) return;
         const copyBtn = await whenElementExist('[data-id="copy"]', commonMenu);
         if(!copyBtn) return;
+        // 已添加返回
         if(commonMenu.querySelector('[data-id="findAsset"]')) return;
+        // 非本地资源返回
         const assetSrcInput = commonMenu.querySelector(':is([data-id="imageUrlAndTitleAndTooltipText"], [data-id="linkAndAnchorAndTitle"]) textarea');
         const src = assetSrcInput.value;
         if(!src.toLowerCase().startsWith('assets')) return;
+        // 资源未丢失返回
+        const results = await requestApi('/api/search/searchAsset', {"k": src});
+        if(results?.data?.length) return;
+        // 添加查找按钮
         const html = `<button data-id="findAsset" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconSearch"></use></svg><span class="b3-menu__label">查找并修复丢失资源</span></button>`;
         copyBtn.insertAdjacentHTML('beforebegin', html);
         const findAssetBtn = commonMenu.querySelector('[data-id="findAsset"]');
+        // 查找按钮点击事件
         findAssetBtn.addEventListener('click', async ()=>{
             let assetName = getAssetName(src);
             assetName = assetName + (findAssetExt?'.'+findAssetExt:'');
