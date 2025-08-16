@@ -16,7 +16,7 @@ setTimeout(()=>{
         const copyBtn = await whenElementExist('[data-id="copy"]', commonMenu);
         if(!copyBtn) return;
         if(commonMenu.querySelector('[data-id="findAsset"]')) return;
-        const html = `<button data-id="findAsset" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconSearch"></use></svg><span class="b3-menu__label">查找丢失资源</span></button>`;
+        const html = `<button data-id="findAsset" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconSearch"></use></svg><span class="b3-menu__label">查找并修复丢失资源</span></button>`;
         copyBtn.insertAdjacentHTML('beforebegin', html);
         const findAssetBtn = commonMenu.querySelector('[data-id="findAsset"]');
         findAssetBtn.addEventListener('click', async ()=>{
