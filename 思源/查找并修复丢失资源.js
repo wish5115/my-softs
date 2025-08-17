@@ -84,6 +84,7 @@ setTimeout(()=>{
     // 获取资源文件名（不不包括扩展名）
     function getAssetName(filepath) {
         filepath = filepath.split('?')[0];
+        filepath = filepath.replace(/\\/g, '/');
         const lastDotIndex = filepath.lastIndexOf('.');
         if (lastDotIndex === -1 || lastDotIndex < filepath.lastIndexOf('/')) {
           // 没有扩展名，或最后一个 . 在路径分隔符之后（不合理），返回原路径
