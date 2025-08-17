@@ -1,6 +1,7 @@
 //  查找并修复丢失资源（仅限同名资源）
 // see https://ld246.com/article/1755320264420
-// version 0.0.3
+// version 0.0.4
+// 0.0.4 修复判断资源是否丢失偶发失败问题
 // 0.0.3 改进当资源未丢失时不显示查找按钮
 // 0.0.2 改进非资源文件链接不再显示查找按钮
 // 支持图片资源，zip，pdf等资源（仅限本地资源）
@@ -28,7 +29,8 @@ setTimeout(()=>{
         if(!src.toLowerCase().startsWith('assets')) return;
         // 资源未丢失返回
         const results = await requestApi('/api/search/searchAsset', {"k": src});
-        if(results?.data?.length) return;
+        const assets = results?.data?.filter(item=>item.path.includes(src));
+        if(assets?.length) return;
         // 添加查找按钮
         const html = `<button data-id="findAsset" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconSearch"></use></svg><span class="b3-menu__label">查找并修复丢失资源</span></button>`;
         copyBtn.insertAdjacentHTML('beforebegin', html);
