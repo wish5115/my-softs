@@ -1,6 +1,7 @@
 //  查找并修复丢失资源（仅限同名资源）
 // see https://ld246.com/article/1755320264420
-// version 0.0.4
+// version 0.0.5
+// 0.0.5 重写searchAsset函数，修复官方api无法查找自定义文件夹资源的问题
 // 0.0.4 修复判断资源是否丢失偶发失败问题
 // 0.0.3 改进当资源未丢失时不显示查找按钮
 // 0.0.2 改进非资源文件链接不再显示查找按钮
@@ -10,6 +11,9 @@
 setTimeout(()=>{
     // 指定查找资源的扩展名，如果未指定，则取第一个文件名（不包括扩展名）相同的资源
     const findAssetExt = '';
+
+    // 当资源文件未丢失时不显示查找按钮（注意，当资源文件较多时，开启此功能可能会有性能问题）
+    const notShowButtonWhenFoundAsset = false;
 
     const wrapper = document.querySelector('.layout__center, #editor');
     const commonMenu = document.querySelector('#commonMenu');
@@ -28,9 +32,10 @@ setTimeout(()=>{
         const src = assetSrcInput.value;
         if(!src.toLowerCase().startsWith('assets')) return;
         // 资源未丢失返回
-        const results = await requestApi('/api/search/searchAsset', {"k": src});
-        const assets = results?.data?.filter(item=>item.path.includes(src));
-        if(assets?.length) return;
+        if(notShowButtonWhenFoundAsset) {
+            const results = await searchAsset(src);
+            if(results?.length) return;
+        }
         // 添加查找按钮
         const html = `<button data-id="findAsset" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconSearch"></use></svg><span class="b3-menu__label">查找并修复丢失资源</span></button>`;
         copyBtn.insertAdjacentHTML('beforebegin', html);
@@ -39,9 +44,8 @@ setTimeout(()=>{
         findAssetBtn.addEventListener('click', async ()=>{
             let assetName = getAssetName(src);
             assetName = assetName + (findAssetExt?'.'+findAssetExt:'');
-            const results = await requestApi('/api/search/searchAsset', {"k": assetName});
-            const assets = results?.data?.filter(item=>item.path.includes(assetName));
-            const newAssetSrc = assets[0]?.path;
+            const results = await searchAsset(assetName);
+            const newAssetSrc = results[0];
             if(!newAssetSrc) {showMessage('未找到可用的资源'); return;}
             if(newAssetSrc !== src) {
                 assetSrcInput.value = newAssetSrc;
@@ -88,5 +92,35 @@ setTimeout(()=>{
             filepath = filepath.slice(0, lastDotIndex);
         }
         return filepath?.split('/').pop();
+    }
+
+     async function searchAsset(assetName, path = '/data/assets') {
+        let files = [];
+        const walkDir = async (currentPath) => {
+            const response = await fetch('/api/file/readDir', {
+                method: 'POST',
+                body: JSON.stringify({ path: currentPath }),
+            });
+            const json = await response.json();
+            const data = json.data;
+            for (const entry of data) {
+                const fullPath = `${currentPath}/${entry.name}`;
+                if (
+                    // 过滤隐藏文件
+                    currentPath.startsWith(".") ||
+                    entry.name.startsWith(".") ||
+                    (!entry.isDir && entry.name.endsWith('.sy'))
+                ) {
+                    continue;
+                }
+                if (entry.isDir) {
+                    await walkDir(fullPath);
+                } else if(fullPath.includes(assetName)){
+                    files.push(fullPath.replace(/^\/data\//i, '').replace(/^\//, ''));
+                }
+            }
+        };
+        await walkDir(path);
+        return files;
     }
 }, 2000);
