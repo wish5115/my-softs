@@ -116,7 +116,7 @@ setTimeout(()=>{
                 }
                 if (entry.isDir) {
                     await walkDir(fullPath);
-                } else if(fullPath.includes(assetName)){
+                } else if(fullPath.toLowerCase().includes(assetName.toLowerCase())){
                     files.push(fullPath.replace(/^\/data\//i, '').replace(/^\//, ''));
                 }
             }
