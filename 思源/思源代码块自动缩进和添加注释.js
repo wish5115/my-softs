@@ -452,7 +452,7 @@
             event.preventDefault();
             event.stopPropagation();
             const lang = detectLanguage()||'_default';
-            const rules = langRules[lang]?.comment;
+            const rules = langRules[lang]?.comment || langRules._default.comment;
             if(!rules?.prefix) return;
             toggleComment(rules?.prefix, rules?.suffix, rules?.isWrap, tabSpace);
         } else if (event.shiftKey && event.key === 'Backspace' && !event.altKey && !event.ctrlKey && !event.metaKey) {
