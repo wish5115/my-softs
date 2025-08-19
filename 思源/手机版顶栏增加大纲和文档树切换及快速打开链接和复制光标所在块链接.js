@@ -21,7 +21,7 @@ setTimeout(() => {
         // 在这里修改你的代码 👇👇👇
         e.preventDefault();
         const block = getCursorElement()?.closest('.protyle-wysiwyg div[data-node-id][data-type]');
-        if(!block) {showMessage('未找到光标所在块', false); return;}
+        if(!block) {showMessage('未找到光标所在块', true); return;}
     
         // 仅复制超级链接
         // if(block?.dataset?.nodeId) copyPlainText(`siyuan://blocks/${block?.dataset?.nodeId}`);
