@@ -1,0 +1,62 @@
+{
+    "program": "quickcomposer",
+    "features": {
+        "icon": "logo/quickcommand.png",
+        "explain": "ui_demo",
+        "platform": [
+            "win32",
+            "linux",
+            "darwin"
+        ],
+        "mainPush": false,
+        "cmds": [
+            "ui_demo"
+        ],
+        "mainHide": false,
+        "code": "key_111f6132"
+    },
+    "output": "html",
+    "tags": [],
+    "flows": [
+        {
+            "id": "main",
+            "name": "main",
+            "label": "主流程",
+            "commands": [
+                {
+                    "value": "createCodeSnippet",
+                    "description": "单纯将代码片段赋值到变量中，不会执行",
+                    "id": "855e4ead-4600-44e1-a0bb-ed1225498b8d",
+                    "code": "quickcomposer.coding.base64Decode(\"PHN0eWxlPgojY29udGFpbmVyewogIGhlaWdodDogNTAwcHg7Cn0KPC9zdHlsZT4KPHNjcmlwdD4KICB2YXIgdHlwZSA9ICJfX19xdWlja2NvbW1hbmQuZW50ZXJEYXRhLnR5cGVfX18iOwogIHdpbmRvdy5pbnB1dERlbW8gPSBhc3luYyBmdW5jdGlvbiAoKSB7CiAgICBsZXQgaW5wdXRWYWx1ZXMgPSBhd2FpdCBxdWlja2NvbW1hbmQuc2hvd0lucHV0Qm94KFt7CiAgICAibGFiZWwiOiAi6K+36L6T5YWlIgogICAgfV0pOwogICAgY29uc29sZS5sb2coIuaWh+acrOahhuWGheWuue+8miIraW5wdXRWYWx1ZXMgKyAi77yMdHlwZeWPguaVsO+8miIgKyB0eXBlKTsKICB9Cjwvc2NyaXB0Pgo8ZGl2IGlkPSJjb250YWluZXIiPgogIDxidXR0b24gb25jbGljaz0idXRvb2xzLm91dFBsdWdpbigpIj7lhbPpl608L2J1dHRvbj4KICA8YnV0dG9uIG9uY2xpY2s9ImlucHV0RGVtbygpIj7ovpPlhaU8L2J1dHRvbj4KPC9kaXY+Cgo=\").replace('\"___quickcommand.enterData.type___\"', JSON.stringify(quickcommand.enterData.type))",
+                    "argvs": {
+                        "code": "<style>\n#container{\n  height: 500px;\n}\n</style>\n<script>\n  var type = \"___quickcommand.enterData.type___\";\n  window.inputDemo = async function () {\n    let inputValues = await quickcommand.showInputBox([{\n    \"label\": \"请输入\"\n    }]);\n    console.log(\"文本框内容：\"+inputValues + \"，type参数：\" + type);\n  }\n</script>\n<div id=\"container\">\n  <button onclick=\"utools.outPlugin()\">关闭</button>\n  <button onclick=\"inputDemo()\">输入</button>\n</div>\n\n",
+                        "language": "html",
+                        "args": [],
+                        "scriptCode": null,
+                        "outputCode": null,
+                        "runInTerminal": null
+                    },
+                    "outputVariable": {
+                        "name": "codeSnippet"
+                    }
+                },
+                {
+                    "value": "console.log",
+                    "neverHasOutput": true,
+                    "id": "b316156c-6201-49fa-8961-700ef2b8795c",
+                    "subCommand": "console.log",
+                    "argvs": [
+                        {
+                            "value": "codeSnippet",
+                            "isString": false,
+                            "__varInputVal__": true
+                        }
+                    ],
+                    "code": "console.log(codeSnippet)",
+                    "isCollapsed": true
+                }
+            ],
+            "customVariables": []
+        }
+    ]
+}
