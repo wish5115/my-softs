@@ -12,10 +12,10 @@
 // 0.0.8 修复批量调添加可能扩展字段无法被添加的意外情况
 // 0.0.9 改进添加列表时总是添加li即type=i到数据库
 // 0.0.10 修复因思源3.3.0数据库rowId与块id不同导致的插入字段数据失败问题
-(()=>{
+(async ()=>{
     // 是否开启，同时添加其他字段 true 开启 false 不开启
     // 开启时，需要配置menus中的otherCols字段信息（可参考下面的示例）
-    const isEnableMoreCols = false;
+    const isEnableMoreCols = true;
 
     // 是否同时对选中块添加自定义属性（需要在menus中配置customAttrs，每个菜单可以添加不同的自定义属性）
     const isEnableCustomAttrsInSelectedBlock = false;
@@ -26,8 +26,8 @@
             // 菜单名，显示在块或文档右键菜单上
             name: "添加到数据库A",
             // 添加到的数据库块id列表（必填），注意是数据库所在块id，如果移动了数据库位置需要更改
-            toAvBlockId: "20250818210435-lp14wtz",
-            // 指定数据库的列名，不填默认是添加到主键列，该参数仅对不绑定块菜单有效，如果多个列名一样的则取第一个
+            toAvBlockId: "20250722192541-srot36c",
+            // 指定数据库的列名（即块文本添加到的列），不填默认是添加到主键列，该参数仅对不绑定块菜单有效，如果多个列名一样的则取第一个
             // 注意，目前仅支持文本列
             toAvColName: "",
             // 是否绑定块菜单，true 绑定，false 不绑定
@@ -49,7 +49,7 @@
         },
         {
             name: "添加到数据库B",
-            toAvBlockId: "20250818210435-lp14wtz",
+            toAvBlockId: "20250722192541-srot36c",
             toAvColName: "",
             isBindBlock: false,
             // 给选中块添加自定义属性，可以按key:value形式添加多组
@@ -74,6 +74,9 @@
             isBindBlock: false,
         }
     ];
+
+    // 获取当前版本
+    const version = (await requestApi('/api/system/version'))?.data||'';
     
     // 监听块右键菜单
     whenElementExist('#commonMenu .b3-menu__items').then((menuItems) => {
@@ -204,6 +207,7 @@
     // 自定义rowId和绑定块id不同的是，rowId的后7位与块id的顺序相反，即倒序
     // see https://github.com/siyuan-note/siyuan/issues/15708
     function getRowIdByBlockId(blockId) {
+        if(compareVersions(version, '3.3.0') < 0) return blockId; // 旧版使用块id
         const dashIndex = blockId.indexOf('-');
         const prefix = blockId.slice(0, dashIndex + 1); // 包含 '-'
         const suffix = blockId.slice(dashIndex + 1);    // -后面的内容
@@ -387,5 +391,23 @@
             "method": "POST",
             "body": JSON.stringify({"msg": message, "timeout": delay})
         });
+    }
+
+    function compareVersions(version1, version2) {
+        const v1 = version1.split('.');
+        const v2 = version2.split('.');
+    
+        const len = Math.max(v1.length, v2.length);
+    
+        for (let i = 0; i < len; i++) {
+            // 如果某段不存在，默认为 0
+            const num1 = i < v1.length ? parseInt(v1[i], 10) : 0;
+            const num2 = i < v2.length ? parseInt(v2[i], 10) : 0;
+    
+            if (num1 > num2) return 1;   // version1 > version2
+            if (num1 < num2) return -1;  // version1 < version2
+        }
+    
+        return 0; // 相等
     }
 })();
