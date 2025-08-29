@@ -2,7 +2,7 @@
 // see https://ld246.com/article/1746153210116
 // 注意：只能在块菜单中操作（你的右键可能不是块菜单）
 // 本应用已全部用完Achuan-2大佬提供的所有api see https://ld246.com/article/1733365731025
-// version 0.0.9
+// version 0.0.10
 // 0.0.2 （已废弃）
 // 0.0.3 修改参数配置方式
 // 0.0.4 修复仅对当前文档中的选中块起作用
@@ -11,6 +11,7 @@
 // 0.0.7 增加可同时对选中块增加自定义属性
 // 0.0.8 修复批量调添加可能扩展字段无法被添加的意外情况
 // 0.0.9 改进添加列表时总是添加li即type=i到数据库
+// 0.0.10 修复因思源3.3.0数据库rowId与块id不同导致的插入字段数据失败问题
 (()=>{
     // 是否开启，同时添加其他字段 true 开启 false 不开启
     // 开启时，需要配置menus中的otherCols字段信息（可参考下面的示例）
@@ -25,7 +26,7 @@
             // 菜单名，显示在块或文档右键菜单上
             name: "添加到数据库A",
             // 添加到的数据库块id列表（必填），注意是数据库所在块id，如果移动了数据库位置需要更改
-            toAvBlockId: "20250614104613-0qa055i",
+            toAvBlockId: "20250818210435-lp14wtz",
             // 指定数据库的列名，不填默认是添加到主键列，该参数仅对不绑定块菜单有效，如果多个列名一样的则取第一个
             // 注意，目前仅支持文本列
             toAvColName: "",
@@ -38,17 +39,17 @@
             // getColValue回调函数可动态计算字段值返回
             otherCols: [
                 {
-                    colName: '状态',
+                    colName: '标签',
                     // 对于绑定块，块/文档id === rowID
                     getColValue: (keyID, rowID, cellID, avID) => {
-                        return {"mSelect": [{"content":"今天"}]};
+                        return {"mSelect": [{"content":"轻小说"}]};
                     },
                 }
             ],
         },
         {
             name: "添加到数据库B",
-            toAvBlockId: "20241127231309-wo80aza",
+            toAvBlockId: "20250818210435-lp14wtz",
             toAvColName: "",
             isBindBlock: false,
             // 给选中块添加自定义属性，可以按key:value形式添加多组
@@ -58,10 +59,10 @@
             // getColValue回调函数可动态计算字段值返回
             otherCols: [
                 {
-                    colName: '状态',
+                    colName: '标签',
                     // 对于绑定块，块/文档id === rowID
                     getColValue: (keyID, rowID, cellID, avID) => {
-                        return {"mSelect": [{"content":"今天"}]};
+                        return {"mSelect": [{"content":"完结"}]};
                     },
                 }
             ],
@@ -78,6 +79,7 @@
     whenElementExist('#commonMenu .b3-menu__items').then((menuItems) => {
         const menusReverse = menus.reverse();
         observeBlockMenu(menuItems, async (isTitleMenu)=>{
+            await new Promise(resolve => setTimeout(resolve, 25));
             if(menuItems.querySelector('.add-to-my-av')) return;
             const addAv = menuItems.querySelector('button[data-id="addToDatabase"]');
             if(!addAv) return;
@@ -199,11 +201,24 @@
         }
         return result.data;
     }
+    // 自定义rowId和绑定块id不同的是，rowId的后7位与块id的顺序相反，即倒序
+    // see https://github.com/siyuan-note/siyuan/issues/15708
+    function getRowIdByBlockId(blockId) {
+        const dashIndex = blockId.indexOf('-');
+        const prefix = blockId.slice(0, dashIndex + 1); // 包含 '-'
+        const suffix = blockId.slice(dashIndex + 1);    // -后面的内容
+        // 将后面部分倒序
+        const reversedSuffix = suffix.split('').reverse().join('');
+        // 拼接结果
+        return prefix + reversedSuffix;
+    }
     // 插入块到数据库
     async function addBlocksToAv(blockIds, avId, avBlockID) {
         blockIds = typeof blockIds === 'string' ? [blockIds] : blockIds;
         const srcs = blockIds.map(blockId => ({
             "id": blockId,
+            // 自定义rowId see https://github.com/siyuan-note/siyuan/issues/15708
+            "itemID": getRowIdByBlockId(blockId),
             "isDetached": false,
         }));
         const input = {
@@ -223,7 +238,7 @@
                 if(!col.keyID) continue;
                 const cellID = await getCellIdByRowIdAndKeyId(blockId, col.keyID, avID);
                 if(!cellID) continue;
-                let colData = {avID: avID, keyID: col.keyID, rowID: blockId, cellID};
+                let colData = {avID: avID, keyID: col.keyID, rowID: getRowIdByBlockId(blockId), cellID};
                 if(typeof col.getColValue !== 'function') continue;
                 const colValue = await col.getColValue(col.keyID, blockId, cellID, avID);
                 if(typeof colValue !== 'object') continue;
