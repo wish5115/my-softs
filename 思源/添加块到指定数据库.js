@@ -15,7 +15,7 @@
 (async ()=>{
     // 是否开启，同时添加其他字段 true 开启 false 不开启
     // 开启时，需要配置menus中的otherCols字段信息（可参考下面的示例）
-    const isEnableMoreCols = true;
+    const isEnableMoreCols = false;
 
     // 是否同时对选中块添加自定义属性（需要在menus中配置customAttrs，每个菜单可以添加不同的自定义属性）
     const isEnableCustomAttrsInSelectedBlock = false;
