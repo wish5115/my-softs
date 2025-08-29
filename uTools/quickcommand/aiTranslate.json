@@ -115,9 +115,9 @@
                     "id": "f7c56b00-c5f0-44b9-9bd7-d91548875b37",
                     "subCommand": "injectJs",
                     "argvs": [
-                        "await setAiConfig();\nconsole.log(\"配置保存成功\");"
+                        "const result = await setAiConfig();\nif (result) console.log(\"配置保存成功\");"
                     ],
-                    "code": "await setAiConfig();\nconsole.log(\"配置保存成功\");",
+                    "code": "const result = await setAiConfig();\nif (result) console.log(\"配置保存成功\");",
                     "isCollapsed": true
                 },
                 {
@@ -155,9 +155,9 @@
                     "id": "e68dd391-9943-4ea5-9d04-7bdf43e51cc5",
                     "subCommand": "injectJs",
                     "argvs": [
-                        "// debug 清空配置\n// quickcommand.userData.del(\"aiTranslate:config\");\n// console.log('配置已清空');\n// return\n// 获取配置\nlet aiConfig = getAiConfig()\n// 生成配置\nif (!aiConfig) {\n  quickcommand.showMessageBox(\"请先配置AI，可通过“AI翻译配置”指令修改\", \"warning\", 7000)\n  aiConfig = await setAiConfig();\n  if (!aiConfig) {\n    return\n  }\n}\n// 组装ai参数\nconst { randomUUID } = require('crypto');\nconst uuid = randomUUID();\nconst config = { ...aiConfig, \"id\": uuid, \"apiType\": \"openai\", \"name\": aiConfig?.model || \"\" }\nconfig.apiUrl = config.apiUrl.trim();\n// 调用ai\nconst result = await quickcommand.askAI({\n  \"prompt\": quickcommand.enterData?.payload,\n  \"role\": \"translate\"\n}, config);\nlet aiResponseContent = result.result;"
+                        "// debug 清空配置\n// quickcommand.userData.del(\"aiTranslate:config\");\n// console.log('配置已清空');\n// return\n// 获取配置\n\nlet aiConfig = getAiConfig()\n// 生成配置\nif (!aiConfig) {\n  quickcommand.showMessageBox(\"请先配置AI，可通过“AI翻译配置”指令修改\", \"warning\", 7000)\n  aiConfig = await setAiConfig();\n  if (!aiConfig) {\n    return\n  }\n}\n// 组装ai参数\nconst { randomUUID } = require('crypto');\nconst uuid = randomUUID();\nconst config = { ...aiConfig, \"id\": uuid, \"apiType\": \"openai\", \"name\": aiConfig?.model || \"\" }\nconfig.apiUrl = config.apiUrl.trim();\n// 调用ai\nconst result = await quickcommand.askAI({\n  \"prompt\": quickcommand.enterData?.payload,\n  \"role\": \"translate\"\n}, config);\nlet aiResponseContent = result.result;"
                     ],
-                    "code": "// debug 清空配置\n// quickcommand.userData.del(\"aiTranslate:config\");\n// console.log('配置已清空');\n// return\n// 获取配置\nlet aiConfig = getAiConfig()\n// 生成配置\nif (!aiConfig) {\n  quickcommand.showMessageBox(\"请先配置AI，可通过“AI翻译配置”指令修改\", \"warning\", 7000)\n  aiConfig = await setAiConfig();\n  if (!aiConfig) {\n    return\n  }\n}\n// 组装ai参数\nconst { randomUUID } = require('crypto');\nconst uuid = randomUUID();\nconst config = { ...aiConfig, \"id\": uuid, \"apiType\": \"openai\", \"name\": aiConfig?.model || \"\" }\nconfig.apiUrl = config.apiUrl.trim();\n// 调用ai\nconst result = await quickcommand.askAI({\n  \"prompt\": quickcommand.enterData?.payload,\n  \"role\": \"translate\"\n}, config);\nlet aiResponseContent = result.result;",
+                    "code": "// debug 清空配置\n// quickcommand.userData.del(\"aiTranslate:config\");\n// console.log('配置已清空');\n// return\n// 获取配置\n\nlet aiConfig = getAiConfig()\n// 生成配置\nif (!aiConfig) {\n  quickcommand.showMessageBox(\"请先配置AI，可通过“AI翻译配置”指令修改\", \"warning\", 7000)\n  aiConfig = await setAiConfig();\n  if (!aiConfig) {\n    return\n  }\n}\n// 组装ai参数\nconst { randomUUID } = require('crypto');\nconst uuid = randomUUID();\nconst config = { ...aiConfig, \"id\": uuid, \"apiType\": \"openai\", \"name\": aiConfig?.model || \"\" }\nconfig.apiUrl = config.apiUrl.trim();\n// 调用ai\nconst result = await quickcommand.askAI({\n  \"prompt\": quickcommand.enterData?.payload,\n  \"role\": \"translate\"\n}, config);\nlet aiResponseContent = result.result;",
                     "isCollapsed": true,
                     "userComments": "AI翻译"
                 },
@@ -213,7 +213,8 @@
                     "argvs": [
                         "// 获取配置\nlet aiConfig = quickcommand.userData.get(\"aiTranslate:config\")\nif (!aiConfig) {\n  aiConfig = { \"apiUrl\": \"\", \"apiToken\": \"\", \"model\": \"\" }\n}\n// 生成配置\nlet textAreaContent = await quickcommand.showTextArea(\"请输入\", JSON.stringify(aiConfig, null, 4));\ntry {\n  aiConfig = JSON.parse(textAreaContent)\n} catch (err) {\n  console.error('JSON 解析失败:', err.message)\n  return false\n}\nif (!aiConfig?.apiUrl || !aiConfig?.apiToken || !aiConfig?.model) {\n  console.error('必须有apiUrl, apiToken, model几个键值')\n  return false\n}\nquickcommand.userData.put(aiConfig, \"aiTranslate:config\")\n\nreturn aiConfig"
                     ],
-                    "code": "// 获取配置\nlet aiConfig = quickcommand.userData.get(\"aiTranslate:config\")\nif (!aiConfig) {\n  aiConfig = { \"apiUrl\": \"\", \"apiToken\": \"\", \"model\": \"\" }\n}\n// 生成配置\nlet textAreaContent = await quickcommand.showTextArea(\"请输入\", JSON.stringify(aiConfig, null, 4));\ntry {\n  aiConfig = JSON.parse(textAreaContent)\n} catch (err) {\n  console.error('JSON 解析失败:', err.message)\n  return false\n}\nif (!aiConfig?.apiUrl || !aiConfig?.apiToken || !aiConfig?.model) {\n  console.error('必须有apiUrl, apiToken, model几个键值')\n  return false\n}\nquickcommand.userData.put(aiConfig, \"aiTranslate:config\")\n\nreturn aiConfig"
+                    "code": "// 获取配置\nlet aiConfig = quickcommand.userData.get(\"aiTranslate:config\")\nif (!aiConfig) {\n  aiConfig = { \"apiUrl\": \"\", \"apiToken\": \"\", \"model\": \"\" }\n}\n// 生成配置\nlet textAreaContent = await quickcommand.showTextArea(\"请输入\", JSON.stringify(aiConfig, null, 4));\ntry {\n  aiConfig = JSON.parse(textAreaContent)\n} catch (err) {\n  console.error('JSON 解析失败:', err.message)\n  return false\n}\nif (!aiConfig?.apiUrl || !aiConfig?.apiToken || !aiConfig?.model) {\n  console.error('必须有apiUrl, apiToken, model几个键值')\n  return false\n}\nquickcommand.userData.put(aiConfig, \"aiTranslate:config\")\n\nreturn aiConfig",
+                    "isCollapsed": true
                 },
                 {
                     "value": "quickcommand.showMessageBox",
@@ -252,7 +253,8 @@
                     "argvs": [
                         "return quickcommand.userData.get(\"aiTranslate:config\")"
                     ],
-                    "code": "return quickcommand.userData.get(\"aiTranslate:config\")"
+                    "code": "return quickcommand.userData.get(\"aiTranslate:config\")",
+                    "isCollapsed": true
                 }
             ],
             "customVariables": []
