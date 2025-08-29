@@ -1,0 +1,261 @@
+{
+    "program": "quickcomposer",
+    "features": {
+        "icon": "data:image/png;base64,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",
+        "explain": "AI翻译",
+        "platform": [
+            "win32",
+            "linux",
+            "darwin"
+        ],
+        "mainPush": false,
+        "cmds": [
+            "AI翻译",
+            "AI翻译配置",
+            "划词翻译",
+            {
+                "type": "over",
+                "label": "AI翻译"
+            }
+        ],
+        "mainHide": false,
+        "code": "key_0133cd15"
+    },
+    "output": "text",
+    "tags": [
+        "工具"
+    ],
+    "flows": [
+        {
+            "id": "main",
+            "name": "main",
+            "label": "主流程",
+            "commands": [
+                {
+                    "value": "condition",
+                    "isControlFlow": true,
+                    "commandChain": [
+                        "if",
+                        "end"
+                    ],
+                    "id": "4ccfbb81-dbdd-4f02-acc8-fc34d73dc0c3",
+                    "commandType": "if",
+                    "chainId": "0fc4708d-29a7-4fa6-88fa-e9806f60631f",
+                    "argvs": {
+                        "condition": "quickcommand.enterData?.payload==='AI翻译'"
+                    },
+                    "code": "if (quickcommand.enterData?.payload==='AI翻译') {",
+                    "isCollapsed": false
+                },
+                {
+                    "value": "console.log",
+                    "neverHasOutput": true,
+                    "id": "6746e77f-fa40-45d4-9717-8ae6d49e816e",
+                    "subCommand": "console.log",
+                    "argvs": [
+                        {
+                            "value": "请先输入翻译原文",
+                            "isString": true,
+                            "__varInputVal__": true
+                        }
+                    ],
+                    "code": "console.log(\"请先输入翻译原文\")",
+                    "disabled": false,
+                    "isCollapsed": true,
+                    "userComments": ""
+                },
+                {
+                    "value": "return",
+                    "neverHasOutput": true,
+                    "id": "501040b3-5e20-47a1-9611-c7e92b1caf4b",
+                    "argvs": {
+                        "returnValue": {
+                            "value": "",
+                            "isString": false,
+                            "__varInputVal__": true
+                        }
+                    },
+                    "code": "return ",
+                    "isCollapsed": true
+                },
+                {
+                    "value": "condition",
+                    "isControlFlow": true,
+                    "commandChain": [
+                        "if",
+                        "end"
+                    ],
+                    "id": "abb5fb22-d1cf-4918-ac46-571dc22401cb",
+                    "commandType": "end",
+                    "chainId": "0fc4708d-29a7-4fa6-88fa-e9806f60631f",
+                    "argvs": {},
+                    "code": "};"
+                },
+                {
+                    "value": "condition",
+                    "isControlFlow": true,
+                    "commandChain": [
+                        "if",
+                        "end"
+                    ],
+                    "id": "058340ba-1bd6-41c3-aeff-42ac59d0ae9f",
+                    "commandType": "if",
+                    "chainId": "b5b3ba81-5deb-4226-a452-ab08a948161a",
+                    "argvs": {
+                        "condition": "quickcommand.enterData?.payload==='AI翻译配置'"
+                    },
+                    "code": "if (quickcommand.enterData?.payload==='AI翻译配置') {",
+                    "isCollapsed": false
+                },
+                {
+                    "value": "injectJs",
+                    "description": "注入的代码（js）将在流程对应的位置直接运行。",
+                    "neverHasOutput": true,
+                    "isExpression": true,
+                    "id": "f7c56b00-c5f0-44b9-9bd7-d91548875b37",
+                    "subCommand": "injectJs",
+                    "argvs": [
+                        "await setAiConfig();\nconsole.log(\"配置保存成功\");"
+                    ],
+                    "code": "await setAiConfig();\nconsole.log(\"配置保存成功\");",
+                    "isCollapsed": true
+                },
+                {
+                    "value": "return",
+                    "neverHasOutput": true,
+                    "id": "d60f9ce4-39af-4198-a3d1-cf8799ee6724",
+                    "argvs": {
+                        "returnValue": {
+                            "value": "",
+                            "isString": false,
+                            "__varInputVal__": true
+                        }
+                    },
+                    "code": "return ",
+                    "isCollapsed": true
+                },
+                {
+                    "value": "condition",
+                    "isControlFlow": true,
+                    "commandChain": [
+                        "if",
+                        "end"
+                    ],
+                    "id": "9d4a7d1e-49cc-4585-8910-c7d5621c7737",
+                    "commandType": "end",
+                    "chainId": "b5b3ba81-5deb-4226-a452-ab08a948161a",
+                    "argvs": {},
+                    "code": "};"
+                },
+                {
+                    "value": "injectJs",
+                    "description": "注入的代码（js）将在流程对应的位置直接运行。",
+                    "neverHasOutput": true,
+                    "isExpression": true,
+                    "id": "e68dd391-9943-4ea5-9d04-7bdf43e51cc5",
+                    "subCommand": "injectJs",
+                    "argvs": [
+                        "// debug 清空配置\n// quickcommand.userData.del(\"aiTranslate:config\");\n// console.log('配置已清空');\n// return\n// 获取配置\nlet aiConfig = getAiConfig()\n// 生成配置\nif (!aiConfig) {\n  quickcommand.showMessageBox(\"请先配置AI，可通过“AI翻译配置”指令修改\", \"warning\", 7000)\n  aiConfig = await setAiConfig();\n  if (!aiConfig) {\n    return\n  }\n}\n// 组装ai参数\nconst { randomUUID } = require('crypto');\nconst uuid = randomUUID();\nconst config = { ...aiConfig, \"id\": uuid, \"apiType\": \"openai\", \"name\": aiConfig?.model || \"\" }\nconfig.apiUrl = config.apiUrl.trim();\n// 调用ai\nconst result = await quickcommand.askAI({\n  \"prompt\": quickcommand.enterData?.payload,\n  \"role\": \"translate\"\n}, config);\nlet aiResponseContent = result.result;"
+                    ],
+                    "code": "// debug 清空配置\n// quickcommand.userData.del(\"aiTranslate:config\");\n// console.log('配置已清空');\n// return\n// 获取配置\nlet aiConfig = getAiConfig()\n// 生成配置\nif (!aiConfig) {\n  quickcommand.showMessageBox(\"请先配置AI，可通过“AI翻译配置”指令修改\", \"warning\", 7000)\n  aiConfig = await setAiConfig();\n  if (!aiConfig) {\n    return\n  }\n}\n// 组装ai参数\nconst { randomUUID } = require('crypto');\nconst uuid = randomUUID();\nconst config = { ...aiConfig, \"id\": uuid, \"apiType\": \"openai\", \"name\": aiConfig?.model || \"\" }\nconfig.apiUrl = config.apiUrl.trim();\n// 调用ai\nconst result = await quickcommand.askAI({\n  \"prompt\": quickcommand.enterData?.payload,\n  \"role\": \"translate\"\n}, config);\nlet aiResponseContent = result.result;",
+                    "isCollapsed": true,
+                    "userComments": "AI翻译"
+                },
+                {
+                    "value": "console.log",
+                    "neverHasOutput": true,
+                    "id": "48c561b7-bcf8-4fcc-a87d-da421997d27d",
+                    "subCommand": "console.log",
+                    "argvs": [
+                        {
+                            "value": "aiResponseContent",
+                            "isString": false,
+                            "__varInputVal__": true
+                        }
+                    ],
+                    "code": "console.log(aiResponseContent)",
+                    "isCollapsed": true
+                },
+                {
+                    "value": "quickcommand.showMessageBox",
+                    "asyncMode": "await",
+                    "id": "88171686-fe7e-4adc-9c94-81165eaa3ee0",
+                    "subCommand": "quickcommand.showMessageBox",
+                    "argvs": [
+                        {
+                            "value": "这是一条提示消息",
+                            "isString": true,
+                            "__varInputVal__": true
+                        },
+                        "success",
+                        null
+                    ],
+                    "code": "quickcommand.showMessageBox(\"这是一条提示消息\",\"success\")",
+                    "isCollapsed": true,
+                    "disabled": true,
+                    "userComments": "用于给函数添加async，勿要删除！！！"
+                }
+            ],
+            "customVariables": []
+        },
+        {
+            "id": "333831b4-3efb-413b-9f81-0c81fb384c4a",
+            "name": "setAiConfig",
+            "label": "保存AI配置",
+            "commands": [
+                {
+                    "value": "injectJs",
+                    "description": "注入的代码（js）将在流程对应的位置直接运行。",
+                    "neverHasOutput": true,
+                    "isExpression": true,
+                    "id": "068feda5-620f-4f4d-9df3-edfcc4269dfb",
+                    "subCommand": "injectJs",
+                    "argvs": [
+                        "// 获取配置\nlet aiConfig = quickcommand.userData.get(\"aiTranslate:config\")\nif (!aiConfig) {\n  aiConfig = { \"apiUrl\": \"\", \"apiToken\": \"\", \"model\": \"\" }\n}\n// 生成配置\nlet textAreaContent = await quickcommand.showTextArea(\"请输入\", JSON.stringify(aiConfig, null, 4));\ntry {\n  aiConfig = JSON.parse(textAreaContent)\n} catch (err) {\n  console.error('JSON 解析失败:', err.message)\n  return false\n}\nif (!aiConfig?.apiUrl || !aiConfig?.apiToken || !aiConfig?.model) {\n  console.error('必须有apiUrl, apiToken, model几个键值')\n  return false\n}\nquickcommand.userData.put(aiConfig, \"aiTranslate:config\")\n\nreturn aiConfig"
+                    ],
+                    "code": "// 获取配置\nlet aiConfig = quickcommand.userData.get(\"aiTranslate:config\")\nif (!aiConfig) {\n  aiConfig = { \"apiUrl\": \"\", \"apiToken\": \"\", \"model\": \"\" }\n}\n// 生成配置\nlet textAreaContent = await quickcommand.showTextArea(\"请输入\", JSON.stringify(aiConfig, null, 4));\ntry {\n  aiConfig = JSON.parse(textAreaContent)\n} catch (err) {\n  console.error('JSON 解析失败:', err.message)\n  return false\n}\nif (!aiConfig?.apiUrl || !aiConfig?.apiToken || !aiConfig?.model) {\n  console.error('必须有apiUrl, apiToken, model几个键值')\n  return false\n}\nquickcommand.userData.put(aiConfig, \"aiTranslate:config\")\n\nreturn aiConfig"
+                },
+                {
+                    "value": "quickcommand.showMessageBox",
+                    "asyncMode": "await",
+                    "id": "51495a23-9f71-45ea-9ebe-18da01be001c",
+                    "subCommand": "quickcommand.showMessageBox",
+                    "argvs": [
+                        {
+                            "value": "这是一条提示消息",
+                            "isString": true,
+                            "__varInputVal__": true
+                        },
+                        "success",
+                        null
+                    ],
+                    "code": "quickcommand.showMessageBox(\"这是一条提示消息\",\"success\")",
+                    "isCollapsed": true,
+                    "userComments": "用于给函数添加async，勿要删除！！！",
+                    "disabled": true
+                }
+            ],
+            "customVariables": []
+        },
+        {
+            "id": "b9b33323-5089-4a7f-985a-e6515f3281b1",
+            "name": "getAiConfig",
+            "label": "获取AI配置",
+            "commands": [
+                {
+                    "value": "injectJs",
+                    "description": "注入的代码（js）将在流程对应的位置直接运行。",
+                    "neverHasOutput": true,
+                    "isExpression": true,
+                    "id": "2d208f18-5002-47e9-99a0-f577b87ad612",
+                    "subCommand": "injectJs",
+                    "argvs": [
+                        "return quickcommand.userData.get(\"aiTranslate:config\")"
+                    ],
+                    "code": "return quickcommand.userData.get(\"aiTranslate:config\")"
+                }
+            ],
+            "customVariables": []
+        }
+    ]
+}
