@@ -1,10 +1,12 @@
 // 自动添加指定文档下的子文档任务到数据库
+// version 0.0.2
+// 0.0.2 修复因思源 3.3.0 数据库 rowId 与块 id 不同导致的插入字段数据失败问题
 (async ()=>{
     // 配置数据库所在块id
-    const avBlockId = '20250614104613-0qa055i';
+    const avBlockId = '20250830162634-t3gr3y5';
 
     // 配置数据库所在文档id
-    const avDocId = '20250613063011-x7t4zyq';
+    const avDocId = '20250830162634-xnv6j2e';
 
     // 数据库id，注意这里是数据库id，不是数据库所在块id
     // 当为空时则自动获取
@@ -27,8 +29,9 @@
     const otherCols = [
         {
             colName: '状态',
-            // 对于绑定块，块/文档id === rowID
-            getColValue: (keyID, rowID, cellID, avID) => {
+            // 对于绑定块，3.3.0之前版本块/文档id === rowID，之后版本不一样
+            // 参数说明 keyID 列id, blockID 绑定块id, rowID 行id（又叫条目id itemID）, cellID 单元格id, avID 数据库id
+            getColValue: (keyID, blockID, rowID, cellID, avID) => {
                 return {"mSelect": [{"content":"今天"}]};
             },
         }
@@ -41,6 +44,9 @@
 
      // 获取数据库id
      if(!avId) avId = await getAvIdByAvBlockId(avBlockId);
+
+    // 获取当前版本
+    const version = (await fetchSyncPost('/api/system/version'))?.data||'';
     
     //main 定时添加任务到数据库
     async function main() {
@@ -145,10 +151,25 @@
         return result.data;
     }
 
+    // 自定义rowId和绑定块id不同的是，rowId的后7位与块id的顺序相反，即倒序
+    // see https://github.com/siyuan-note/siyuan/issues/15708
+    function getRowIdByBlockId(blockId) {
+        if(compareVersions(version, '3.3.0') < 0) return blockId; // 旧版使用块id
+        const dashIndex = blockId.indexOf('-');
+        const prefix = blockId.slice(0, dashIndex + 1); // 包含 '-'
+        const suffix = blockId.slice(dashIndex + 1);    // -后面的内容
+        // 将后面部分倒序
+        const reversedSuffix = suffix.split('').reverse().join('');
+        // 拼接结果
+        return prefix + reversedSuffix;
+    }
+
     async function addBlocksToAv(blockIds, avId, avBlockID) {
         blockIds = typeof blockIds === 'string' ? [blockIds] : blockIds;
         const srcs = blockIds.map(blockId => ({
             "id": blockId,
+            // 自定义rowId see https://github.com/siyuan-note/siyuan/issues/15708
+            "itemID": getRowIdByBlockId(blockId),
             "isDetached": false,
         }));
         const input = {
@@ -169,9 +190,9 @@
                     if(!col.keyID) continue;
                     const cellID = await getCellIdByRowIdAndKeyId(blockId, col.keyID, avID);
                     if(!cellID) continue;
-                    let colData = {avID: avID, keyID: col.keyID, rowID: blockId, cellID};
+                    let colData = {avID: avID, keyID: col.keyID, rowID: getRowIdByBlockId(blockId), cellID};
                     if(typeof col.getColValue !== 'function') continue;
-                    const colValue = await col.getColValue(col.keyID, blockId, cellID, avID);
+                    const colValue = await col.getColValue(col.keyID, blockId, getRowIdByBlockId(blockId), cellID, avID);
                     if(typeof colValue !== 'object') continue;
                     const colKey = Object.keys(colValue)[0];
                     if(!colKey) continue;
@@ -331,5 +352,22 @@
             return [];
         }
         return result.data;
+    }
+    function compareVersions(version1, version2) {
+        const v1 = version1.split('.');
+        const v2 = version2.split('.');
+    
+        const len = Math.max(v1.length, v2.length);
+    
+        for (let i = 0; i < len; i++) {
+            // 如果某段不存在，默认为 0
+            const num1 = i < v1.length ? parseInt(v1[i], 10) : 0;
+            const num2 = i < v2.length ? parseInt(v2[i], 10) : 0;
+    
+            if (num1 > num2) return 1;   // version1 > version2
+            if (num1 < num2) return -1;  // version1 < version2
+        }
+    
+        return 0; // 相等
     }
 })();
