@@ -82,7 +82,6 @@
     whenElementExist('#commonMenu .b3-menu__items').then((menuItems) => {
         const menusReverse = menus.reverse();
         observeBlockMenu(menuItems, async (isTitleMenu)=>{
-            await new Promise(resolve => setTimeout(resolve, 25));
             if(menuItems.querySelector('.add-to-my-av')) return;
             const addAv = menuItems.querySelector('button[data-id="addToDatabase"]');
             if(!addAv) return;
