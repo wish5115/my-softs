@@ -3,15 +3,15 @@
 // 注意：只能在块菜单中操作（你的右键可能不是块菜单）
 // 本应用已全部用完Achuan-2大佬提供的所有api see https://ld246.com/article/1733365731025
 // version 0.0.10
-// 0.0.2 （已废弃）
-// 0.0.3 修改参数配置方式
-// 0.0.4 修复仅对当前文档中的选中块起作用
-// 0.0.5 支持叶归等第三方非标准思源dom结构
-// 0.0.6 增加附加字段功能
-// 0.0.7 增加可同时对选中块增加自定义属性
-// 0.0.8 修复批量调添加可能扩展字段无法被添加的意外情况
-// 0.0.9 改进添加列表时总是添加li即type=i到数据库
 // 0.0.10 修复因思源3.3.0数据库rowId与块id不同导致的插入字段数据失败问题
+// 0.0.9 改进添加列表时总是添加li即type=i到数据库
+// 0.0.8 修复批量调添加可能扩展字段无法被添加的意外情况
+// 0.0.7 增加可同时对选中块增加自定义属性
+// 0.0.6 增加附加字段功能
+// 0.0.5 支持叶归等第三方非标准思源dom结构
+// 0.0.4 修复仅对当前文档中的选中块起作用
+// 0.0.3 修改参数配置方式
+// 0.0.2 （已废弃）
 (async ()=>{
     // 是否开启，同时添加其他字段 true 开启 false 不开启
     // 开启时，需要配置menus中的otherCols字段信息（可参考下面的示例）
@@ -40,8 +40,10 @@
             otherCols: [
                 {
                     colName: '标签',
-                    // 对于绑定块，块/文档id === rowID
-                    getColValue: (keyID, rowID, cellID, avID) => {
+                    // 对于绑定块，3.3.0之前版本块/文档id === rowID，之后版本不一样
+                    // 参数说明 keyID 列id, blockId 绑定块id, rowID 行id（又叫条目id itemID）, cellID 单元格id, avID 数据库id
+                    // 注意，非绑定块时，除了keyID，其他参数为undefined
+                    getColValue: (keyID, blockId, rowID, cellID, avID) => {
                         return {"mSelect": [{"content":"轻小说"}]};
                     },
                 }
@@ -60,8 +62,10 @@
             otherCols: [
                 {
                     colName: '标签',
-                    // 对于绑定块，块/文档id === rowID
-                    getColValue: (keyID, rowID, cellID, avID) => {
+                    // 对于绑定块，3.3.0之前版本块/文档id === rowID，之后版本不一样
+                    // 参数说明 keyID 列id, blockId 绑定块id, rowID 行id（又叫条目id itemID）, cellID 单元格id, avID 数据库id
+                    // 注意，非绑定块时，除了keyID，其他参数为undefined
+                    getColValue: (keyID, blockId, rowID, cellID, avID) => {
                         return {"mSelect": [{"content":"完结"}]};
                     },
                 }
@@ -243,7 +247,7 @@
                 if(!cellID) continue;
                 let colData = {avID: avID, keyID: col.keyID, rowID: getRowIdByBlockId(blockId), cellID};
                 if(typeof col.getColValue !== 'function') continue;
-                const colValue = await col.getColValue(col.keyID, blockId, cellID, avID);
+                const colValue = await col.getColValue(col.keyID, blockId, getRowIdByBlockId(blockId), cellID, avID);
                 if(typeof colValue !== 'object') continue;
                 colData.value = colValue;
                 const result = await requestApi("/api/av/setAttributeViewBlockAttr", colData);
