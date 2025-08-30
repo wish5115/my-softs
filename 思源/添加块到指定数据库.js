@@ -41,9 +41,9 @@
                 {
                     colName: '标签',
                     // 对于绑定块，3.3.0之前版本块/文档id === rowID，之后版本不一样
-                    // 参数说明 keyID 列id, blockId 绑定块id, rowID 行id（又叫条目id itemID）, cellID 单元格id, avID 数据库id
+                    // 参数说明 keyID 列id, blockID 绑定块id, rowID 行id（又叫条目id itemID）, cellID 单元格id, avID 数据库id
                     // 注意，非绑定块时，除了keyID，其他参数为undefined
-                    getColValue: (keyID, blockId, rowID, cellID, avID) => {
+                    getColValue: (keyID, blockID, rowID, cellID, avID) => {
                         return {"mSelect": [{"content":"轻小说"}]};
                     },
                 }
@@ -63,9 +63,9 @@
                 {
                     colName: '标签',
                     // 对于绑定块，3.3.0之前版本块/文档id === rowID，之后版本不一样
-                    // 参数说明 keyID 列id, blockId 绑定块id, rowID 行id（又叫条目id itemID）, cellID 单元格id, avID 数据库id
+                    // 参数说明 keyID 列id, blockID 绑定块id, rowID 行id（又叫条目id itemID）, cellID 单元格id, avID 数据库id
                     // 注意，非绑定块时，除了keyID，其他参数为undefined
-                    getColValue: (keyID, blockId, rowID, cellID, avID) => {
+                    getColValue: (keyID, blockID, rowID, cellID, avID) => {
                         return {"mSelect": [{"content":"完结"}]};
                     },
                 }
