@@ -1,0 +1,196 @@
+{
+    "program": "quickcomposer",
+    "features": {
+        "icon": "data:image/png;base64,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",
+        "explain": "钉住文本",
+        "platform": [
+            "win32",
+            "linux",
+            "darwin"
+        ],
+        "mainPush": false,
+        "cmds": [
+            "钉住文本",
+            "pinText",
+            {
+                "type": "over",
+                "label": "钉住文本"
+            }
+        ],
+        "mainHide": false,
+        "code": "key_f0e6eba1"
+    },
+    "output": "text",
+    "tags": [
+        "工具"
+    ],
+    "flows": [
+        {
+            "id": "main",
+            "name": "main",
+            "label": "主流程",
+            "commands": [
+                {
+                    "value": "createCodeSnippet",
+                    "description": "单纯将代码片段赋值到变量中，不会执行",
+                    "id": "6bc7266a-6447-4402-82f4-112fa1d352c5",
+                    "code": "quickcomposer.coding.base64Decode(\"PCFET0NUWVBFIGh0bWw+CjxodG1sPgo8aGVhZD4KICA8bWV0YSBjaGFyc2V0PSJ1dGYtOCI+CiAgPHRpdGxlPumSieS9j+aWh+acrDwvdGl0bGU+CiAgPHN0eWxlPgogICAgYm9keXtoZWlnaHQ6IGNhbGMoMTAwdmggLSAxNnB4KTt9CiAgPC9zdHlsZT4KICA8c2NyaXB0PgogICAgbGV0IHBheWxvYWQgPSAiX19fcXVpY2tjb21tYW5kLmVudGVyRGF0YS5wYXlsb2FkX19fIjsKICAgIC8vIOWKoOi9veaJp+ihjAogICAgZG9jdW1lbnQuYWRkRXZlbnRMaXN0ZW5lcignRE9NQ29udGVudExvYWRlZCcsICgpID0+IHsKICAgICAgY29uc3QgZWRpdG9yID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoImVkaXRvciIpOwogICAgICBjb25zdCBodG1sID0gbG9jYWxTdG9yYWdlLmdldEl0ZW0oInBpblRleHQiLCAiIik7CiAgICAgIGVkaXRvci5pbm5lckhUTUwgPSBodG1sOwogICAgICBjb25zdCBoYXNQYXlsb2FkID0gIShwYXlsb2FkID09PSAi6ZKJ5L2P5paH5pysIiB8fCBwYXlsb2FkID09PSAicGluVGV4dCIpICYmIHBheWxvYWQ7CiAgICAgIGlmKGhhc1BheWxvYWQpIHsKICAgICAgICBlZGl0b3IuaW5uZXJIVE1MID0gZWRpdG9yLnRleHRDb250ZW50ID8gcGF5bG9hZCArICI8aHIgLz4iICsgaHRtbCA6IHBheWxvYWQ7CiAgICAgICAgbG9jYWxTdG9yYWdlLnNldEl0ZW0oInBpblRleHQiLCBlZGl0b3IuaW5uZXJIVE1MKTsKICAgICAgfQogICAgICBzZXRUaW1lb3V0KCgpPT4gZWRpdG9yLmZvY3VzKCksIDEwMCk7CiAgICAgIC8vIOi+k+WFpeS6i+S7tgogICAgICBlZGl0b3IuYWRkRXZlbnRMaXN0ZW5lcignaW5wdXQnLCAoKSA9PiB7CiAgICAgICAgbG9jYWxTdG9yYWdlLnNldEl0ZW0oInBpblRleHQiLCBlZGl0b3IuaW5uZXJIVE1MKTsKICAgICAgfSk7CiAgICAgIC8vIOebkeWQrOaVsOaNruWPmOWMlgogICAgICB3aW5kb3cuYWRkRXZlbnRMaXN0ZW5lcignc3RvcmFnZScsIGZ1bmN0aW9uKGUpIHsKICAgICAgICBpZiAoZS5rZXkgPT09ICdwaW5UZXh0JykgewogICAgICAgICAgZWRpdG9yLmlubmVySFRNTCA9IGUubmV3VmFsdWU7CiAgICAgICAgfQogICAgICB9KTsKICAgIH0pOwogIDwvc2NyaXB0Pgo8L2hlYWQ+Cjxib2R5IGlkPSJlZGl0b3IiIGNvbnRlbnRlZGl0YWJsZT0idHJ1ZSI+PC9ib2R5Pgo8L2h0bWw+\").replace('\"___quickcommand.enterData.payload___\"', JSON.stringify(quickcommand.enterData.payload))",
+                    "argvs": {
+                        "code": "<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <title>钉住文本</title>\n  <style>\n    body{height: calc(100vh - 16px);}\n  </style>\n  <script>\n    let payload = \"___quickcommand.enterData.payload___\";\n    // 加载执行\n    document.addEventListener('DOMContentLoaded', () => {\n      const editor = document.getElementById(\"editor\");\n      const html = localStorage.getItem(\"pinText\", \"\");\n      editor.innerHTML = html;\n      const hasPayload = !(payload === \"钉住文本\" || payload === \"pinText\") && payload;\n      if(hasPayload) {\n        editor.innerHTML = editor.textContent ? payload + \"<hr />\" + html : payload;\n        localStorage.setItem(\"pinText\", editor.innerHTML);\n      }\n      setTimeout(()=> editor.focus(), 100);\n      // 输入事件\n      editor.addEventListener('input', () => {\n        localStorage.setItem(\"pinText\", editor.innerHTML);\n      });\n      // 监听数据变化\n      window.addEventListener('storage', function(e) {\n        if (e.key === 'pinText') {\n          editor.innerHTML = e.newValue;\n        }\n      });\n    });\n  </script>\n</head>\n<body id=\"editor\" contenteditable=\"true\"></body>\n</html>",
+                        "language": "html",
+                        "args": [],
+                        "scriptCode": null,
+                        "outputCode": null,
+                        "runInTerminal": null
+                    },
+                    "outputVariable": {
+                        "name": "codeSnippet"
+                    },
+                    "isCollapsed": true,
+                    "userComments": "新窗口代码"
+                },
+                {
+                    "value": "utools.getPath",
+                    "defaultValue": "home",
+                    "id": "49a0f4cd-8028-44d1-a7ef-a8c23552c4a0",
+                    "subCommand": "utools.getPath",
+                    "argvs": [
+                        "temp"
+                    ],
+                    "code": "utools.getPath(\"temp\")",
+                    "outputVariable": {
+                        "name": "systemPath"
+                    },
+                    "isCollapsed": true
+                },
+                {
+                    "value": "utools.isMacOS",
+                    "id": "f7f9b883-9840-4590-9d6f-b7c589edf29c",
+                    "subCommand": "utools.isWindows",
+                    "argvs": [],
+                    "code": "utools.isWindows()",
+                    "outputVariable": {
+                        "name": "isWindows"
+                    },
+                    "isCollapsed": true
+                },
+                {
+                    "value": "quickcommand.runCode",
+                    "description": "运行各种编程语言的代码，需要预安装对应的执行环境",
+                    "asyncMode": "await",
+                    "id": "11f7aa5c-7fb1-48ff-a98d-6bec9f43ddc5",
+                    "code": "quickcommand.runCode(\"\", {\n    \"language\": \"javascript\"\n  })",
+                    "argvs": {
+                        "code": "",
+                        "language": "javascript",
+                        "args": [],
+                        "scriptCode": null,
+                        "outputCode": null,
+                        "runInTerminal": null
+                    },
+                    "outputVariable": {
+                        "name": "pinTextPage"
+                    },
+                    "isCollapsed": true
+                },
+                {
+                    "value": "injectJs",
+                    "description": "注入的代码（js）将在流程对应的位置直接运行。",
+                    "neverHasOutput": true,
+                    "isExpression": true,
+                    "id": "0f001583-7ef3-457f-bfe4-3b526c5e7125",
+                    "subCommand": "injectJs",
+                    "argvs": [
+                        "pinTextPage = (systemPath + (isWindows ? '\\\\' : '/') + 'pinTextPage.html').replace(/\\/+/g, '/').replace(/(\\\\)+/g, '\\\\')"
+                    ],
+                    "code": "pinTextPage = (systemPath + (isWindows ? '\\\\' : '/') + 'pinTextPage.html').replace(/\\/+/g, '/').replace(/(\\\\)+/g, '\\\\')",
+                    "isCollapsed": true,
+                    "userComments": "生成pinTextPage文件路径",
+                    "disabled": false
+                },
+                {
+                    "value": "quickcomposer.file.operation",
+                    "asyncMode": "await",
+                    "id": "6c9019d2-4bf0-440b-90e5-f2c4bb73a654",
+                    "argvs": {
+                        "operation": "write",
+                        "filePath": {
+                            "value": "pinTextPage",
+                            "isString": false,
+                            "__varInputVal__": true
+                        },
+                        "encoding": "utf8",
+                        "readMode": "all",
+                        "start": 0,
+                        "length": 100,
+                        "targetType": "file",
+                        "writeMode": "write",
+                        "writeFlag": "777",
+                        "followSymlinks": true,
+                        "mode": "644",
+                        "recursive": false,
+                        "force": false,
+                        "showHidden": false,
+                        "operationType": "chmod",
+                        "transferOperation": "rename",
+                        "content": {
+                            "value": "codeSnippet",
+                            "isString": false,
+                            "__varInputVal__": true
+                        }
+                    },
+                    "code": "quickcomposer.file.operation({\n    \"operation\": \"write\",\n    \"filePath\": pinTextPage,\n    \"encoding\": \"utf8\",\n    \"content\": codeSnippet,\n    \"flag\": \"w\",\n    \"mode\": \"777\"\n  })",
+                    "isCollapsed": true,
+                    "disabled": false
+                },
+                {
+                    "value": "ubrowser",
+                    "asyncMode": "await",
+                    "id": "0f4ea2a5-b105-4f64-8a34-8634ca2f5681",
+                    "argvs": {
+                        "goto": {
+                            "headers": {
+                                "": {
+                                    "value": "",
+                                    "isString": true,
+                                    "__varInputVal__": true
+                                }
+                            },
+                            "url": {
+                                "value": "'file://'+pinTextPage",
+                                "isString": false,
+                                "__varInputVal__": true
+                            }
+                        },
+                        "operations": [],
+                        "run": {
+                            "alwaysOnTop": true,
+                            "width": 400,
+                            "height": 300
+                        }
+                    },
+                    "code": "utools.ubrowser.goto('file://'+pinTextPage)\n  .run({\n    \"alwaysOnTop\": true,\n    \"width\": 400,\n    \"height\": 300\n  })",
+                    "isCollapsed": true,
+                    "disabled": false,
+                    "userComments": "",
+                    "outputVariable": {
+                        "name": "browser"
+                    }
+                },
+                {
+                    "value": "utools.outPlugin",
+                    "neverHasOutput": true,
+                    "id": "7058d7d6-ce86-4d04-b133-d689465a1a51",
+                    "subCommand": "utools.outPlugin",
+                    "argvs": [
+                        false
+                    ],
+                    "code": "utools.outPlugin(false)",
+                    "isCollapsed": true,
+                    "disabled": false
+                }
+            ],
+            "customVariables": []
+        }
+    ]
+}
