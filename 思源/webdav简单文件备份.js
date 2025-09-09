@@ -14,6 +14,7 @@
     
     // 要同步的文件列表
     // 仅支持文件，暂不支持文件夹（文件夹可以把文件全部列出即可）
+    // 最终文件会备份到webdav根目录/siyuan/+文件路径下
     const syncFiles = [
         '/conf/conf.json',
     ];
