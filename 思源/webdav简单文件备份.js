@@ -1,7 +1,10 @@
 // webdav简单文件备份
 // 比如可以备份配置文件等，防止密钥丢失
+// 仅支持文本文件，暂不支持二进制文件，文件夹等
 // 灵感来自：https://ld246.com/article/1757335387239
 // 6E44AC906C9061D198E1C096B8201A0A 👈 代码片段的唯一标识，请勿删除！！！
+// version 0.0.2
+// 0.0.2 对备份文件增加了base64编码和干扰码
 (async ()=>{
     // webdav配置
     // 【注意】：请勿开启发布服务，发布服务下，webdav账号可能会泄漏（开启发布服务时，可先禁用该代码）
@@ -13,8 +16,9 @@
     };
     
     // 要同步的文件列表
-    // 仅支持文件，暂不支持文件夹（文件夹可以把文件全部列出即可）
+    // 仅支持文本文件，暂不支持二进制文件，文件夹等（文件夹可以把文件全部列出即可，二进制请自行修改代码实现）
     // 最终文件会备份到webdav根目录/siyuan/+文件路径下
+    // 备份文件进行简单的base64编码，并加了10位随机干扰码，解码时需要前10位字符去掉后才行
     const syncFiles = [
         '/conf/conf.json',
     ];
@@ -57,7 +61,8 @@
     async function syncFile(path) {
       if(!client) return;
       const remotePath = '/siyuan/' + path.replace(/^\//, '');
-      const localContent = await getFile(path);
+      let localContent = await getFile(path);
+      localContent = getRandomString() + stringToBase64(localContent);
 
       try {
         // 检查并创建目录（如果不存在）
@@ -118,5 +123,24 @@
         null
       );
       return result.singleNodeValue;
+    }
+    
+    function stringToBase64(str) {
+      const encoder = new TextEncoder(); // 把字符串转成字节数组
+      const data = encoder.encode(str);
+      const binString = String.fromCharCode(...data);
+      return btoa(binString);
+    }
+    
+    function getRandomString(length = 10) {
+        // 定义可用的字符池
+        const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        // 随机生成 10 个字符
+        let result = '';
+        for (let i = 0; i < length; i++) {
+          const randomIndex = Math.floor(Math.random() * chars.length);
+          result += chars[randomIndex];
+        }
+        return result;
     }
 })();
