@@ -17,6 +17,10 @@
         '/conf/conf.json',
     ];
 
+    // webdav js代码地址，这里建议把webdav@5.8.0/+esm下载到本地使用，性能更好
+    // const webdavJs = '/snippets/libs/webdav@5.8.0+esm.js'; // 加载本地webdavjs
+    const webdavJs = 'https://jsd.onmicrosoft.cn/npm/webdav@5.8.0/+esm'; // 加载在线webdavjs
+
     // 发布服务不显示
     if(window.siyuan.config.readonly) {
         const script = xpathSelector("//script[contains(., '6E44AC906C9061D198E1C096B8201A0A')]");
@@ -29,7 +33,15 @@
     let client;
     setTimeout(async () => {
         // 获取webdav客户端
-        const { createClient } = await import('https://jsd.onmicrosoft.cn/npm/webdav@5.8.0/+esm');
+        let createClient;
+        try {
+            // 这里建议把webdav@5.8.0/+esm下载到本地
+            const webdav = await import(webdavJs);
+            createClient = webdav.createClient;
+        } catch (error) {
+            console.error("加载 webdav 库失败！", error);
+            return;
+        }
         client = createClient(webdav.url, {
             username: webdav.username,
             password: webdav.password
