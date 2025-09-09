@@ -5,6 +5,7 @@
 (async ()=>{
     // webdav配置
     // 【注意】：请勿开启发布服务，发布服务下，webdav账号可能会泄漏（开启发布服务时，可先禁用该代码）
+    // 这里WebDav推荐https://infini-cloud.net，注册成功即得20G永久空间，然后在My Page页面输入 QEU7Z 这个推荐码后再额外赠送5G永久空间
     const webdav = {
         url: 'https://jike.teracloud.jp/dav/',
         username: '',
