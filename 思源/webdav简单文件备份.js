@@ -63,6 +63,10 @@
       if(!client) return;
       const remotePath = '/siyuan_backup/' + path.replace(/^\//, '');
       let localContent = await getFile(path);
+      if(localContent.includes('"code":404,') && localContent.includes('no such file or directory')) {
+          console.error('获取文件失败', localContent);
+          return;
+      }
       localContent = getRandomString() + stringToBase64(localContent);
 
       try {
