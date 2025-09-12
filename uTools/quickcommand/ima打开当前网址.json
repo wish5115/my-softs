@@ -10,7 +10,6 @@
         ],
         "mainPush": false,
         "cmds": [
-            "ima打开当前网址",
             {
                 "type": "window",
                 "match": {
@@ -61,7 +60,7 @@
         "ext": ""
     },
     "cursorPosition": {
-        "lineNumber": 7,
-        "column": 1
+        "lineNumber": 1,
+        "column": 39
     }
 }
