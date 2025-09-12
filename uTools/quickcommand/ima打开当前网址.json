@@ -1,0 +1,67 @@
+{
+    "program": "quickcommand",
+    "features": {
+        "icon": "data:image/png;base64,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",
+        "explain": "ima打开当前网址",
+        "platform": [
+            "win32",
+            "linux",
+            "darwin"
+        ],
+        "mainPush": false,
+        "cmds": [
+            "ima打开当前网址",
+            {
+                "type": "window",
+                "match": {
+                    "app": [
+                        "chrome.exe",
+                        "firefox.exe",
+                        "MicrosoftEdge.exe",
+                        "iexplore.exe",
+                        "opera.exe",
+                        "brave.exe",
+                        "msedge.exe",
+                        "Google Chrome.app",
+                        "Safari.app",
+                        "Opera.app",
+                        "Vivaldi.app",
+                        "Brave Browser.app",
+                        "Microsoft Edge.app",
+                        "SiYuan.app",
+                        "SiYuan.exe"
+                    ]
+                },
+                "label": "ima打开当前网址"
+            },
+            {
+                "type": "over",
+                "exclude": "",
+                "label": "ima打开当前网址"
+            }
+        ],
+        "mainHide": false,
+        "code": "key_80f4bac2"
+    },
+    "output": "text",
+    "tags": [
+        "ima ",
+        "浏览器",
+        "思源"
+    ],
+    "cmd": "// ima打开当前网址，支持浏览器，思源，选中文本和uTools主窗口输入\nasync function main() {\n  // 这里配置您的ima安装路径，Mac下无需改动，Windows下需自行修改路径\n  // 注意Windows下的路径要用\\\\转义，比如 C:\\\\Program Files\\\\IMA Copilot\\\\ima.copilot.exe\n  const appPath = '/Applications/ima.copilot.app/Contents/MacOS/ima.copilot';\n  // const appPath = 'C:\\\\Program Files\\\\IMA Copilot\\\\ima.copilot.exe';\n\n  // 配置获取blockId的按键（这里用复制超级链接的按键获取的），如果你没修改过默认按键一般不用改\n  const keys = [\"h\", \"shift\", \"{{isWin}}\" === \"1\" ? \"ctrl\" : \"command\"];\n\n  // 配置本地思源访问地址，一般不用改\n  const localUrl = 'http://127.0.0.1:6806';\n\n  // 获取输入文本和选择文本\n  const input = \"{{input}}\"\n  const selectedText = await quickcomposer.status.getSelectedText();\n\n  // 获取当前浏览器地址（兼容思源app）\n  let currentBrowserUrl = '';\n  if (/^http/i.test(input)) {\n    currentBrowserUrl = input; // 主窗口输入\n  } else if (/^http/i.test(selectedText)) {\n    currentBrowserUrl = selectedText; // 选中文本\n  } else {\n    try {\n      // 浏览器窗口获取当前URL\n      currentBrowserUrl = await utools.readCurrentBrowserUrl();\n      //let currentBrowserUrl = utools.getCurrentBrowserUrl();\n    } catch (e) {\n      // 思源窗口获取URL\n      utools.hideMainWindow();\n      quickcommand.sleep(100);\n      quickcomposer.simulate.keyboardTap(keys);\n      quickcommand.sleep(100);\n      //utools.showMainWindow();\n      const blockId = electron.clipboard.readText()?.split('/')?.pop()?.trim();\n      if (blockId && /^\\d{14}-[a-z0-9]{7}$/.test(blockId)) currentBrowserUrl = localUrl + '?id=' + blockId;\n    }\n  }\n\n  if (!currentBrowserUrl) {\n    console.error('不是有效的URL');\n    utools.showMainWindow();\n    return;\n  }\n\n  // 打开ima应用\n  const { execFile } = require('child_process');\n  execFile(appPath, [currentBrowserUrl], (error, stdout, stderr) => {\n    if (error) {\n      console.error('执行出错:', error);\n      return;\n    }\n    // if (stderr) {\n    //   console.error('标准错误输出:', stderr);\n    //   return;\n    // }\n    // console.log('输出:', stdout);\n\n    utools.outPlugin();\n  });\n};\n\nmain();",
+    "scptarg": "",
+    "charset": {
+        "scriptCode": "",
+        "outputCode": ""
+    },
+    "customOptions": {
+        "bin": "",
+        "argv": "",
+        "ext": ""
+    },
+    "cursorPosition": {
+        "lineNumber": 7,
+        "column": 1
+    }
+}
