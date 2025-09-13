@@ -1,97 +1,102 @@
 // 功能：折叠大纲默认仅显示一级目录，自动在大纲处定位光标处的标题
 // see https://ld246.com/article/1729605574188
-// version 0.0.4
+// version 0.0.5
 // 更新记录
+// 0.0.5 优化代码，消除可能无限监听的额外消耗
 // 0.0.4 增加滚动定位功能
 // 0.0.3 改进文档打开时，自动根据上次光标的位置定位光标所在的标题
 // 0.0.2 改进大纲在鼠标离开时始终定位光标所在的标题
 (async ()=>{
-    whenElementExist('.sy__outline > .fn__flex-1').then(async el => {
-        //let clicking = false;
-        // 监听大纲标题被添加
-        observeChildAddition(el, node => {
-            return node.tagName.toLowerCase() === 'ul' &&
-                        node.classList.contains('b3-list') && 
-                        node.querySelector('.b3-list-item')
-        }, uls => {
-            // 获取大纲列表
-            const ul = uls[0];
-            // 遍历大纲第一级子元素
-            Array.from(ul.children).forEach(item => {
-                // 初始时，仅打开第一级
-                if(item.tagName === 'LI') {
-                    const toggleBtn = item.querySelector('.b3-list-item__toggle');
-                    const svg = toggleBtn?.querySelector('svg.b3-list-item__arrow');
-                    if(!svg.classList.contains('b3-list-item__arrow--open')) {
-                        svg.classList.add('b3-list-item__arrow--open');
+    whenElementExist('.layout__dockr').then(async () => {
+        // 大纲加载时执行
+        whenOutlineExist((outline) => {
+            const el = outline.querySelector(':scope > .fn__flex-1');
+            //let clicking = false;
+            // 监听大纲标题被添加
+            observeChildAddition(el, node => {
+                return node.tagName.toLowerCase() === 'ul' &&
+                            node.classList.contains('b3-list') && 
+                            node.querySelector('.b3-list-item')
+            }, uls => {
+                // 获取大纲列表
+                const ul = uls[0];
+                // 遍历大纲第一级子元素
+                Array.from(ul.children).forEach(item => {
+                    // 初始时，仅打开第一级
+                    if(item.tagName === 'LI') {
+                        const toggleBtn = item.querySelector('.b3-list-item__toggle');
+                        const svg = toggleBtn?.querySelector('svg.b3-list-item__arrow');
+                        if(!svg.classList.contains('b3-list-item__arrow--open')) {
+                            svg.classList.add('b3-list-item__arrow--open');
+                        }
                     }
-                }
-                if(item.tagName === 'UL') {
-                    if(item.classList.contains('fn__none')) {
-                        item.remove('fn__none');
+                    if(item.tagName === 'UL') {
+                        if(item.classList.contains('fn__none')) {
+                            item.remove('fn__none');
+                        }
+                        // 初始时，隐藏第一级下面的后代元素
+                        itemsShow(item, false);
                     }
-                    // 初始时，隐藏第一级下面的后代元素
-                    itemsShow(item, false);
-                }
-                // 初始时定位光标处的标题
-                openCursorHeading();
-                // 监听大纲鼠标移入事件
-                const ul = item.tagName === 'LI' ? item.nextElementSibling : item;
-                item.addEventListener('mouseenter', (event) => {
-                    if(!ul || ul?.tagName !== 'UL') return;
-                    // 鼠标移入显示第一级后面的后代元素
-                    itemsShow(ul, true);
-                })
-                // 监听大纲鼠标移出事件
-                item.addEventListener('mouseleave', (event) => {
-                    //if(clicking) {
-                        //clicking = false;
-                        //return;
-                    //}
-                    if(!ul || ul?.tagName !== 'UL') return;
-                    // 鼠标移出隐藏第一级后面的后代元素
-                    itemsShow(ul, false);
-
-                    // 始终定位光标处的标题
+                    // 初始时定位光标处的标题
                     openCursorHeading();
-                });
-                // 监听大纲点击事件
-                // item.addEventListener('click', (event) => {
-                //     clicking = true;
-                // });
-            });
-
-            // 滚动时执行
-            let ticking = false;
-            const protyleContent = getProtyle()?.querySelector('.protyle-content');
-            const wysiwyg = protyleContent.querySelector('.protyle-wysiwyg');
-            if(!protyleContent.scrollEventOutline) {
-                protyleContent.scrollEventOutline = true;
-                protyleContent?.addEventListener('scroll', () => {
-                if (!ticking) {
-                    requestAnimationFrame(() => {
-                      openCursorHeading('scroll', wysiwyg);
-                      ticking = false;
+                    // 监听大纲鼠标移入事件
+                    const ul = item.tagName === 'LI' ? item.nextElementSibling : item;
+                    item.addEventListener('mouseenter', (event) => {
+                        if(!ul || ul?.tagName !== 'UL') return;
+                        // 鼠标移入显示第一级后面的后代元素
+                        itemsShow(ul, true);
+                    })
+                    // 监听大纲鼠标移出事件
+                    item.addEventListener('mouseleave', (event) => {
+                        //if(clicking) {
+                            //clicking = false;
+                            //return;
+                        //}
+                        if(!ul || ul?.tagName !== 'UL') return;
+                        // 鼠标移出隐藏第一级后面的后代元素
+                        itemsShow(ul, false);
+    
+                        // 始终定位光标处的标题
+                        openCursorHeading();
                     });
-                    ticking = true;
-                  }
+                    // 监听大纲点击事件
+                    // item.addEventListener('click', (event) => {
+                    //     clicking = true;
+                    // });
                 });
-            }
-            
-            // 加载或切换大纲时执行
-            openCursorHeading('load', wysiwyg);
-        });
-
-        // 添加光标被移动位置事件
-        document.addEventListener("selectionchange", () => {
-            // 关闭其他大纲展开
-            Array.from(el.firstElementChild.children).forEach(item => {
-                itemsShow(item, false);
+    
+                // 滚动时执行
+                let ticking = false;
+                const protyleContent = getProtyle()?.querySelector('.protyle-content');
+                const wysiwyg = protyleContent.querySelector('.protyle-wysiwyg');
+                if(!protyleContent.scrollEventOutline) {
+                    protyleContent.scrollEventOutline = true;
+                    protyleContent?.addEventListener('scroll', () => {
+                    if (!ticking) {
+                        requestAnimationFrame(() => {
+                          openCursorHeading('scroll', wysiwyg);
+                          ticking = false;
+                        });
+                        ticking = true;
+                      }
+                    });
+                }
+                
+                // 加载或切换大纲时执行
+                openCursorHeading('load', wysiwyg);
             });
 
-            // 展开光标处的标题
-            openCursorHeading();
-        }, false);
+            // 添加光标被移动位置事件
+            document.addEventListener("selectionchange", () => {
+                // 关闭其他大纲展开
+                Array.from(el.firstElementChild.children).forEach(item => {
+                    itemsShow(item, false);
+                });
+    
+                // 展开光标处的标题
+                openCursorHeading();
+            }, false);
+        });
     });
     function getTopestHead(by = 'scroll', parentNode) {
         return [...(parentNode || document).querySelectorAll('.h1,.h2,.h3,.h4,.h5,.h6')].find(h=>{
@@ -244,5 +249,43 @@
     function getProtyle() {
         return document.querySelector('#editor') || document.querySelector(`.protyle[data-id="${[...document.querySelectorAll('.layout-tab-bar [data-type="tab-header"]')]
             .reduce((max, tab) => Number(tab?.dataset?.activetime) > Number(max?.dataset?.activetime || -1) ? tab : max, null)?.dataset?.id}"]`);
+    }
+
+    function whenOutlineExist(callback) {
+        // 确保回调函数有效
+        if (typeof callback !== 'function') {
+            console.error('onOutlineExist: 参数必须是函数');
+            return;
+        }
+        // 获取已存在的容器（.layout__dockr 或 .layout__dockl）
+        const containers = document.querySelectorAll('.layout__dockr, .layout__dockl');
+        if(!containers || containers.length === 0){
+            console.error('[onOutlineExist] 未找到 .layout__dockr 或 .layout__dockl');
+            return;
+        }
+        // 已存在直接返回
+        const outline = document.querySelector('.sy__outline');
+        if(outline) {
+            callback(outline, true);
+            return;
+        }
+        // 创建 MutationObserver 监听后代中 .sy__outline 的添加
+        const observer = new MutationObserver((mutationsList) => {
+            for (const mutation of mutationsList) {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType !== Node.ELEMENT_NODE) return;
+                        // 检查节点自身是否是 .sy__outline
+                        if (node.matches('.sy__outline')) {
+                            callback(node);
+                            observer.disconnect();
+                        }
+                    });
+                }
+            }
+        });
+        // 开始监听容器的子树变化
+        observer.observe(containers[0], { childList: true, subtree: true});
+        observer.observe(containers[1], { childList: true, subtree: true});
     }
 })();
