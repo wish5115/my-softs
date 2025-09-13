@@ -1,9 +1,10 @@
 // 移到回收站（支持批量移动）
 // see https://ld246.com/article/1742083860299
-// version 0.0.4
-// 0.0.2 修复来源属性添加失败问题；增加isShowConfirm参数
-// 0.0.3 增加情况回收站和回收站还原功能
+// version 0.0.5
+// 0.0.5 修复咋非回收站笔记右键菜单上显示清空回收站和移动到回收站的bug
 // 0.0.4 文档右上侧按钮中的下拉菜单增加移动到回收站功能
+// 0.0.3 增加情况回收站和回收站还原功能
+// 0.0.2 修复来源属性添加失败问题；增加isShowConfirm参数
 (() => {
 
     // 回收站笔记本id，可在笔记本右键设置中查看
@@ -19,7 +20,7 @@
             const currLi = event.target.closest('li.b3-list-item');
             if(!currLi) return;
             // 关闭上次的菜单，防止2个菜单冲突
-            document.body.click();
+            window.siyuan.menus.menu.remove();
             whenElementExist('button[data-id="delete"]').then(targetMenu => {
                 // 修改删除按钮
                 const targetLabel = targetMenu.querySelector('.b3-menu__label');
@@ -27,13 +28,13 @@
                 targetLabel.textContent = '永久删除';
 
                 // 增加相关按钮
-                if(currLi.matches('[data-type="navigation-root"]')) {
+                if(currLi.matches('ul[data-url="'+toBoxId+'"] [data-type="navigation-root"]')) {
                     targetLabel.textContent = '删除回收站';
                     // 增加清空按钮
                     const html = `<button data-id="clearAll" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTrashcan"></use></svg><span class="b3-menu__label">清空回收站</span></button>`;
                     targetMenu.insertAdjacentHTML('beforebegin', html);
                     targetMenu.parentElement.querySelector('button[data-id="clearAll"]').onclick = async () => {
-                        if(isShowConfirm) if(!confirm('您确定要清空回收站吗？')) {document.body.click();return;}
+                        if(isShowConfirm) if(!confirm('您确定要清空回收站吗？')) {window.siyuan.menus.menu.remove();return;}
                         const docs = document.querySelectorAll(`[data-url="${toBoxId}"] > ul > li`);
                         docs.forEach(doc => {
                             fetchSyncPost('/api/filetree/removeDoc', {
@@ -42,7 +43,7 @@
                             });
                         });
                         showMessage('已清空回收站');
-                        document.body.click();
+                        window.siyuan.menus.menu.remove();
                     };
                 } else if(currLi.closest(`[data-url="${toBoxId}"]`)) {
                     // 增加还原按钮，仅顶级文件或文件夹增加还原按钮
@@ -51,7 +52,7 @@
                         targetMenu.insertAdjacentHTML('beforebegin', html);
                         targetMenu.parentElement.querySelector('button[data-id="moveToPath"]').onclick = async () => {
                             const focusList = document.querySelectorAll(treeSelector+' li.b3-list-item--focus:not([data-type="navigation-root"])');
-                            document.body.click();
+                            window.siyuan.menus.menu.remove();
                             let failCount = 0;
                             for(const i in focusList) {
                                 const li = focusList[i];
@@ -81,14 +82,14 @@
                             }
                         };
                     }
-                } else {
+                } else if(!currLi.matches('[data-type="navigation-root"]')) {
                     // 增加移动到回收站按钮
                     const html = `<button data-id="moveToTrash" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTrashcan"></use></svg><span class="b3-menu__label">移动到回收站</span></button>`;
                     targetMenu.insertAdjacentHTML('beforebegin', html);
                     targetMenu.parentElement.querySelector('button[data-id="moveToTrash"]').onclick = async () => {
-                        if(isShowConfirm) if(!confirm('您确定要移动这些文档到回收站吗？')) {document.body.click();return;};
+                        if(isShowConfirm) if(!confirm('您确定要移动这些文档到回收站吗？')) {window.siyuan.menus.menu.remove();return;};
                         
-                        document.body.click();
+                        window.siyuan.menus.menu.remove();
                         const focusLis = document.querySelectorAll(treeSelector+' li.b3-list-item--focus:not([data-type="navigation-root"])');
                         
                         // 设置来源path
@@ -163,7 +164,7 @@
                 const toTrashBtn = delBtn.parentElement.querySelector('button[data-id="moveToTrash2"]');
                 if(!toTrashBtn) return;
                 toTrashBtn.onclick = async () => {
-                    document.body.click();
+                    window.siyuan.menus.menu.remove();
 
                     // 获取文档信息
                     const protyle = event.target.closest('.protyle');
