@@ -1,9 +1,10 @@
 // 功能：折叠大纲默认仅显示一级目录，自动在大纲处定位光标处的标题
 // see https://ld246.com/article/1729605574188
-// version 0.0.3
+// version 0.0.4
 // 更新记录
-// 0.0.2 改进大纲在鼠标离开时始终定位光标所在的标题
+// 0.0.4 增加滚动定位功能
 // 0.0.3 改进文档打开时，自动根据上次光标的位置定位光标所在的标题
+// 0.0.2 改进大纲在鼠标离开时始终定位光标所在的标题
 (async ()=>{
     whenElementExist('.sy__outline > .fn__flex-1').then(async el => {
         //let clicking = false;
@@ -59,6 +60,25 @@
                 //     clicking = true;
                 // });
             });
+
+            // 滚动时执行
+            let ticking = false;
+            const protyleContent = getProtyle()?.querySelector('.protyle-content');
+            if(!protyleContent.scrollEventOutline) {
+                protyleContent.scrollEventOutline = true;
+                protyleContent?.addEventListener('scroll', () => {
+                if (!ticking) {
+                    requestAnimationFrame(() => {
+                      openCursorHeading('scroll');
+                      ticking = false;
+                    });
+                    ticking = true;
+                  }
+                });
+            }
+            
+            // 加载或切换大纲时执行
+            openCursorHeading('load');
         });
 
         // 添加光标被移动位置事件
@@ -72,6 +92,12 @@
             openCursorHeading();
         }, false);
     });
+    function getTopestHead(by = 'scroll') {
+        return [...document.querySelectorAll('.h1,.h2,.h3,.h4,.h5,.h6')].find(h=>{
+            const top=h.getBoundingClientRect().top;
+            return by === 'scroll' ? top > 80 && top<160 : top > 80;
+        });
+    }
     function isInHeading() {
         const el = getCursorElement();
         let heading = el?.closest('[data-type="NodeHeading"]');
@@ -85,7 +111,7 @@
     function findPreviousNodeHeading(el) {
         // 从当前元素开始向前查找兄弟节点
         let sibling = el?.previousElementSibling;
-    
+  
         while (sibling) {
             // 检查是否具有 data-type="NodeHeading" 的属性
             if (sibling.getAttribute('data-type') === 'NodeHeading') {
@@ -94,17 +120,22 @@
             // 继续向前查找
             sibling = sibling.previousElementSibling;
         }
-    
+  
         // 如果没有找到符合条件的兄弟节点，返回null
         return null;
     }
-    function openCursorHeading() {
+    function openCursorHeading(by='cursor') {
         //获取是否在heading中
-        const heading = isInHeading();
+        const heading = by === 'cursor' ? isInHeading() : getTopestHead(by);
         if(!heading) return;
         // 展开光标处的标题
         headingNodeId = heading.dataset.nodeId;
         node = document.querySelector('.sy__outline [data-node-id="'+headingNodeId+'"]');
+        if(node && ['scroll', 'load'].includes(by)) {
+             document.querySelector('.sy__outline li.b3-list-item.b3-list-item--focus')?.classList?.remove('b3-list-item--focus');
+            node?.classList?.add('b3-list-item--focus');
+            node?.scrollIntoView({block: 'center'});
+        }
         // 遍历节点的祖先节点
         while (node && !node.classList.contains('b3-list')) {
             if (node.tagName === 'UL' && node.classList.contains('fn__none')) {
@@ -131,7 +162,7 @@
             const cursorElement = startContainer.nodeType === Node.TEXT_NODE
                 ? startContainer.parentElement
                 : startContainer;
-    
+  
             return cursorElement;
         }
         return null;
@@ -206,5 +237,10 @@
             };
             checkForElement();
         });
+    }
+
+    function getProtyle() {
+        return document.querySelector('#editor') || document.querySelector(`.protyle[data-id="${[...document.querySelectorAll('.layout-tab-bar [data-type="tab-header"]')]
+            .reduce((max, tab) => Number(tab?.dataset?.activetime) > Number(max?.dataset?.activetime || -1) ? tab : max, null)?.dataset?.id}"]`);
     }
 })();
