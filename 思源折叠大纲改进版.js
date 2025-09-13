@@ -64,12 +64,13 @@
             // 滚动时执行
             let ticking = false;
             const protyleContent = getProtyle()?.querySelector('.protyle-content');
+            const wysiwyg = protyleContent.querySelector('.protyle-wysiwyg');
             if(!protyleContent.scrollEventOutline) {
                 protyleContent.scrollEventOutline = true;
                 protyleContent?.addEventListener('scroll', () => {
                 if (!ticking) {
                     requestAnimationFrame(() => {
-                      openCursorHeading('scroll');
+                      openCursorHeading('scroll', wysiwyg);
                       ticking = false;
                     });
                     ticking = true;
@@ -78,7 +79,7 @@
             }
             
             // 加载或切换大纲时执行
-            openCursorHeading('load');
+            openCursorHeading('load', wysiwyg);
         });
 
         // 添加光标被移动位置事件
@@ -92,8 +93,8 @@
             openCursorHeading();
         }, false);
     });
-    function getTopestHead(by = 'scroll') {
-        return [...document.querySelectorAll('.h1,.h2,.h3,.h4,.h5,.h6')].find(h=>{
+    function getTopestHead(by = 'scroll', parentNode) {
+        return [...(parentNode || document).querySelectorAll('.h1,.h2,.h3,.h4,.h5,.h6')].find(h=>{
             const top=h.getBoundingClientRect().top;
             return by === 'scroll' ? top > 80 && top<160 : top > 80;
         });
@@ -124,15 +125,16 @@
         // 如果没有找到符合条件的兄弟节点，返回null
         return null;
     }
-    function openCursorHeading(by='cursor') {
+    function openCursorHeading(by='cursor', parentNode) {
         //获取是否在heading中
-        const heading = by === 'cursor' ? isInHeading() : getTopestHead(by);
+        const heading = by === 'cursor' ? isInHeading() : getTopestHead(by, parentNode);
         if(!heading) return;
         // 展开光标处的标题
         headingNodeId = heading.dataset.nodeId;
         node = document.querySelector('.sy__outline [data-node-id="'+headingNodeId+'"]');
         if(node && ['scroll', 'load'].includes(by)) {
-             document.querySelector('.sy__outline li.b3-list-item.b3-list-item--focus')?.classList?.remove('b3-list-item--focus');
+            // 滚动时，设置大纲选中状态
+            document.querySelector('.sy__outline li.b3-list-item.b3-list-item--focus')?.classList?.remove('b3-list-item--focus');
             node?.classList?.add('b3-list-item--focus');
             node?.scrollIntoView({block: 'center'});
         }
