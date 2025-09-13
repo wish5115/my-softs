@@ -55,21 +55,6 @@
             node?.classList?.add('b3-list-item--focus');
             node?.scrollIntoView({block: 'center'});
         }
-        // 遍历节点的祖先节点
-        while (node && !node.classList.contains('b3-list')) {
-            if (node.tagName === 'UL' && node.classList.contains('fn__none')) {
-                // 展开箭头
-                const li = node.previousElementSibling;
-                if(li){
-                    const arrowSvg = li.querySelector('.b3-list-item__toggle svg.b3-list-item__arrow:not(.b3-list-item__arrow--open)');
-                    if(arrowSvg) arrowSvg.classList.add('b3-list-item__arrow--open');
-                }
-                // 移除.fn__none类
-                node.classList.remove('fn__none');
-            }
-            // 向上查找父节点
-            node = node.parentElement;
-        }
     }
     function eventBusOn(eventName, callback) {
         const pluginName = 'my-custom-plugin';
