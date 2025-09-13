@@ -1,4 +1,5 @@
 // 滚动时自动定位大纲位置
+// 暂不支持手机和预览
 // see https://ld246.com/article/1757773937694
 (()=>{
     if(isMobile()) return;
