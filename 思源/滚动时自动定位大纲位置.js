@@ -1,6 +1,7 @@
 // 滚动时自动定位大纲位置
-// see 
+// see https://ld246.com/article/1757773937694
 (()=>{
+    if(isMobile()) return;
     eventBusOn('loaded-protyle-static', (event) => {
         const protyle = event?.detail?.protyle;
         const protyleContent = protyle?.element?.querySelector('.protyle-content');
@@ -126,5 +127,8 @@
     function getProtyle() {
         return document.querySelector('#editor') || document.querySelector(`.protyle[data-id="${[...document.querySelectorAll('.layout-tab-bar [data-type="tab-header"]')]
           .reduce((max, tab) => Number(tab?.dataset?.activetime) > Number(max?.dataset?.activetime || -1) ? tab : max, null)?.dataset?.id}"]`);
+    }
+    function isMobile() {
+        return !!document.getElementById("sidebar");
     }
 })();
