@@ -1,14 +1,15 @@
 // 左侧文件夹中键打开和点击展开
 // pc版 中键打开，单击展开
 // 触屏版 长按打开 点击展开
-// version 0.0.3
+// version 0.0.4
+// 0.0.4 修复双击可能受单击影响的问题
 // 0.0.3 修复排序等导致按键失效问题
 // 0.0.2 改进在没有功能键的时候才生效，防止影响功能键的操作
 // see https://ld246.com/article/1736401552973
 (()=>{
 
     // 打开文件夹的方式 midclick 中键 dblclick 双击
-    const openFolderBy = 'midclick';
+    const openFolderBy = 'dblclick';
 
     // 是否更改空文件夹图标 true更改 false不更改
     const isUpdateFolderIconWhenItEmpty = false;
@@ -59,7 +60,7 @@
                     const li = event.target.closest('li[data-type="navigation-file"]:not([data-type="navigation-root"])');
                     if(!li) return;
                     li.click();
-                });
+                }, true);
             }
         }
 
