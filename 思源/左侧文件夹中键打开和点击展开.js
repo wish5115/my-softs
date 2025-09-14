@@ -9,7 +9,7 @@
 (()=>{
 
     // 打开文件夹的方式 midclick 中键 dblclick 双击
-    const openFolderBy = 'dblclick';
+    const openFolderBy = 'midclick';
 
     // 是否更改空文件夹图标 true更改 false不更改
     const isUpdateFolderIconWhenItEmpty = false;
