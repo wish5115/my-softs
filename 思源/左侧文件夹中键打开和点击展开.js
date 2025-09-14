@@ -1,7 +1,8 @@
 // 左侧文件夹中键打开和点击展开
 // pc版 中键打开，单击展开
 // 触屏版 长按打开 点击展开
-// version 0.0.2
+// version 0.0.3
+// 0.0.3 修复排序等导致按键失效问题
 // 0.0.2 改进在没有功能键的时候才生效，防止影响功能键的操作
 // see https://ld246.com/article/1736401552973
 (()=>{
@@ -18,97 +19,97 @@
     // 思源默认图标，首先读取用户自定义的默认图标，没有用官方默认图标，也可在这里写死
     const defaultIconCode = siyuan?.storage["local-images"]?.folder || '1f4d1';
     
-    whenElementsExist(':is(.sy__file, [data-type="sidebar-file"]) .b3-list.b3-list--background').then((trees) => {
-        trees.forEach(tree => {
-            //////// pc版 中键打开，单击展开 ///////////
-            if(!isTouchDevice()) {
-                // 绑定鼠标单击
-                tree.addEventListener('click', async (event) => {
-                    if(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
-                    const {toggleBtn, li} = isTreeFolder(event.target);
-                    if(!toggleBtn) return;
-                    if (event.target.classList.contains("b3-list-item__text")){
-                        event.stopPropagation();
-                        event.preventDefault();
-                        toggleBtn.click();
-
-                        // 添加图标，文件夹的文件内容为空，修改为指定的图标
-                        if(isUpdateFolderIconWhenItEmpty) addIcon(li);
-                    }
-                });
+    waitForElement(':is(.sy__file, [data-type="sidebar-file"]) > .fn__flex-1').then((tree) => {
+        //.b3-list.b3-list--background
         
-                // 绑定中键单击，无论文件夹或文件都打开
-                if(openFolderBy === 'midclick') {
-                    tree.addEventListener('mousedown', (event) => {
-                        if(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
-                        if (event.button === 1) {
-                            event.preventDefault();
-                            //const {li} = isTreeFolder(event.target);
-                            const li = event.target.closest('li[data-type="navigation-file"]:not([data-type="navigation-root"])');
-                            if(!li) return;
-                            li.click();
-                        }
-                    });
+        //////// pc版 中键/双击打开，单击展开 ///////////
+        if(!isTouchDevice()) {
+            // 绑定鼠标单击
+            tree.addEventListener('click', async (event) => {
+                if(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                const {toggleBtn, li} = isTreeFolder(event.target);
+                if(!toggleBtn) return;
+                if (event.target.classList.contains("b3-list-item__text")){
+                    event.stopPropagation();
+                    event.preventDefault();
+                    toggleBtn.click();
+
+                    // 添加图标，文件夹的文件内容为空，修改为指定的图标
+                    if(isUpdateFolderIconWhenItEmpty) addIcon(li);
                 }
-                // 绑定双击事件，无论文件夹或文件都打开
-                if(openFolderBy === 'dblclick') {
-                    tree.addEventListener('dblclick', (event) => {
-                        if(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            }, true);
+    
+            // 绑定中键单击，无论文件夹或文件都打开
+            if(openFolderBy === 'midclick') {
+                tree.addEventListener('mousedown', (event) => {
+                    if(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                    if (event.button === 1) {
                         event.preventDefault();
                         //const {li} = isTreeFolder(event.target);
                         const li = event.target.closest('li[data-type="navigation-file"]:not([data-type="navigation-root"])');
                         if(!li) return;
                         li.click();
-                    });
-                }
-            }
-
-            //////// 触屏版 长按打开 点击展开 ///////////
-            if(isTouchDevice()) {
-                let pressTimer;
-    
-                // 点击事件
-                function handleTap(event) {
-                    const {toggleBtn, li} = isTreeFolder(event.target);
-                    if(!toggleBtn) return;
-                    if (event.target.classList.contains("b3-list-item__text")||event.target.classList.contains("b3-list-item__icon")){
-                        event.stopPropagation();
-                        event.preventDefault();
-                        toggleBtn.click();
-
-                        // 添加图标，文件夹的文件内容为空，修改为指定的图标
-                        if(isUpdateFolderIconWhenItEmpty) addIcon(li);
                     }
-                }
-    
-                // 长按事件
-                function handleLongPress(event) {
-                    const {li} = isTreeFolder(event.target);
+                });
+            }
+            // 绑定双击事件，无论文件夹或文件都打开
+            if(openFolderBy === 'dblclick') {
+                tree.addEventListener('dblclick', (event) => {
+                    if(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                    event.preventDefault();
+                    //const {li} = isTreeFolder(event.target);
+                    const li = event.target.closest('li[data-type="navigation-file"]:not([data-type="navigation-root"])');
                     if(!li) return;
                     li.click();
-                }
-                
-                tree.addEventListener('touchstart', (event) => {
-                    pressTimer = setTimeout(() => {
-                        handleLongPress(event);
-                    }, 500);
-                });
-                
-                tree.addEventListener('touchend', (event) => {
-                    if (pressTimer) {
-                        clearTimeout(pressTimer);
-                        handleTap(event);
-                    }
-                });
-                
-                tree.addEventListener('touchmove', (event) => {
-                    if (pressTimer) {
-                        clearTimeout(pressTimer);
-                        pressTimer = null;
-                    }
                 });
             }
-        });
+        }
+
+        //////// 触屏版 长按打开 点击展开 ///////////
+        if(isTouchDevice()) {
+            let pressTimer;
+
+            // 点击事件
+            function handleTap(event) {
+                const {toggleBtn, li} = isTreeFolder(event.target);
+                if(!toggleBtn) return;
+                if (event.target.classList.contains("b3-list-item__text")||event.target.classList.contains("b3-list-item__icon")){
+                    event.stopPropagation();
+                    event.preventDefault();
+                    toggleBtn.click();
+
+                    // 添加图标，文件夹的文件内容为空，修改为指定的图标
+                    if(isUpdateFolderIconWhenItEmpty) addIcon(li);
+                }
+            }
+
+            // 长按事件
+            function handleLongPress(event) {
+                const {li} = isTreeFolder(event.target);
+                if(!li) return;
+                li.click();
+            }
+            
+            tree.addEventListener('touchstart', (event) => {
+                pressTimer = setTimeout(() => {
+                    handleLongPress(event);
+                }, 500);
+            });
+            
+            tree.addEventListener('touchend', (event) => {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    handleTap(event);
+                }
+            });
+            
+            tree.addEventListener('touchmove', (event) => {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+            });
+        }
     });
 
     async function addIcon(li) {
@@ -184,24 +185,33 @@
         }
         return emoji;
     }
-
-    // 等待多个元素渲染完成
-    function whenElementsExist(selector) {
-        return new Promise(resolve => {
-            const checkForElement = () => {
-                let elements = null;
-                if (typeof selector === 'function') {
-                    elements = selector();
-                } else {
-                    elements = document.querySelectorAll(selector);
+    function waitForElement(selector, timeout = 0, parentNode) {
+        return new Promise((resolve) => {
+            if(typeof parentNode === 'string') parentNode = document.querySelector(parentNode);
+            let timeoutId, resolved = false, container = parentNode||document, node = container?.querySelector(selector);
+            if(node) {resolved = true; resolve(node); return;}
+            const observer = new MutationObserver((mutationsList) => {
+                for (const mutation of mutationsList) {
+                    if (mutation.type !== 'childList') continue;
+                    for (const node of mutation.addedNodes) {
+                        if(resolved) break;
+                        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+                        if (node.matches(selector)) {
+                            resolved = true;
+                            if(timeoutId) clearTimeout(timeoutId);
+                            observer.disconnect();
+                            resolve(node);
+                            return;
+                        }
+                    }
                 }
-                if (elements && elements.length > 0) {
-                    resolve(elements);
-                } else {
-                    requestAnimationFrame(checkForElement);
-                }
-            };
-            checkForElement();
+            });
+            observer.observe(container, { childList: true, subtree: true});
+            if(timeout) timeoutId = setTimeout(() => {
+                resolved = true;
+                observer.disconnect();
+                resolve(null);
+            }, timeout);
         });
     }
 })();
