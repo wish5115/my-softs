@@ -20,8 +20,6 @@
     const defaultIconCode = siyuan?.storage["local-images"]?.folder || '1f4d1';
     
     waitForElement(':is(.sy__file, [data-type="sidebar-file"]) > .fn__flex-1').then((tree) => {
-        //.b3-list.b3-list--background
-        
         //////// pc版 中键/双击打开，单击展开 ///////////
         if(!isTouchDevice()) {
             // 绑定鼠标单击
