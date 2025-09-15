@@ -1,5 +1,7 @@
 // 滚动时自动定位大纲位置
 // 暂不支持手机和预览
+// version 0.0.2
+// 0.0.2 当大纲从未打开时及早返回，增强性能；当大纲被隐藏后再次打开自动定位标题位置
 // see https://ld246.com/article/1757773937694
 (()=>{
     if(isMobile()) return;
@@ -43,12 +45,20 @@
         });
     }
     function openCursorHeading(by, parentNode) {
+        // 从未打开过大纲直接返回
+        const outline = document.querySelector('.sy__outline');
+        if(!outline) return;
+        // 监控大纲可视时滚动到当前标题
+        if(!outline.obResizeEvent) {
+            outline.obResizeEvent = true;
+            observeOutlineResize(outline, parentNode);
+        }
         //获取是否在heading中
         const heading = getTopestHead(by, parentNode);
         if(!heading) return;
         // 展开光标处的标题
-        headingNodeId = heading.dataset.nodeId;
-        node = document.querySelector('.sy__outline [data-node-id="'+headingNodeId+'"]');
+        const headingNodeId = heading.dataset.nodeId;
+        const node = outline.querySelector('[data-node-id="'+headingNodeId+'"]');
         if(node && ['scroll', 'load'].includes(by)) {
             // 滚动时，设置大纲选中状态
             document.querySelector('.sy__outline li.b3-list-item.b3-list-item--focus')?.classList?.remove('b3-list-item--focus');
@@ -109,6 +119,24 @@
         // 开始监听容器的子树变化
         observer.observe(containers[0], { childList: true, subtree: true});
         observer.observe(containers[1], { childList: true, subtree: true});
+    }
+    function observeOutlineResize(outline, parentNode) {
+        let timerId;
+        const resizeObserver = new ResizeObserver(entries => {
+            if(timerId) clearTimeout(timerId);
+            timerId = setTimeout(() => {
+                if(outline?.getBoundingClientRect()?.width > 0) {
+                    //获取是否在heading中
+                    const heading = getTopestHead('load', parentNode);
+                    if(!heading) return;
+                    // 展开光标处的标题
+                    const headingNodeId = heading.dataset.nodeId;
+                    const node = outline.querySelector('[data-node-id="'+headingNodeId+'"]');
+                    if(node) node?.scrollIntoView({block: 'center'});
+                }
+            }, 50);
+        });
+        resizeObserver.observe(outline);
     }
     function getProtyle() {
         return document.querySelector('#editor') || document.querySelector(`.protyle[data-id="${[...document.querySelectorAll('.layout-tab-bar [data-type="tab-header"]')]
