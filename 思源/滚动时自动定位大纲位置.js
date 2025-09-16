@@ -1,15 +1,19 @@
 // 滚动时自动定位大纲位置
 // 暂不支持手机和预览
-// version 0.0.3
+// version 0.0.4
+// 0.0.4 改进计算标题位置算法：根据上下滚动分别计算标题位置，更符合实际情况
 // 0.0.3 改进当大纲标题的祖先被折叠时，自动临时展开祖先元素（临时的含义指如果思源支持持久化大纲后不会影响持久化状态）
 // 0.0.2 当大纲从未打开时及早返回，增强性能；当大纲被隐藏后再次打开自动定位标题位置
 // see https://ld246.com/article/1757773937694
 (()=>{
     if(isMobile()) return;
+    let protyleContentTop = 0;
     eventBusOn('loaded-protyle-static', (event) => {
         const protyle = event?.detail?.protyle;
         const protyleContent = protyle?.element?.querySelector('.protyle-content');
         const wysiwyg = protyle?.element?.querySelector('.protyle-wysiwyg');
+        let lastScrollTop = protyleContent?.scrollTop;
+        protyleContentTop = protyleContent?.getBoundingClientRect()?.top;
         // 滚动时执行
         let ticking = false;
         if(!protyleContent.scrollEventOutline) {
@@ -17,8 +21,12 @@
             protyleContent?.addEventListener('scroll', () => {
             if (!ticking) {
                 requestAnimationFrame(() => {
-                  openCursorHeading('scroll', wysiwyg);
-                  ticking = false;
+                    protyleContentTop = protyleContent?.getBoundingClientRect()?.top;
+                    const currentScrollTop = protyleContent.scrollTop;
+                    const to = currentScrollTop >= lastScrollTop ? 'down' : 'up';
+                    lastScrollTop = currentScrollTop;
+                    openCursorHeading('scroll', wysiwyg, to);
+                    ticking = false;
                 });
                 ticking = true;
               }
@@ -36,16 +44,32 @@
         whenOutlineExist((outline, isExist) => {
             if(isExist) return; // 已存在返回
             const wysiwyg = getProtyle()?.querySelector('.protyle-wysiwyg');
+            const protyleContent = protyle?.querySelector('.protyle-content');
+            protyleContentTop = protyleContent?.getBoundingClientRect()?.top;
             setTimeout(()=>openCursorHeading('load', wysiwyg), 200);
         });
     }, 2000);
-    function getTopestHead(by = 'scroll', parentNode) {
-        return [...(parentNode || document).querySelectorAll('.h1,.h2,.h3,.h4,.h5,.h6')].find(h => {
-            const top = h.getBoundingClientRect().top;
-            return by === 'scroll' ? top > 80 && top < 160 : top > 80;
-        });
+    function getTopestHead(by = 'scroll', parentNode, to) {
+        const heads = [...(parentNode || document).querySelectorAll('.h1,.h2,.h3,.h4,.h5,.h6')];
+        let head;
+        if(by === 'scroll' && to === 'up') {
+            heads.reverse();
+            head = heads.find(h => {
+                const top = h.getBoundingClientRect().top;
+                return top < protyleContentTop;
+            });
+        } else {
+            // load down
+            let index = heads.findIndex(h => {
+                const top = h.getBoundingClientRect().top;
+                return top > protyleContentTop;
+            });
+            index = index - 1 >= 0 ? index - 1 : index;
+            head = heads[index];
+        }
+        return head;
     }
-    function openCursorHeading(by, parentNode) {
+    function openCursorHeading(by, parentNode, to) {
         // 从未打开过大纲直接返回
         const outline = document.querySelector('.sy__outline');
         if(!outline) return;
@@ -55,7 +79,7 @@
             observeOutlineResize(outline, parentNode);
         }
         //获取是否在heading中
-        const heading = getTopestHead(by, parentNode);
+        const heading = getTopestHead(by, parentNode, to);
         if(!heading) return;
         // 展开光标处的标题
         const headingNodeId = heading.dataset.nodeId;
