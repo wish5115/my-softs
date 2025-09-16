@@ -65,7 +65,7 @@
             const ul = node.closest('ul.fn__none');
             if(ul) {
                 const parentsArrow = ul?.previousElementSibling?.querySelector('svg.b3-list-item__arrow');
-                if(!parentsArrow.classList.contains('b3-list-item__arrow--open')) parentsArrow.classList.add('b3-list-item__arrow--open');
+                if(parentsArrow && !parentsArrow.classList.contains('b3-list-item__arrow--open')) parentsArrow.classList.add('b3-list-item__arrow--open');
                 node.closest('ul.fn__none').classList.remove('fn__none');
             }
             // 滚动时，设置大纲选中状态
