@@ -1,6 +1,7 @@
 // 滚动时自动定位大纲位置
 // 暂不支持手机和预览
-// version 0.0.2
+// version 0.0.3
+// 0.0.3 改进当大纲标题的祖先被折叠时，自动临时展开祖先元素（临时的含义指如果思源支持持久化大纲后不会影响持久化状态）
 // 0.0.2 当大纲从未打开时及早返回，增强性能；当大纲被隐藏后再次打开自动定位标题位置
 // see https://ld246.com/article/1757773937694
 (()=>{
@@ -60,6 +61,13 @@
         const headingNodeId = heading.dataset.nodeId;
         const node = outline.querySelector('[data-node-id="'+headingNodeId+'"]');
         if(node && ['scroll', 'load'].includes(by)) {
+            // 展开父标题
+            const ul = node.closest('ul.fn__none');
+            if(ul) {
+                const parentsArrow = ul?.previousElementSibling?.querySelector('svg.b3-list-item__arrow');
+                if(!parentsArrow.classList.contains('b3-list-item__arrow--open')) parentsArrow.classList.add('b3-list-item__arrow--open');
+                node.closest('ul.fn__none').classList.remove('fn__none');
+            }
             // 滚动时，设置大纲选中状态
             document.querySelector('.sy__outline li.b3-list-item.b3-list-item--focus')?.classList?.remove('b3-list-item--focus');
             node?.classList?.add('b3-list-item--focus');
