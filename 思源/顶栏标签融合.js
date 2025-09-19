@@ -8,10 +8,16 @@
     const tabHeight = 38;
 
     // 顶部右侧工具栏宽度，请根据自己需要调整，0则思源默认，不调整宽度
-    const rightToolBarWidth = 0;
+    const rightToolBarWidth = 200;
 
     // 当顶部右侧工具栏限制宽度时，哪些工具不显示在限定宽度内，这里填的是工具元素的id，请使用devtools查看
     const rightToolBarExcludes = ['barPlugins', 'barCommand', 'barSearch', 'barMode'];
+
+    // 样式微调，当你的页面出现上下位置小幅度错位等情况时可以在这里微调样式
+    const styles = `
+        /* 你的自定义样式 */
+        
+    `;
 
     // 钳位函数，将一个数值限制在指定的最小值和最大值之间
     Math.clamp || (Math.clamp = function(value, min, max) {
@@ -173,11 +179,13 @@
                 white-space: nowrap;
                 height: ${tabHeight}px;
                 margin: 0 2px;
-                margin-top: -1px;
+                margin-top: 1px;
+                pading: 0 5px;
             }
             .toolbar-scroll-wrap.fn__none {
                 display: flex !important;
             }
+            ${styles}
         `;
         document.head.appendChild(styleElement);
     }
@@ -271,7 +279,6 @@
         });
     });
 
-    let observer;
     function formatRightToolbar() {
         if(!rightToolBarWidth) return;
         if(document.querySelector('#toolbarScrollWrap')) return
@@ -299,44 +306,46 @@
         parent.insertBefore(scrollWrap, drag.nextSibling);
 
          // 监听后续新插入到parent中的元素，当是drag后面的兄弟结点时，也插入到scrollWrap中
-        if(!observer) observer = new MutationObserver(function (mutations) {
-            mutations.forEach(mutation => {
-                mutation.addedNodes.forEach(node => {
-                    // 只处理元素节点
-                    if (node.nodeType !== 1) return;
-
-                    // 跳过 scrollWrap 本身（防止被重复插入）
-                    if (node.id === 'toolbarScrollWrap') return;
-
-                    // 获取 drag 在父节点中的索引
-                    const dragIndex = Array.from(parent.children).indexOf(drag);
-                    const nodeIndex = Array.from(parent.children).indexOf(node);
-
-                    // 如果新节点插入在 drag 之后，且不是被排除的元素
-                    if (nodeIndex > dragIndex &&
-                        ![
-                            ...rightToolBarExcludes,
-                            'barExit',
-                            'windowControls',
-                            'toolbarScrollWrap' // 额外排除 scrollWrap 自身
-                        ].includes(node.id)) {
-
-                        // 确保它不在 scrollWrap 中（避免重复移动）
-                        if (!scrollWrap.contains(node)) {
-                            scrollWrap.appendChild(node);
+        if(!parent.observer) {
+            parent.observer = new MutationObserver(function (mutations) {
+                mutations.forEach(mutation => {
+                    mutation.addedNodes.forEach(node => {
+                        // 只处理元素节点
+                        if (node.nodeType !== 1) return;
+    
+                        // 跳过 scrollWrap 本身（防止被重复插入）
+                        if (node.id === 'toolbarScrollWrap') return;
+    
+                        // 获取 drag 在父节点中的索引
+                        const dragIndex = Array.from(parent.children).indexOf(drag);
+                        const nodeIndex = Array.from(parent.children).indexOf(node);
+    
+                        // 如果新节点插入在 drag 之后，且不是被排除的元素
+                        if (nodeIndex > dragIndex &&
+                            ![
+                                ...rightToolBarExcludes,
+                                'barExit',
+                                'windowControls',
+                                'toolbarScrollWrap' // 额外排除 scrollWrap 自身
+                            ].includes(node.id)) {
+    
+                            // 确保它不在 scrollWrap 中（避免重复移动）
+                            if (!scrollWrap.contains(node)) {
+                                scrollWrap.appendChild(node);
+                            }
                         }
-                    }
+                    });
                 });
             });
-        });
-
-        // 开始观察父节点的子节点变化（包括新增、删除、属性变化等）
-        if(!observer) observer.observe(parent, {
-            childList: true,      // 监听子节点增删
-            subtree: false,       // 不递归子树
-            attributes: false,    // 不监听属性变化
-            characterData: false  // 不监听文本变化
-        });
+    
+            // 开始观察父节点的子节点变化（包括新增、删除、属性变化等）
+            parent.observer.observe(parent, {
+                childList: true,      // 监听子节点增删
+                subtree: false,       // 不递归子树
+                attributes: false,    // 不监听属性变化
+                characterData: false  // 不监听文本变化
+            });
+        }
 
         // 绑定toolbar自滚动事件
         scrollElementByMousePosition(scrollWrap);
