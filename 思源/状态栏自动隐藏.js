@@ -1,14 +1,15 @@
 // 让状态栏自动隐藏，鼠标靠近底边显示，当状态栏有信息时临时显示
-// statusWidth 状态栏宽度，0为屏幕宽度，默认330（即鼠标移动范围，在这个范围内显示状态栏，高度范围即滚动条高度，程序自动获取）
+// statusWidth 状态栏宽度，0为屏幕宽度，默认330（即鼠标移动范围，在这个范围内显示状态栏）
+// statusHeight 状态栏高度，0自动计算高度，默认26（即鼠标移动范围，在这个范围内显示状态栏）
 // statusMsgShow 当状态栏有信息时是否临时显示，默认true
 // statusBgTaskShow 当后台任务有信息时是否临时显示，默认false
 autoHideStatus();
-function autoHideStatus(statusWidth = 330, statusMsgShow = true, statusBgTaskShow = false) {
+function autoHideStatus(statusWidth = 330, statusHeight = 26, statusMsgShow = true, statusBgTaskShow = false) {
     let status = document.getElementById('status');
     if(!status) return;
     status.style.display = 'none';
-    let statusHeight = 0,
-        statusRight = 0,
+    let statusRight = 0,
+        mousedown = false,
         moved = false;
     setTimeout(() => {
         // 获取状态栏宽高等信息
@@ -20,7 +21,7 @@ function autoHideStatus(statusWidth = 330, statusMsgShow = true, statusBgTaskSho
         const statusMsgWidth = statusMsg?.offsetWidth || 0;
         const statusBgTaskWidth = statusBgTask?.offsetWidth || 0;
         const customStatusWidth = customStatus?.offsetWidth || 0;
-        statusHeight = parseFloat(statusStyle?.height) || 0;
+        statusHeight = statusHeight || parseFloat(statusStyle?.height) || 0;
         //statusWidth = parseFloat(statusStyle?.width) || 0;
         statusRight = parseFloat(statusStyle?.right) || 0;
         //statusWidth = statusWidth - statusMsgWidth - statusBgTaskWidth - customStatusWidth;
@@ -54,6 +55,8 @@ function autoHideStatus(statusWidth = 330, statusMsgShow = true, statusBgTaskSho
     }, 3000);
 
     // 恢复拖动
+    status.addEventListener('mousedown', () => mousedown = true);
+    status.addEventListener('mouseup', () => mousedown = false);
     status.addEventListener('dblclick', () => moved = false);
     
     let timeoutId;
@@ -68,12 +71,13 @@ function autoHideStatus(statusWidth = 330, statusMsgShow = true, statusBgTaskSho
                 status.style.display = 'flex';
             } else {
                 const moveEl = document.elementFromPoint(mouseX, mouseY);
-                if(!moveEl.closest('#status') && !moved) {
-                    // status拖动时和被拖动后不隐藏
-                    status.style.display = 'none';
-                } else {
+                if(moveEl?.nodeType!==1) return;
+                // status在只身移动或拖动时和被拖动后不隐藏，否则隐藏
+                if(moveEl?.closest('#status') || moved){
                     // 拖动后设置被拖动标识
-                    moved = true;
+                    if(mousedown) moved = true;
+                } else {
+                    status.style.display = 'none';
                 }
             }
         }, 100);
