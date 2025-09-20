@@ -9,7 +9,7 @@
 (()=>{
 
     // 打开文件夹的方式 midclick 中键 dblclick 双击
-    const openFolderBy = 'midclick';
+    const openFolderBy = 'dblclick';
 
     // 是否更改空文件夹图标 true更改 false不更改
     const isUpdateFolderIconWhenItEmpty = false;
@@ -24,10 +24,14 @@
         //////// pc版 中键/双击打开，单击展开 ///////////
         if(!isTouchDevice()) {
             // 绑定鼠标单击
+            let clickNum = 0, clickTimerId;
             tree.addEventListener('click', async (event) => {
                 if(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
                 const {toggleBtn, li} = isTreeFolder(event.target);
                 if(!toggleBtn) return;
+                clickNum++;
+                if(clickTimerId) clearTimeout(clickTimerId);
+                clickTimerId = setTimeout(() => clickNum = 0, 300);
                 if (event.target.classList.contains("b3-list-item__text")){
                     event.stopPropagation();
                     event.preventDefault();
@@ -55,6 +59,7 @@
             if(openFolderBy === 'dblclick') {
                 tree.addEventListener('dblclick', (event) => {
                     if(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                    if(clickNum < 4) return;
                     event.preventDefault();
                     //const {li} = isTreeFolder(event.target);
                     const li = event.target.closest('li[data-type="navigation-file"]:not([data-type="navigation-root"])');
