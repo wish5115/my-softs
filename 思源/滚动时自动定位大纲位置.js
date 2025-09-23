@@ -1,13 +1,14 @@
 // 滚动时自动定位大纲位置
 // 暂不支持手机和预览
-// version 0.0.4
+// version 0.0.5
+// 0.0.5 改进计算标题位置算法，解决大纲点击标题时可能定位偏移问题
 // 0.0.4 改进计算标题位置算法：根据上下滚动分别计算标题位置，更符合实际情况
 // 0.0.3 改进当大纲标题的祖先被折叠时，自动临时展开祖先元素（临时的含义指如果思源支持持久化大纲后不会影响持久化状态）
 // 0.0.2 当大纲从未打开时及早返回，增强性能；当大纲被隐藏后再次打开自动定位标题位置
 // see https://ld246.com/article/1757773937694
 (()=>{
     if(isMobile()) return;
-    let protyleContentTop = 0;
+    let protyleContentTop = 0, outlineItemClicking = false;
     eventBusOn('loaded-protyle-static', (event) => {
         const protyle = event?.detail?.protyle;
         const protyleContent = protyle?.element?.querySelector('.protyle-content');
@@ -56,13 +57,13 @@
             heads.reverse();
             head = heads.find(h => {
                 const top = h.getBoundingClientRect().top;
-                return top < protyleContentTop;
+                return top < protyleContentTop && Math.abs(top - protyleContentTop) > 1;
             });
         } else {
             // load down
             let index = heads.findIndex(h => {
                 const top = h.getBoundingClientRect().top;
-                return top > protyleContentTop;
+                return top > protyleContentTop && Math.abs(top - protyleContentTop) > 1;
             });
             index = index - 1 >= 0 ? index - 1 : index;
             head = heads[index];
@@ -70,6 +71,7 @@
         return head;
     }
     function openCursorHeading(by, parentNode, to) {
+        if(outlineItemClicking) return;
         // 从未打开过大纲直接返回
         const outline = document.querySelector('.sy__outline');
         if(!outline) return;
@@ -77,6 +79,14 @@
         if(!outline.obResizeEvent) {
             outline.obResizeEvent = true;
             observeOutlineResize(outline, parentNode);
+        }
+        // 大纲绑定点击事件
+        if(!outline.clickEvent) {
+            outline.clickEvent = true;
+            outline.addEventListener('click', (e) => {
+                outlineItemClicking = true;
+                setTimeout(()=>outlineItemClicking = false, 200);
+            }, true);
         }
         //获取是否在heading中
         const heading = getTopestHead(by, parentNode, to);
