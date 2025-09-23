@@ -1,6 +1,7 @@
 // 滚动时自动定位大纲位置
 // 暂不支持手机和预览
-// version 0.0.5
+// version 0.0.6
+// 0.0.6 优化大纲滚动方式，只能判断滚动方向，更符合使用习惯
 // 0.0.5 改进计算标题位置算法，解决大纲点击标题时，大纲标题定位偏差问题
 // 0.0.4 改进计算标题位置算法：根据上下滚动分别计算标题位置，更符合实际情况
 // 0.0.3 改进当大纲标题的祖先被折叠时，自动临时展开祖先元素（临时的含义指如果思源支持持久化大纲后不会影响持久化状态）
@@ -105,7 +106,7 @@
             // 滚动时，设置大纲选中状态
             document.querySelector('.sy__outline li.b3-list-item.b3-list-item--focus')?.classList?.remove('b3-list-item--focus');
             node?.classList?.add('b3-list-item--focus');
-            node?.scrollIntoView({block: 'center'});
+            if(!isNodeInContainer(node, '.sy__outline > .fn__flex-1')) node?.scrollIntoView({ block: 'nearest' });
         }
     }
     function eventBusOn(eventName, callback) {
@@ -174,11 +175,21 @@
                     // 展开光标处的标题
                     const headingNodeId = heading.dataset.nodeId;
                     const node = outline.querySelector('[data-node-id="'+headingNodeId+'"]');
-                    if(node) node?.scrollIntoView({block: 'center'});
+                    if(node && !isNodeInContainer(node, '.sy__outline > .fn__flex-1')) node?.scrollIntoView({ block: 'nearest' });
                 }
             }, 50);
         });
         resizeObserver.observe(outline);
+    }
+    function isNodeInContainer(node, container) {
+      node = typeof node === 'string' ? document.querySelector(node) : node;
+      container = typeof container === 'string' ? document.querySelector(container) : container;
+      const nodeRect = node.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      return (
+        nodeRect.top >= containerRect.top && // 顶部在容器内
+        nodeRect.bottom <= containerRect.bottom // 底部在容器内
+      );
     }
     function getProtyle() {
         return document.querySelector('#editor') || document.querySelector(`.protyle[data-id="${[...document.querySelectorAll('.layout-tab-bar [data-type="tab-header"]')]
