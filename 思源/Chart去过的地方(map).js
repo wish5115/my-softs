@@ -8,7 +8,7 @@
     await loadScript('https://jsd.onmicrosoft.cn/npm/echarts/map/js/china.js');
 
 
-const chartBlock = document.querySelector('[data-content*="ld246-1759026927394"]');
+    const chartBlock = document.querySelector('[data-content*="ld246-1759026927394"]');
     const charContainer = chartBlock?.firstElementChild?.nextElementSibling;
     if(!charContainer?.getAttribute('_echarts_instance_')){
         setTimeout(() => {
