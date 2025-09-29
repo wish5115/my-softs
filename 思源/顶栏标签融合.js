@@ -1,5 +1,5 @@
 // 顶栏标签融合（支持自定义tab高度和右侧工具栏自滚动显示）
-// version 1.2
+// version 1.3
 // modify by wilsons
 // see https://gitee.com/wish163/mysoft/blob/main/%E6%80%9D%E6%BA%90/%E9%A1%B6%E6%A0%8F%E6%A0%87%E7%AD%BE%E8%9E%8D%E5%90%88.js
 // 改自: https://ld246.com/article/1754884947760 感谢 @HugZephyr 大佬的代码
@@ -21,6 +21,9 @@
 
     // 是否使用Tab自读滚动效果
     const useTabAutoScroll = false;
+
+    // 自滚动时不滚动钉住的标签
+    const notScrollPinTab = false;
 
     // 钳位函数，将一个数值限制在指定的最小值和最大值之间
     Math.clamp || (Math.clamp = function(value, min, max) {
@@ -225,13 +228,37 @@
         tab_bar.style.marginRight = `${margin_right}px`;
 
         // tab自滚动
+        const tabBar = wnd.querySelector('.layout-tab-bar:not(.layout-tab-bar--readonly)');
         if(useTabAutoScroll) {
-            const tabBar = wnd.querySelector('.layout-tab-bar:not(.layout-tab-bar--readonly)');
             if(!tabBar.autoScroll) {
                 tabBar.autoScroll = true;
                 scrollElementByMousePosition(tabBar);
             }
         }
+
+        // 固定pin Tab
+        if(notScrollPinTab) {
+            setTimeout(() => {
+                tabBar.querySelectorAll('.item--pin:not([style*="sticky"])')?.forEach(item => {
+                    item.style.position = 'sticky';
+                    item.style.zIndex = 1;
+                    item.style.left = item.offsetLeft + 'px';
+                    if(isBackgroundTransparent(item)) item.style.backgroundColor = 'var(--b3-toolbar-background)';
+                });
+            }, 1000);
+        }
+    }
+
+    function isBackgroundTransparent(element) {
+      const computedStyle = window.getComputedStyle(element);
+      const bgColor = computedStyle.backgroundColor;
+    
+      // 检查是否为 'transparent' 或 'rgba(0, 0, 0, 0)'
+      return (
+        bgColor === 'transparent' ||
+        bgColor === 'rgba(0, 0, 0, 0)' ||
+        (bgColor.startsWith('rgba') && parseFloat(bgColor.split(',')[3]) === 0)
+      );
     }
 
     // 监听页签变化
