@@ -19,6 +19,9 @@
         
     `;
 
+    // 是否使用Tab自读滚动效果
+    const useTabAutoScroll = false;
+
     // 钳位函数，将一个数值限制在指定的最小值和最大值之间
     Math.clamp || (Math.clamp = function(value, min, max) {
         return Math.min(Math.max(value, min), max);
@@ -220,6 +223,13 @@
         // console.log('margin_left', margin_left)
         // console.log('margin_right', margin_right)
         tab_bar.style.marginRight = `${margin_right}px`;
+
+        // tab自滚动
+        const tabBar = wnd.querySelector('.layout-tab-bar:not(.layout-tab-bar--readonly)');
+        if(!tabBar.autoScroll) {
+            tabBar.autoScroll = true;
+            scrollElementByMousePosition(tabBar);
+        }
     }
 
     // 监听页签变化
@@ -352,8 +362,7 @@
     }
 
     // 根据鼠标位置水平滚动元素
-    function scrollElementByMousePosition(element) {
-        var maxChildWidth = 23.5;
+    function scrollElementByMousePosition(element, maxChildWidth = 23.5) {
         [...element.children].forEach(el=>{
             const rect = el.getBoundingClientRect();
             if(rect.width > maxChildWidth) maxChildWidth = rect.width;
