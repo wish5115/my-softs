@@ -1,5 +1,5 @@
 // 顶栏标签融合（支持自定义tab高度和右侧工具栏自滚动显示）
-// version 1.2
+// version 1.1
 // modify by wilsons
 // see https://gitee.com/wish163/mysoft/blob/main/%E6%80%9D%E6%BA%90/%E9%A1%B6%E6%A0%8F%E6%A0%87%E7%AD%BE%E8%9E%8D%E5%90%88.js
 // 改自: https://ld246.com/article/1754884947760 感谢 @HugZephyr 大佬的代码
@@ -225,10 +225,12 @@
         tab_bar.style.marginRight = `${margin_right}px`;
 
         // tab自滚动
-        const tabBar = wnd.querySelector('.layout-tab-bar:not(.layout-tab-bar--readonly)');
-        if(!tabBar.autoScroll) {
-            tabBar.autoScroll = true;
-            scrollElementByMousePosition(tabBar);
+        if(useTabAutoScroll) {
+            const tabBar = wnd.querySelector('.layout-tab-bar:not(.layout-tab-bar--readonly)');
+            if(!tabBar.autoScroll) {
+                tabBar.autoScroll = true;
+                scrollElementByMousePosition(tabBar);
+            }
         }
     }
 
