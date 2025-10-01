@@ -1,0 +1,43 @@
+.protyle:has([custom-my-favriate="true"]) .protyle-title{
+    margin:0!important;
+    margin-left: 40px!important;
+}
+.protyle-wysiwyg:has([custom-my-favriate="true"]) {
+    padding:0!important;
+    padding-left: 40px!important;
+}
+/* 去掉这个不折行 */
+[custom-my-favriate="true"] .av__cell[data-wrap=false]{
+    white-space:break-spaces;
+}
+/* 链接样式 */
+[custom-my-favriate="true"] .av__celltext--url.b3-chip{
+    max-width: calc(100% - 25px);
+    margin: 0;
+    padding: 0;
+    background:transparent;
+    font-weight: bold;
+    white-space:break-spaces; /* 去掉这个不折行 */
+}
+[data-theme-mode="dark"] [custom-my-favriate="true"] .av__celltext--url.b3-chip{
+    color: #42A5F5;
+}
+[data-theme-mode="light"] [custom-my-favriate="true"] .av__celltext--url.b3-chip{
+    color: #1D4ED8;
+}
+[custom-my-favriate="true"] .av__cell{
+    display: flex;
+    align-items: center;
+}
+[custom-my-favriate="true"] .av__cell:has(.av__celltext--url[data-url]) img.av__cellassetimg  {
+    max-width: 16px;
+}
+/* 修改添加链接菜单样式 */
+body:has([data-type="wnd"].layout__wnd--active .protyle:not(.fn__none) .protyle-wysiwyg [custom-my-favriate="true"] .av__cell[data-dtype="mAsset"].av__cell--select.av__cell--active) > .av__panel {
+    [data-type="addAssetExist"], .b3-menu__item:has([type="file"]), .b3-menu__items:has([data-type="file"][data-content]) > [data-type="addAssetLink"] {
+        display: none;
+    }
+    [data-type="addAssetLink"] .b3-menu__label::before {
+        content: "添加";
+    }
+}
