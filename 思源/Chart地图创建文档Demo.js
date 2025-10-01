@@ -10,44 +10,44 @@
     await loadScript('https://jsd.onmicrosoft.cn/npm/echarts/map/js/china.js');
     const chartBlock = document.querySelector('[data-content*="ld246-1748879816780"]');
     const charContainer = chartBlock?.firstElementChild?.nextElementSibling;
-    if(!charContainer?.getAttribute('_echarts_instance_')){
-        setTimeout(() => {
-            const myChart = window.echarts.getInstanceById(charContainer.getAttribute("_echarts_instance_"));
-            myChart.on('click', async (params) => {
-                if (params.componentSubType === 'map') {
-                    // 获取当前文档信息
-                    const protyle = chartBlock.closest('.protyle');
-                    const currDocId = protyle?.querySelector('.protyle-title')?.dataset?.nodeId;
-                    let doc = await query(`select * from blocks where id='${currDocId}'`);
-                    doc = doc[0];
-                    if(!doc) return;
-                    // 创建文档
-                    const newDocRet = await requestApi('/api/filetree/createDocWithMd', {
-                        "notebook": doc.box,
-                        "path": doc.hpath+'/',
-                        "tags": params.name + ',Maps',
-                        "markdown": ""
-                    });
-                    if(!newDocRet || newDocRet.code !== 0 || !newDocRet.data) return;
-                    const newDocId = newDocRet.data;
-                    // 获取新文档信息
-                    let newDoc = await query(`select * from blocks where id='${newDocId}'`);
-                    newDoc = newDoc[0];
-                    if(!newDoc) return;
-                    // 修改新名字为当前时间
-                    requestApi('/api/filetree/renameDoc', {
-                        "notebook": newDoc.box,
-                        "path": newDoc.path,
-                        "title": getNow()
-                    });
-                    // chart重载数据
-                    reloadData(myChart);
-                    // 打开新文档
-                    window.open('siyuan://blocks/'+newDocId);
-                }
-            });
-        }, 500);
-    }
+    setTimeout(() => {
+        const myChart = window.echarts.getInstanceById(charContainer.getAttribute("_echarts_instance_")||charContainer?.querySelector('[_echarts_instance_]')?.getAttribute("_echarts_instance_"));
+        if(!myChart || myChart?.hasListened) return;
+        myChart.hasListened = true;
+        myChart.on('click', async (params) => {
+            if (params.componentSubType === 'map') {
+                // 获取当前文档信息
+                const protyle = chartBlock.closest('.protyle');
+                const currDocId = protyle?.querySelector('.protyle-title')?.dataset?.nodeId;
+                let doc = await query(`select * from blocks where id='${currDocId}'`);
+                doc = doc[0];
+                if(!doc) return;
+                // 创建文档
+                const newDocRet = await requestApi('/api/filetree/createDocWithMd', {
+                    "notebook": doc.box,
+                    "path": doc.hpath+'/',
+                    "tags": params.name + ',Maps',
+                    "markdown": ""
+                });
+                if(!newDocRet || newDocRet.code !== 0 || !newDocRet.data) return;
+                const newDocId = newDocRet.data;
+                // 获取新文档信息
+                let newDoc = await query(`select * from blocks where id='${newDocId}'`);
+                newDoc = newDoc[0];
+                if(!newDoc) return;
+                // 修改新名字为当前时间
+                requestApi('/api/filetree/renameDoc', {
+                    "notebook": newDoc.box,
+                    "path": newDoc.path,
+                    "title": getNow()
+                });
+                // chart重载数据
+                reloadData(myChart);
+                // 打开新文档
+                window.open('siyuan://blocks/'+newDocId);
+            }
+        });
+    }, 500);
     // 返回地图选项
     return {
         title: {
