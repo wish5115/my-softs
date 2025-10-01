@@ -10,17 +10,17 @@
 
     const chartBlock = document.querySelector('[data-content*="ld246-1759026927394"]');
     const charContainer = chartBlock?.firstElementChild?.nextElementSibling;
-    if(!charContainer?.getAttribute('_echarts_instance_')){
-        setTimeout(() => {
-            const myChart = window.echarts.getInstanceById(charContainer.getAttribute("_echarts_instance_"));
-            myChart.on('click', async (params) => {
-                if (params.componentType==="series" && params.componentSubType === "scatter" && params?.data?.blockId) {
-                    // 打开所在块
-                    window.open('siyuan://blocks/'+params.data.blockId);
-                }
-            });
-        }, 500);
-    }
+    setTimeout(() => {
+        const myChart = window.echarts.getInstanceById(charContainer.getAttribute("_echarts_instance_")||charContainer?.querySelector('[_echarts_instance_]')?.getAttribute("_echarts_instance_"));
+        if(!myChart || myChart?.hasListened) return;
+        myChart.hasListened = true;
+        myChart.on('click', async (params) => {
+            if (params.componentType==="series" && params.componentSubType === "scatter" && params?.data?.blockId) {
+                // 打开所在块
+                window.open('siyuan://blocks/'+params.data.blockId);
+            }
+        });
+    }, 500);
   
     // 获取数据
     const cityData = await getData();
