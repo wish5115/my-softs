@@ -24,10 +24,11 @@
 }
 [data-theme-mode="light"] [custom-my-favriate="true"] .av__celltext--url.b3-chip{
     color: #1D4ED8;
+    line-height: 17px;
 }
 [custom-my-favriate="true"] .av__cell{
     display: flex;
-    align-items: center;
+    align-items: flex-start;
 }
 [custom-my-favriate="true"] .av__cell:has(.av__celltext--url[data-url]) img.av__cellassetimg  {
     max-width: 16px;
