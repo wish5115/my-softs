@@ -1,0 +1,199 @@
+/* [css片段] 多彩文档树02 --括号不包含自身节点_20251002 */
+/* 改自 https://ld246.com/article/1759408628406#%E6%9C%80%E7%BB%88%E6%95%88%E6%9E%9C---%E6%96%B9%E6%A1%881 */
+:root {
+    /* 竖线颜色 */
+    --vertical-line-color-1: color-mix(in srgb, var(--b3-font-color7) 60%, transparent);
+    --vertical-line-color-2: color-mix(in srgb, var(--b3-font-color6) 60%, transparent);
+    --vertical-line-color-3: color-mix(in srgb, var(--b3-font-color9) 60%, transparent);
+    --vertical-line-color-4: color-mix(in srgb, var(--b3-font-color11) 60%, transparent);
+    --vertical-line-color-5: color-mix(in srgb, var(--b3-font-color7) 60%, transparent);
+    --vertical-line-color-6: color-mix(in srgb, var(--b3-font-color6) 60%, transparent);
+    --vertical-line-color-7: color-mix(in srgb, var(--b3-font-color9) 60%, transparent);
+    --vertical-line-color-8: color-mix(in srgb, var(--b3-font-color11) 60%, transparent);
+    /* 悬浮颜色 */
+    --file-hover-color-1: var(--b3-font-background7);
+    --file-hover-color-2: var(--b3-font-background6);
+    --file-hover-color-3: var(--b3-font-background9);
+    --file-hover-color-4: var(--b3-font-background11);
+    --file-hover-color-5: var(--b3-font-background7);
+    --file-hover-color-6: var(--b3-font-background6);
+    --file-hover-color-7: var(--b3-font-background9);
+    --file-hover-color-8: var(--b3-font-background11);
+    /* 文档打开颜色 */
+    --file-open-color-1: var(--b3-font-background7);
+    --file-open-color-2: var(--b3-font-background6);
+    --file-open-color-3: var(--b3-font-background9);
+    --file-open-color-4: var(--b3-font-background11);
+    --file-open-color-5: var(--b3-font-background7);
+    --file-open-color-6: var(--b3-font-background6);
+    --file-open-color-7: var(--b3-font-background9);
+    --file-open-color-8: var(--b3-font-background11);
+    /* 文档缩进距离 */
+    --file-retract-length: 12px;
+    /* 竖线括号粗细 */
+    --vertical-line-bracket-width: 1px;
+    /* 竖线括号圆角弧度 */
+    --bracket-border-radius: 8px;
+    /* 竖线与上面箭头的距离 */
+    --vertical-line-top: 7px;
+    /* 折叠按钮宽度 */
+    --fold-button-width: 5px;
+}
+
+/* 文档树 */
+/* 折叠按钮宽度 */
+.sy__file>.fn__flex-1>ul li>.b3-list-item__toggle {
+    padding: 0 var(--fold-button-width) !important;
+}
+.sy__file>.fn__flex-1>ul li>.b3-list-item__toggle.fn__hidden {
+    width: 0px;
+}
+
+/* 文件图标, 可以按需删掉 */
+.sy__file>.fn__flex-1>ul li>.b3-list-item__icon {
+    display: none;
+}
+/* 每个文档外围缩小一点 */
+.sy__file>.fn__flex-1>ul li {
+    margin: 1px 4px;
+}
+
+/* 拖拽文档时文档的阴影 */
+.b3-list--background li.b3-list-item.dragover::after {
+    width: 100%;
+    left: 0;
+}
+/* 拖拽文档时的条状长度 */
+.b3-list--background .b3-list-item.dragover__top::after, .b3-list--background .b3-list-item.dragover__bottom::after
+{
+    width: 100%;
+    left: 0;
+}
+
+/* 竖线 */
+.sy__file>.fn__flex-1>ul ul {
+    border-top-left-radius: var(--bracket-border-radius);
+    border-bottom-left-radius: var(--bracket-border-radius);
+    margin-left: var(--file-retract-length);
+    margin-top: calc(0px - var(--vertical-line-top));
+    padding-top: var(--vertical-line-top);
+}
+
+/* 竖线颜色 */
+.sy__file>.fn__flex-1>ul ul {
+    border-left: var(--vertical-line-bracket-width) solid var(--vertical-line-color-1);
+}
+.sy__file>.fn__flex-1>ul>ul ul {
+    border-left: var(--vertical-line-bracket-width) solid var(--vertical-line-color-2);
+}
+.sy__file>.fn__flex-1>ul>ul>ul ul {
+    border-left: var(--vertical-line-bracket-width) solid var(--vertical-line-color-3);
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul ul {
+    border-left: var(--vertical-line-bracket-width) solid var(--vertical-line-color-4);
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul>ul ul {
+    border-left: var(--vertical-line-bracket-width) solid var(--vertical-line-color-5);
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul>ul>ul ul {
+    border-left: var(--vertical-line-bracket-width) solid var(--vertical-line-color-6);
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul>ul>ul>ul ul {
+    border-left: var(--vertical-line-bracket-width) solid var(--vertical-line-color-7);
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul>ul>ul>ul>ul ul {
+    border-left: var(--vertical-line-bracket-width) solid var(--vertical-line-color-8);
+}
+
+
+/* 文档悬浮颜色 
+.sy__file>.fn__flex-1>ul li:hover:not(.b3-list-item--focus) {
+    background-color: var(--file-hover-color-1) !important;
+}
+.sy__file>.fn__flex-1>ul>ul li:hover:not(.b3-list-item--focus) {
+    background-color: var(--file-hover-color-2) !important;
+}
+.sy__file>.fn__flex-1>ul>ul>ul li:hover:not(.b3-list-item--focus) {
+    background-color: var(--file-hover-color-3) !important;
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul li:hover:not(.b3-list-item--focus) {
+    background-color: var(--file-hover-color-4) !important;
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul>ul li:hover:not(.b3-list-item--focus) {
+    background-color: var(--file-hover-color-5) !important;
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul>ul>ul li:hover:not(.b3-list-item--focus) {
+    background-color: var(--file-hover-color-6) !important;
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul>ul>ul>ul li:hover:not(.b3-list-item--focus) {
+    background-color: var(--file-hover-color-7) !important;
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul>ul>ul>ul>ul li:hover:not(.b3-list-item--focus) {
+    background-color: var(--file-hover-color-8) !important;
+}
+
+/* 文档打开颜色 
+.sy__file>.fn__flex-1>ul li.b3-list-item--focus {
+    background-color: var(--file-open-color-1);
+}
+.sy__file>.fn__flex-1>ul>ul li.b3-list-item--focus {
+    background-color: var(--file-open-color-2);
+}
+.sy__file>.fn__flex-1>ul>ul>ul li.b3-list-item--focus {
+    background-color: var(--file-open-color-3);
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul li.b3-list-item--focus {
+    background-color: var(--file-open-color-4);
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul>ul li.b3-list-item--focus {
+    background-color: var(--file-open-color-5);
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul>ul>ul li.b3-list-item--focus {
+    background-color: var(--file-open-color-6);
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul>ul>ul>ul li.b3-list-item--focus {
+    background-color: var(--file-open-color-7);
+}
+.sy__file>.fn__flex-1>ul>ul>ul>ul>ul>ul>ul>ul li.b3-list-item--focus {
+    background-color: var(--file-open-color-8);
+}
+
+/* 大纲 */
+/* 折叠按钮宽度 */
+.sy__outline>.fn__flex-1>ul li>.b3-list-item__toggle {
+    padding: 0 var(--fold-button-width) !important;
+}
+/* 每个文档外围缩小一点 */
+.sy__outline>.fn__flex-1>ul li {
+    margin: 1px 4px;
+}
+/* 竖线 */
+.sy__outline>.fn__flex-1>ul ul {
+    border-top-left-radius: var(--bracket-border-radius);
+    border-bottom-left-radius: var(--bracket-border-radius);
+    margin-left: var(--file-retract-length);
+    margin-top: calc(0px - var(--vertical-line-top));
+    padding-top: var(--vertical-line-top);
+}
+
+/* 竖线颜色 */
+.sy__outline>.fn__flex-1>ul ul {
+    border-left: var(--vertical-line-bracket-width) solid var(--vertical-line-color-1);
+}
+.sy__outline>.fn__flex-1>ul>ul ul {
+    border-left: var(--vertical-line-bracket-width) solid var(--vertical-line-color-2);
+}
+.sy__outline>.fn__flex-1>ul>ul>ul ul {
+    border-left: var(--vertical-line-bracket-width) solid var(--vertical-line-color-3);
+}
+.sy__outline>.fn__flex-1>ul>ul>ul>ul ul {
+    border-left: var(--vertical-line-bracket-width) solid var(--vertical-line-color-4);
+}
+.sy__outline>.fn__flex-1>ul>ul>ul>ul>ul ul {
+    border-left: var(--vertical-line-bracket-width) solid var(--vertical-line-color-5);
+}
+.sy__outline>.fn__flex-1>ul>ul>ul>ul>ul>ul ul {
+    border-left: var(--vertical-line-bracket-width) solid var(--vertical-line-color-6);
+}
+
+
