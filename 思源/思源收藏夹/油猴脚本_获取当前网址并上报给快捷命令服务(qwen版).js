@@ -14,6 +14,13 @@
 
     const serverUrl = 'http://127.0.0.1:33442';
 
+     // 吐司提示
+    function toast(msg, t = 3000, top, left) {
+        const el = Object.assign(document.createElement('div'), {innerHTML: msg, style: `position:fixed;top:${top||20}px;left:${(left?left+'px':'')||'50%'};${left?'':'transform:translateX(-50%);'}background:#333;color:rgb(255 154 154);font-weight:bold;;padding:8px 16px;border-radius:4px;font-size:14px;z-index:9999;opacity:0;transition:opacity .3s;`});
+        document.body.appendChild(el);void el.offsetHeight;el.style.opacity = 1;
+        setTimeout(() => { el.style.opacity = 0; setTimeout(() => el.remove(), 300);}, t);
+    }
+
     function logPageInfo() {
         const url = window.location.href;
         const title = document.title;
@@ -91,7 +98,7 @@
             url: `${serverUrl.replace(/\/$/, '')}/??r=${Date.now()}&action=setWebInfo&content=${encodeURIComponent(JSON.stringify({url, title, description, keywords, icon}))}`,
             timeout: 5000,
             onload: res => console.log('✅ 上报成功:', res.responseText),
-            onerror: err => console.error('❌ 上报失败:', err),
+            onerror: err => {console.error('❌ 上报失败:', err);toast('❌ 上报网站信息失败，请检查快捷命令服务是否正常？！');},
             ontimeout: () => console.warn('⏱️ 请求超时')
         });
 
