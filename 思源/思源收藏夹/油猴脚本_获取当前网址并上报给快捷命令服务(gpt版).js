@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Capture page info on load / navigation / tab switch
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  获取当前页面的 URL、title、description、keywords，支持 SPA 路由、hash、切换标签与动态 meta/title 变化。
 // @author       You
 // @match        *://*/*
@@ -12,7 +12,11 @@
 (function () {
   'use strict';
 
+    // 快捷命令服务 当快捷命令服务不稳定时可以使用下面的思源内核扩展服务
     const serverUrl = 'http://127.0.0.1:33442';
+
+    // 思源内核扩展服务 see https://ld246.com/article/1758444561920
+    //const serverUrl = 'http://127.0.0.1:6809';
 
   // ------------------ 辅助函数 ------------------
   function getMeta(name) {
