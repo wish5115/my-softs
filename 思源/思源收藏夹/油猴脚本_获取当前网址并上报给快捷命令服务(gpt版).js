@@ -6,7 +6,6 @@
 // @author       You
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
-// @grant        GM_notification
 // @run-at       document-idle
 // ==/UserScript==
 
