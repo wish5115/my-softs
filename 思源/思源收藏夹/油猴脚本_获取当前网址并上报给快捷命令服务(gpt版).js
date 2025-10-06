@@ -6,6 +6,7 @@
 // @author       You
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
+// @grant        GM_notification
 // @run-at       document-idle
 // ==/UserScript==
 
@@ -96,6 +97,13 @@
     };
   }
 
+ // 吐司提示
+ function toast(msg, t = 3000, top, left) {
+     const el = Object.assign(document.createElement('div'), {innerHTML: msg, style: `position:fixed;top:${top||20}px;left:${(left?left+'px':'')||'50%'};${left?'':'transform:translateX(-50%);'}background:#333;color:rgb(255 154 154);font-weight:bold;;padding:8px 16px;border-radius:4px;font-size:14px;z-index:9999;opacity:0;transition:opacity .3s;`});
+     document.body.appendChild(el);void el.offsetHeight;el.style.opacity = 1;
+     setTimeout(() => { el.style.opacity = 0; setTimeout(() => el.remove(), 300);}, t);
+ }
+
   // 供用户自定义处理的地方：把 info 发到哪里 / 存哪里 / 在页面显示 等。
   function handleInfo(info, reason) {
     // reason: 'load' | 'locationchange' | 'hashchange' | 'visibilitychange' | 'metachange' | ...
@@ -106,7 +114,7 @@
           url: `${serverUrl.replace(/\/$/, '')}/?r=${Date.now()}&action=setWebInfo&content=${encodeURIComponent(JSON.stringify(info))}`,
           timeout: 5000,
           onload: res => console.log('✅ 上报成功:', res.responseText),
-          onerror: err => console.error('❌ 上报失败:', err),
+          onerror: err => {console.error('❌ 上报失败:', err);toast('❌ 上报网站信息失败，请检查快捷命令服务是否正常？！');},
           ontimeout: () => console.warn('⏱️ 请求超时')
       });
     // 示例：上报到本地服务器（若需要，取消注释并修改 URL）
