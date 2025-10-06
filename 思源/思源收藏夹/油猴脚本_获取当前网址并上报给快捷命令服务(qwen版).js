@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         获取页面信息（URL, Title, Meta）
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  在页面加载、标签切换、地址变化时获取当前页面信息
 // @author       You
 // @match        *://*/*
@@ -12,7 +12,11 @@
 (function() {
     'use strict';
 
+    // 快捷命令服务 当快捷命令服务不稳定时可以使用下面的思源内核扩展服务
     const serverUrl = 'http://127.0.0.1:33442';
+
+    // 思源内核扩展服务 see https://ld246.com/article/1758444561920
+    //const serverUrl = 'http://127.0.0.1:6809';
 
      // 吐司提示
     function toast(msg, t = 3000, top, left) {
