@@ -6,7 +6,7 @@
 // see https://ld246.com/article/1759893902998
 // 高德地图拾取器 https://lbs.amap.com/tools/picker
 // 百度地图拾取器 https://lbs.baidu.com/maptool/getpoint
-// 经纬度转换工具 https://tool.lu/coordinate 转换为 WGS84 即可
+// 经纬度转换工具 https://tool.lu/coordinate 转换为 WGS84 即可，转换后保留 5–6 位小数就足够了
 // 经纬度转换工具2 https://www.mapchaxun.cn/bathLocationChange/
 (async () => {
     // 加载中国地图js
