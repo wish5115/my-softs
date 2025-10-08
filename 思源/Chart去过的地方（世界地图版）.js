@@ -4,6 +4,8 @@
 // 修改 chart 高度可通过块菜单"图表"修改
 // 更多参数请参考 https://echarts.apache.org/examples/zh/editor.html?c=scatter-map
 // see https://ld246.com/article/1759893902998
+// 改自 https://ld246.com/article/1759026927394
+// 只需在文档块或者块添加一个 location 的属性即可，填写属性值：🌱 八达岭长城:: [116.016802, 40.356188, 1000]（前两个是经纬度，1000 代表显示坐标点的圆点大小。
 // 高德地图拾取器 https://lbs.amap.com/tools/picker
 // 百度地图拾取器 https://lbs.baidu.com/maptool/getpoint
 // 经纬度转换工具 https://tool.lu/coordinate 转换为 WGS84 即可，转换后保留 5–6 位小数就足够了
