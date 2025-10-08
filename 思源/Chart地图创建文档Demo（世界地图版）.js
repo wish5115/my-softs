@@ -1,6 +1,6 @@
 // Chart地图创建文档Demo（世界地图版）
 // 注意，为精确到省或州
-// see https://ld246.com/article/1748879816780  
+// see https://ld246.com/article/1759893902998  
 // ld246-1748879816780 注意，此注释是本chart唯一标志，请勿修改或删除
 (async () => {
     // 修正：去掉 URL 前后空格！
