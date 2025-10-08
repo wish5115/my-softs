@@ -3,7 +3,7 @@
 // 注意，不要在最后一行加;号，因为该代码在函数调用内不能加;号
 // 修改 chart 高度可通过块菜单"图表"修改
 // 更多参数请参考 https://echarts.apache.org/examples/zh/editor.html?c=scatter-map
-// see   https://ld246.com/article/1759026927394  
+// see https://ld246.com/article/1759893902998
 (async () => {
     // 加载中国地图js
     await loadScript('https://jsd.onmicrosoft.cn/npm/echarts/map/js/world.js  ');
