@@ -32,7 +32,7 @@
     whenElementExist('#toolbar .fn__ellipsis').then((el)=>{
         if(!el) return;
         // 向下按钮
-        const tips = !isShowDetailTips ? '点击向下翻页' : `点击 <span class='ft__on-surface'>向下翻页</span><br>Shift + 点击 <span class='ft__on-surface'>向上翻页</span><br>Ctrl + 点击 <span class='ft__on-surface'>向下滚动</span><br>Shift + Ctrl + 点击 <span class='ft__on-surface'>向上滚动</span><br>Alt + 点击 <span class='ft__on-surface'>模拟滚动条拖动</span><br>再次按Alt <span class='ft__on-surface'>取消模拟滚动条拖动</span>`;
+        const tips = !isShowDetailTips ? '点击向下翻页' : `点击 <span class='ft__on-surface'>向下翻页</span><br>Shift + 点击 <span class='ft__on-surface'>向上翻页</span><br>Ctrl + 点击 <span class='ft__on-surface'>向下滚动</span><br>Shift + Ctrl + 点击 <span class='ft__on-surface'>向上滚动</span><br>Alt + 点击 <span class='ft__on-surface'>模拟拖动滚动条</span><br>再次按Alt <span class='ft__on-surface'>取消模拟拖动滚动条</span>`;
         const pageDownBtnHtml = `<div data-menu="true" id="pageDownBtn" class="toolbar__item ariaLabel" aria-label="${tips}" data-location="right"><svg style=""><use xlink:href="#iconArrowDown"></use></svg></div>`;
         el.insertAdjacentHTML('afterend', pageDownBtnHtml);
         const pageDownBtn = el.nextElementSibling;
