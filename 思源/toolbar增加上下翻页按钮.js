@@ -1,6 +1,7 @@
 // toolbar增加上下翻页按钮
 // see https://ld246.com/article/1759977992135
-// vesion 0.0.4
+// vesion 0.0.5
+// 0.0.5 增加自滚动功能；调整提示信息根据参数开关显示隐藏
 // 0.0.4 调整快捷键；增加alt+点击下方向键 模拟鼠标按住滚动条拖动，再次按alt关闭模拟滚动；增加按shift箭头翻转效果；增加详细提示文本；删除向上按钮
 // 0.0.3 新增alt+点击下方向键 向下滚动指定行，alt+shift+点击下方向键，向上滚动指定行；向下按钮和alt+点击向下按钮滚动时，会保留一定的重叠区域，方便浏览时衔接
 // 0.0.2 修复滚动算法错误（之前的视窗计算有误差）；增加ctrl+点击向下方向键，实现向上翻页功能
@@ -20,6 +21,12 @@
     // 是否显示详细提示 true 显示 false 不显示
     const isShowDetailTips = true;
 
+    // 是否开启自滚动功能 true 开启 false 不开启
+    const isAutoScroll = true;
+
+    // 滚动速度，每次滚动距离，默认1像素，支持小数，越小速度越慢，尽量用小数点级别去调
+    const autoScrollSpeed = 1;
+
     // 是否显示向上翻页按钮 true 显示 false 不显示
     //const isShowPageUpBtn = false;
 
@@ -32,7 +39,12 @@
     whenElementExist('#toolbar .fn__ellipsis').then((el)=>{
         if(!el) return;
         // 向下按钮
-        const tips = !isShowDetailTips ? '点击向下翻页' : `点击 <span class='ft__on-surface'>向下翻页</span><br>Shift + 点击 <span class='ft__on-surface'>向上翻页</span><br>Ctrl + 点击 <span class='ft__on-surface'>向下滚动</span><br>Shift + Ctrl + 点击 <span class='ft__on-surface'>向上滚动</span><br>Alt + 点击 <span class='ft__on-surface'>模拟拖动滚动条</span><br>再次按Alt <span class='ft__on-surface'>取消模拟拖动滚动条</span>`;
+        let tipsItems = '';
+        if(isShowDetailTips) {
+            if(isAltDragging) tipsItems += `<br>Alt + 点击 <span class='ft__on-surface'>模拟拖动滚动条</span><br>再次按Alt <span class='ft__on-surface'>取消模拟拖动滚动条</span>`;
+            if(isAutoScroll) tipsItems += `<br>Ctrl + Alt + 点击 <span class='ft__on-surface'>自动向下滚动</span><br>Shift + Alt + 点击 <span class='ft__on-surface'>自动向上滚动</span><br><span class='ft__on-surface'>滚动期间</span> Alt <span class='ft__on-surface'>暂停/继续</span> Esc <span class='ft__on-surface'>退出滚动</span>`;
+        }
+        const tips = !isShowDetailTips ? '点击向下翻页' : `点击 <span class='ft__on-surface'>向下翻页</span><br>Shift + 点击 <span class='ft__on-surface'>向上翻页</span><br>Ctrl + 点击 <span class='ft__on-surface'>向下滚动</span><br>Shift + Ctrl + 点击 <span class='ft__on-surface'>向上滚动</span>${tipsItems}`;
         const pageDownBtnHtml = `<div data-menu="true" id="pageDownBtn" class="toolbar__item ariaLabel" aria-label="${tips}" data-location="right"><svg style=""><use xlink:href="#iconArrowDown"></use></svg></div>`;
         el.insertAdjacentHTML('afterend', pageDownBtnHtml);
         const pageDownBtn = el.nextElementSibling;
@@ -43,6 +55,8 @@
             const isShiftPressed =  event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey;
             const isShiftCtrlPressed = (event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey;
             const isAltPressed =  event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey;
+            const isShiftAltPressed =  event.shiftKey && event.altKey && !event.ctrlKey && !event.metaKey;
+            const isCtrlAltPressed = (event.ctrlKey || event.metaKey) && event.altKey && !event.shiftKey;
             // Shift + ↓ 上翻页
             if(isShiftPressed) scrollPage(scrollEl, true);
             // Ctrl + ↓ 向下滚动
@@ -51,6 +65,10 @@
             else if(isShiftCtrlPressed) scrollPage(scrollEl, true, altClickScrollHeight);
             // alt + ↓ 开始模拟拖动滚动条
             else if(isAltPressed) beginDragging();
+            // Shift + Alt + ↓ 自动向上滚动
+            else if(isShiftAltPressed) autoScroll('up', autoScrollSpeed);
+            // Ctrl + Alt + ↓ 自动向下滚动
+            else if(isCtrlAltPressed) autoScroll('down', autoScrollSpeed);
             // ↓ 下翻页
             else scrollPage(scrollEl, false);
             
@@ -100,6 +118,93 @@
             }
         });
     }
+
+    let autoScrollRafId = null;
+    let isAutoScrolling = false;
+    let isPaused = false;
+    let scrollConfig = { direction: 1, speed: 1, scrollEl: null };
+    
+    function autoScroll(type = 'down', speed = 1) {
+        if (isAutoScrolling) return;
+    
+        const protyleEl = getProtyleEl();
+        const scrollEl = protyleEl?.querySelector('.protyle-content');
+        if (!scrollEl) return;
+    
+        isAutoScrolling = true;
+        isPaused = false;
+        scrollConfig = {
+            direction: type === 'up' ? -1 : 1,
+            speed: Math.abs(speed),
+            scrollEl
+        };
+    
+        // 启动 rAF 循环
+        autoScrollRafId = requestAnimationFrame(autoScrollStep);
+    }
+    
+    function autoScrollStep() {
+        if (!isAutoScrolling || isPaused) {
+            // 暂停时继续等待下一帧（不退出）
+            autoScrollRafId = requestAnimationFrame(autoScrollStep);
+            return;
+        }
+    
+        const { scrollEl, direction, speed } = scrollConfig;
+        if (!scrollEl) {
+            stopAutoScroll();
+            return;
+        }
+    
+        const { scrollTop, scrollHeight, clientHeight } = scrollEl;
+        const maxScroll = scrollHeight - clientHeight;
+        if (maxScroll <= 0) {
+            stopAutoScroll();
+            return;
+        }
+    
+        let newScrollTop = scrollTop + direction * speed;
+    
+        // 边界处理
+        if (newScrollTop <= 0) {
+            newScrollTop = 0;
+            stopAutoScroll();
+        } else if (newScrollTop >= maxScroll) {
+            newScrollTop = maxScroll;
+            stopAutoScroll();
+        }
+    
+        scrollEl.scrollTop = newScrollTop;
+    
+        // 继续下一帧（只要还在滚动）
+        if (isAutoScrolling && !isPaused) {
+            autoScrollRafId = requestAnimationFrame(autoScrollStep);
+        }
+    }
+    
+    function stopAutoScroll() {
+        if (autoScrollRafId) {
+            cancelAnimationFrame(autoScrollRafId);
+            autoScrollRafId = null;
+        }
+        isAutoScrolling = false;
+        isPaused = false;
+    }
+    
+    // 全局按键监听（用于控制自动滚动）
+    document.addEventListener('keydown', (e) => {
+        if (!isAutoScrolling) return; // 非滚动期间不处理
+    
+        if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            // Alt：暂停/继续切换
+            e.preventDefault(); // ⚠️ 阻止默认行为
+            isPaused = !isPaused;
+        } else if (e.key === 'Escape' && !e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            // Esc：完全退出
+            e.preventDefault(); // 可选，避免触发其他 Esc 行为
+            stopAutoScroll();
+        }
+    }, true);
 
     function beginDragging() {
         if(!isAltDragging) return;
