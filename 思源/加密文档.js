@@ -345,7 +345,7 @@
         <div class="resize__move b3-dialog__header" onselectstart="return false;">${title}</div>
         <div class="b3-dialog__body"><div class="b3-dialog__content">
         <div class="ft__breakword">
-        <input type="text" class="b3-text-field" id="promptDialogInput" style="width:100%;" value="${defaultValue}" placeholder="${placehoder}">
+        <input type="password" class="b3-text-field" id="promptDialogInput" style="width:100%;" value="${defaultValue}" placeholder="${placehoder}">
         </div>
         </div>
         <div class="b3-dialog__action">
