@@ -7,6 +7,22 @@
     let isDragging = false;
     let isDragPaused = false;
 
+    // === 全局快捷键监听 ===
+    document.addEventListener('keydown', (e) => {
+        // Alt + ↓ 触发模拟拖动
+        if (
+            e.altKey &&
+            (e.key === 'ArrowDown' || e.key === 'Down') &&
+            !e.shiftKey &&
+            !e.ctrlKey &&
+            !e.metaKey
+        ) {
+            e.preventDefault(); // 阻止浏览器默认行为（如切换标签）
+            e.stopPropagation();
+            beginDragging();
+        }
+    }, true);
+
     // === 模拟拖动核心 ===
     function beginDragging() {
         if (isDragging) return;
@@ -28,8 +44,9 @@
         if (!isDragging) return;
 
         // Esc：退出
-        if (e.key === 'Escape' && !e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        if ((e.key === 'Escape' || e.key === 'Esc') && !e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
             e.preventDefault();
+            e.stopPropagation();
             endDragging();
             return;
         }
@@ -37,6 +54,7 @@
         // Alt（单独）：暂停/继续
         if (e.key === 'Alt' && e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
             e.preventDefault();
+            e.stopPropagation();
             isDragPaused = !isDragPaused;
             return;
         }
@@ -59,21 +77,6 @@
 
         scrollEl.scrollTop = ratio * maxScrollTop;
     }
-
-    // === 全局快捷键监听 ===
-    document.addEventListener('keydown', (e) => {
-        // Alt + ↓ 触发模拟拖动
-        if (
-            e.altKey &&
-            e.key === 'ArrowDown' &&
-            !e.shiftKey &&
-            !e.ctrlKey &&
-            !e.metaKey
-        ) {
-            e.preventDefault(); // 阻止浏览器默认行为（如切换标签）
-            beginDragging();
-        }
-    }, true);
 
     // === 工具函数（复用原逻辑）===
     function getProtyleEl() {
