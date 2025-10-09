@@ -1,7 +1,8 @@
 // 加密文档（非真正加密）
 // 注意： 该代码并不会加密原文，只是打开文档需要输入密码而已，且是前端加密，专业人员可以通过访问 js 源码分析出密码，因此请勿用于重要信息的保密！
 // see https://ld246.com/article/1742364416944
-//version 0.0.5
+//version 0.0.6
+// 0.0.6 增加取消加密需要输入密码功能 感谢 @queguaiya 大佬的提醒
 // 0.0.5 修复搜索预览切换和刷新显示明文问题
 // 0.0.2 修复偶发显示原文的bug；默认密码框自动获取焦点；默认过期时间改为1秒
 // 0.0.3 修复嵌入块显示bug
@@ -86,7 +87,7 @@
             const currLi = event.target.closest('li.b3-list-item');
             if(!currLi) return;
             // 关闭上次的菜单，防止2个菜单冲突
-            document.body.click();
+            window.siyuan.menus.menu.remove();
             whenElementExist('button[data-id="rename"]').then(targetMenu => {
                 if(!currLi?.dataset?.nodeId) return;
                 const isEncrypted = encryptedDocIds.includes(currLi?.dataset?.nodeId);
@@ -96,6 +97,16 @@
                 targetMenu.insertAdjacentHTML('beforebegin', html);
                 targetMenu.parentElement.querySelector('button[data-id="encrypt"]').onclick = async () => {
                     if(isEncrypted) {
+                        // result string 确定并返回输入内容 false 取消
+                        while (true) {
+                            const result = await promptDialog('', '请输入密码', '请输入密码');
+                            if(result === false) return;
+                            if(result !== getRealPw(pw)) {
+                                alert('密码错误，请重新输入');
+                                continue;
+                            }
+                            break;
+                        }
                         // 转换为 Set
                         let docSet = new Set(encryptedDocIds);
                         // 删除目标值
@@ -112,8 +123,8 @@
                     //     if(li?.dataset?.nodeId) encryptedDocIds.push(li.dataset.nodeId);
                     // }
                     putFile('/data/storage/encrypted_ids.json', JSON.stringify(encryptedDocIds));
-                    document.body.click();
-                    showMessage('文档已加密，下次打开时生效');
+                    window.siyuan.menus.menu.remove();
+                    showMessage(isEncrypted?'文档已解密，下次打开时生效':'文档已加密，下次打开时生效');
                 };
             });
         };
@@ -319,5 +330,63 @@
             trimmedPw.slice(midIndex + Math.ceil(midfix / 2));
     
         return realPw;
+    }
+
+    // 调用示例
+    // const result = await promptDialog(defaultValue, title, placehoder, okBtnText, cancelBtnText);
+    // result string 确定并返回输入内容 false 取消
+    function promptDialog(defaultValue = '', title = '请输入内容', placehoder = '请输入内容', okBtnText = '确定', cancelBtnText = '取消') {
+        return new Promise((resolve) => {
+            const dialogHtml = `<div data-key="dialog-prompt" class="b3-dialog--prompt b3-dialog--open"><div class="b3-dialog" style="z-index: ${++window.siyuan.zIndex};">
+        <div class="b3-dialog__scrim"></div>
+        <div class="b3-dialog__container " style="width:520px;height:auto;
+        left:auto;top:auto">
+        <svg class="b3-dialog__close"><use xlink:href="#iconCloseRound"></use></svg>
+        <div class="resize__move b3-dialog__header" onselectstart="return false;">${title}</div>
+        <div class="b3-dialog__body"><div class="b3-dialog__content">
+        <div class="ft__breakword">
+        <input type="text" class="b3-text-field" id="promptDialogInput" style="width:100%;" value="${defaultValue}" placeholder="${placehoder}">
+        </div>
+        </div>
+        <div class="b3-dialog__action">
+        <button class="b3-button b3-button--cancel" id="promptDialogCancelBtn">${cancelBtnText}</button><div class="fn__space"></div>
+        <button class="b3-button b3-button--outline" id="promptDialogConfirmBtn">${okBtnText}</button>
+        </div></div>
+        <div class="resize__rd"></div><div class="resize__ld"></div><div class="resize__lt"></div><div class="resize__rt"></div><div class="resize__r"></div><div class="resize__d"></div><div class="resize__t"></div><div class="resize__l"></div>
+        </div></div></div>`;
+            document.body.insertAdjacentHTML('beforeend', dialogHtml);
+            const dialog = document.querySelector('.b3-dialog--prompt');
+            const input = dialog.querySelector('#promptDialogInput');
+            setTimeout(()=>input.focus(), 100);
+            const resolveHandle = (result) => {
+                dialog.remove();
+                resolve(result);
+                document.removeEventListener('keydown', keydownHandle, true);
+            };
+            const keydownHandle = (event) => {
+                const notOtherKey = !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey;
+                if (event.key === 'Enter' && notOtherKey && document.querySelector('.b3-dialog--prompt')) {
+                    // 确定
+                    resolveHandle(input.value);
+                } else if (event.key === 'Escape' && notOtherKey && document.querySelector('.b3-dialog--prompt')) {
+                    // 取消
+                    resolveHandle(false);
+                }
+            };
+            dialog.addEventListener('click', (e) => {
+                if(
+                    e.target.closest('.b3-dialog__scrim') ||
+                    e.target.closest('.b3-dialog__close') ||
+                    e.target.closest('.b3-button--cancel')
+                ) {
+                    // 取消
+                    resolveHandle(false);
+                } else if(e.target.closest('.b3-button--outline')) {
+                    // 确定
+                    resolveHandle(input.value);
+                }
+            });
+            document.addEventListener('keydown', keydownHandle, true);
+        });
     }
 })();
