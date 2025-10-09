@@ -1,6 +1,7 @@
 // toolbar增加上下翻页按钮
 // see https://ld246.com/article/1759977992135
-// vesion 0.0.5
+// vesion 0.0.6
+// 0.0.6 改进无论是自读滚动还是模拟拖动滚动条效果，均alt暂停/继续，esc退出滚动
 // 0.0.5 增加自滚动功能；调整提示信息根据参数开关显示隐藏
 // 0.0.4 调整快捷键；增加alt+点击下方向键 模拟鼠标按住滚动条拖动，再次按alt关闭模拟滚动；增加按shift箭头翻转效果；增加详细提示文本；删除向上按钮
 // 0.0.3 新增alt+点击下方向键 向下滚动指定行，alt+shift+点击下方向键，向上滚动指定行；向下按钮和alt+点击向下按钮滚动时，会保留一定的重叠区域，方便浏览时衔接
@@ -34,6 +35,7 @@
     if(isMobile()) return;
 
     let isDragging = false;
+    let isDragPaused = false;   // 新增：是否暂停拖拽
   
     // 添加toolbar按钮
     whenElementExist('#toolbar .fn__ellipsis').then((el)=>{
@@ -41,8 +43,9 @@
         // 向下按钮
         let tipsItems = '';
         if(isShowDetailTips) {
-            if(isAltDragging) tipsItems += `<br>Alt + 点击 <span class='ft__on-surface'>模拟拖动滚动条</span><br>再次按Alt <span class='ft__on-surface'>取消模拟拖动滚动条</span>`;
-            if(isAutoScroll) tipsItems += `<br>Ctrl + Alt + 点击 <span class='ft__on-surface'>自动向下滚动</span><br>Shift + Alt + 点击 <span class='ft__on-surface'>自动向上滚动</span><br><span class='ft__on-surface'>滚动期间</span> Alt <span class='ft__on-surface'>暂停/继续</span> Esc <span class='ft__on-surface'>退出滚动</span>`;
+            if(isAltDragging) tipsItems += `<br>Alt + 点击 <span class='ft__on-surface'>模拟拖动滚动条</span>`;
+            if(isAutoScroll) tipsItems += `<br>Ctrl + Alt + 点击 <span class='ft__on-surface'>自动向下滚动</span><br>Shift + Alt + 点击 <span class='ft__on-surface'>自动向上滚动</span>`;
+            if(isAltDragging || isAutoScroll) tipsItems += `<br><span class='ft__on-surface'>滚动期间</span> Alt <span class='ft__on-surface'>暂停/继续</span> Esc <span class='ft__on-surface'>退出滚动</span>`;
         }
         const tips = !isShowDetailTips ? '点击向下翻页' : `点击 <span class='ft__on-surface'>向下翻页</span><br>Shift + 点击 <span class='ft__on-surface'>向上翻页</span><br>Ctrl + 点击 <span class='ft__on-surface'>向下滚动</span><br>Shift + Ctrl + 点击 <span class='ft__on-surface'>向上滚动</span>${tipsItems}`;
         const pageDownBtnHtml = `<div data-menu="true" id="pageDownBtn" class="toolbar__item ariaLabel" aria-label="${tips}" data-location="right"><svg style=""><use xlink:href="#iconArrowDown"></use></svg></div>`;
@@ -211,22 +214,36 @@
         if (isDragging) return;
         isDragging = true;
         document.addEventListener('mousemove', mousemoveHandle);
-        document.addEventListener('keydown', keydownHandle);
+        document.addEventListener('keydown', keydownHandle, true);
     }
 
     function endDragging() {
         if (!isDragging) return;
         isDragging = false;
+        isDragPaused = false;
         document.removeEventListener('mousemove', mousemoveHandle);
-        document.removeEventListener('keydown', keydownHandle);
+        document.removeEventListener('keydown', keydownHandle, true);
     }
 
     function keydownHandle(e) {
-        if(e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) endDragging();
+        if (!isDragging) return;
+        // Esc：完全退出
+        if (e.key === 'Escape' && !e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault(); // 可选：防止触发其他 Esc 行为
+            endDragging();
+            return;
+        }
+    
+        // Alt（单独）：暂停/继续 toggle
+        if (e.key === 'Alt' && e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault(); // ⚠️ 阻止浏览器菜单弹出（重要！）
+            isDragPaused = !isDragPaused;
+            return;
+        }
     }
 
     function mousemoveHandle(e) {
-        if (!isDragging) return;
+        if (!isDragging || isDragPaused) return;
     
         const protyleEl = getProtyleEl();
         const scrollEl = protyleEl?.querySelector('.protyle-content');
