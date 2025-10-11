@@ -171,7 +171,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
         const html = `<span aria-label="复制查询结果" class="b3-tooltips__nw b3-tooltips protyle-icon protyle-action__copyEmbedResult"><svg><use xlink:href="#iconCopy"></use></svg></span>`;
         menu.insertAdjacentHTML("beforebegin", html);
         copy = embed.querySelector('.protyle-action__copyEmbedResult');
-        copy.addEventListener("click", (e) => {
+        copy.addEventListener("click", async (e) => {
             e.stopPropagation();
             let text = "";
             const hasEmbedCol = embed.querySelector('.protyle-wysiwyg__embed span.embed-col');
@@ -196,7 +196,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                 }
             }
             if (text.trim() == "") {
-                text = extractFormattedText(embed);
+                text = copyMode == 'markdown' ? await copyMarkdown(embed?.dataset?.nodeId) : extractFormattedText(embed);
             }
             if (!text.trim()) return;
             copyToClipboard(text);
@@ -846,7 +846,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
     }
     async function copyMarkdown(id) {
         const result = await requestApi("/api/lute/copyStdMarkdown", {id});
-        return result?.data || '';
+        return (result?.data || '').replace(/^>\s?/gm, '');
     }
     /**
      * 提取指定元素下的文本内容：
