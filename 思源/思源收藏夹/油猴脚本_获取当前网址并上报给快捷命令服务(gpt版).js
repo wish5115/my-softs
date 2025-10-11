@@ -8,7 +8,7 @@
 // @grant        GM_xmlhttpRequest
 // @connect      127.0.0.1
 // @connect      localhost
-// @run-at       document-idle
+// @run-at       document-end
 // ==/UserScript==
 
 (function () {
