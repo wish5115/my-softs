@@ -6,7 +6,8 @@
 // @author       ChatGPT
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
-// @connect      *
+// @connect      127.0.0.1
+// @connect      localhost
 // @run-at       document-idle
 // ==/UserScript==
 
