@@ -1,6 +1,7 @@
 // 嵌入查询支持多字段查询
 // see https://ld246.com/article/1750463052773
-// version 0.0.6.7
+// version 0.0.6.8
+// 0.0.6.8 添加 -- title指令
 // 0.0.6.7 改进嵌入块复制查询结果时对代码块的支持等
 // 0.0.6.6 改进嵌入块复制查询结果，复制结果更符合真实情况
 // 0.0.6.5 增加复制查询结果按钮
@@ -28,6 +29,7 @@ select * from blocks where type='p' and trim(markdown) != '' limit 2
 -- 添加样式和格式化
 -- style created {font-weight:bold;float:right;color:red;}
 -- format created datetime
+-- title content: 标题 hpath: 路径
 select content, created from blocks where type='d' and trim(content) != '' limit 2
 
 常用指令如下：
@@ -82,6 +84,9 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
     // 是否在嵌入块右上角增加复制查询结果按钮 true 增加 false 不增加
     const isUseCopyBtn = true;
 
+    // 复制模式，markdown 模式 和 text 模式
+    const copyMode = 'markdown';
+
     const shareData = {};
     searchEmbedBlock(async (embedBlockID, currDocId, stmt, blocks, hideFields) => {
         const errors = { msg: '' };
@@ -113,6 +118,9 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
         if (stmt && results.length === 0 && errors.msg) {
             showErrors(embedBlockID, errors);
         }
+        // 插入标题
+        if(Object.keys(meta.titles).length > 0) results.unshift(meta.titles);
+        // 格式化结果
         if (results && results.length > 0) {
             let newBlocks = [];
             for (let index = 0; index < results.length; index++) {
@@ -293,6 +301,8 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             const top = protyleEl.querySelector('.protyle-content')?.scrollTop || 0;
             let result = await userFunction(embedBlockID, currDocId, embedBlockID, whenElementExist, requestApi, protyle, top, querySql, pick, unpick, errors, showErrors, blocks, getFieldsHtml, getBlock, meta);
             result = result === undefined ? [] : result;
+            // 插入标题
+            if(Object.keys(meta.titles).length > 0) result.unshift(meta.titles);
             // 生成数据
             for (let index = 0; index < result.length; index++) {
                 let block = result[index];
@@ -604,7 +614,8 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             renders: {},
             jsformats: {},
             sorts: [],
-            hides: []
+            hides: [],
+            titles: {}
         };
         // 1) 用非贪婪模式抓出所有 C-style 注释
         const blockCommentRE = /\/\*([\s\S]*?)\*\//g;
@@ -664,6 +675,17 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
                 // -- hide key1,key2, key3
                 const list = t.replace(/^--\s+hide\s+/, '').split(',').map(k => k.trim()).filter(Boolean);
                 result.hides = list;
+            } else if ((!type || type === 'titles') && t.startsWith('-- title ')) {
+                // -- title content:内容 path:路径 id:"id string"
+                const body = t.replace(/^--\s+title\s+/, '');
+                // 支持 key:"value" key:'value' key:value 三种形式
+                const kvRE = /(\w+)\s*:\s*(?:"([^"]*)"|'([^']*)'|`([^`]*)`|([^\s]+))/g;
+                let m;
+                while ((m = kvRE.exec(body)) !== null) {
+                    const key = m[1];
+                    const val = m[2] !== undefined ? m[2] : (m[3] !== undefined ? m[3] : (m[4] !== undefined ? m[4] : m[5]));
+                    if (key) result.titles[key] = val;
+                }
             }
         }
         // 4) 如果只想取某个子集，就返回它
@@ -822,6 +844,10 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             errors.msg = '';
         });
     }
+    async function copyMarkdown(id) {
+        const result = await requestApi("/api/lute/copyStdMarkdown", {id});
+        return result?.data || '';
+    }
     /**
      * 提取指定元素下的文本内容：
      * – data-av-type="table" 按 .av__row 为行、.av__celltext 为列，用 \t 分隔
@@ -852,7 +878,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             });
             lines.push('');
         }
-        function walk(node) {
+        function walk(node) {console.log(node);
             // —— 新增：.hljs 代码块，直接取 textContent ——
             if (node.nodeType === Node.ELEMENT_NODE
                 && node.classList.contains('hljs')) {
