@@ -3,12 +3,12 @@
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  在页面加载、标签切换、地址变化时获取当前页面信息
-// @author       You
+// @author       Qwen
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
 // @connect      127.0.0.1
 // @connect      localhost
-// @run-at       document-idle
+// @run-at       document-end
 // ==/UserScript==
 
 (function() {
