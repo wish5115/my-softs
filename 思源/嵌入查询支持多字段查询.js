@@ -878,7 +878,7 @@ SQL中支持 {{CurrDocId}} 和 {{CurrBlockId}} 标记，分别代表当前文档
             });
             lines.push('');
         }
-        function walk(node) {console.log(node);
+        function walk(node) {
             // —— 新增：.hljs 代码块，直接取 textContent ——
             if (node.nodeType === Node.ELEMENT_NODE
                 && node.classList.contains('hljs')) {
