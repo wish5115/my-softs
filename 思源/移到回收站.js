@@ -1,6 +1,7 @@
 // 移到回收站（支持批量移动）
 // see https://ld246.com/article/1742083860299
-// version 0.0.5
+// version 0.0.6
+// 0.0.6 用自定义弹出代替confirm
 // 0.0.5 修复咋非回收站笔记右键菜单上显示清空回收站和移动到回收站的bug
 // 0.0.4 文档右上侧按钮中的下拉菜单增加移动到回收站功能
 // 0.0.3 增加情况回收站和回收站还原功能
@@ -34,7 +35,7 @@
                     const html = `<button data-id="clearAll" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTrashcan"></use></svg><span class="b3-menu__label">清空回收站</span></button>`;
                     targetMenu.insertAdjacentHTML('beforebegin', html);
                     targetMenu.parentElement.querySelector('button[data-id="clearAll"]').onclick = async () => {
-                        if(isShowConfirm) if(!confirm('您确定要清空回收站吗？')) {window.siyuan.menus.menu.remove();return;}
+                        if(isShowConfirm) if(!(await confirmDialog('您确定要清空回收站吗？'))) {window.siyuan.menus.menu.remove();return;}
                         const docs = document.querySelectorAll(`[data-url="${toBoxId}"] > ul > li`);
                         docs.forEach(doc => {
                             fetchSyncPost('/api/filetree/removeDoc', {
@@ -87,7 +88,7 @@
                     const html = `<button data-id="moveToTrash" class="b3-menu__item"><svg class="b3-menu__icon " style=""><use xlink:href="#iconTrashcan"></use></svg><span class="b3-menu__label">移动到回收站</span></button>`;
                     targetMenu.insertAdjacentHTML('beforebegin', html);
                     targetMenu.parentElement.querySelector('button[data-id="moveToTrash"]').onclick = async () => {
-                        if(isShowConfirm) if(!confirm('您确定要移动这些文档到回收站吗？')) {window.siyuan.menus.menu.remove();return;};
+                        if(isShowConfirm) if(!(await confirmDialog('您确定要移动这些文档到回收站吗？'))) {window.siyuan.menus.menu.remove();return;};
                         
                         window.siyuan.menus.menu.remove();
                         const focusLis = document.querySelectorAll(treeSelector+' li.b3-list-item--focus:not([data-type="navigation-root"])');
@@ -280,6 +281,60 @@
                 if (el) resolve(el); else requestAnimationFrame(check);
             };
             check();
+        });
+    }
+
+    // 调用示例
+    // const result = await confirmDialog(html, okBtnText, cancelBtnText);
+    // result true 确定 false 取消
+    function confirmDialog(html = '您确定要继续吗？', title = '⚠️ 确认信息', okBtnText = '确定', cancelBtnText = '取消') {
+        return new Promise((resolve) => {
+            const dialogHtml = `<div data-key="dialog-confirm" class="b3-dialog--confirm b3-dialog--open"><div class="b3-dialog" style="z-index: ${++window.siyuan.zIndex};">
+        <div class="b3-dialog__scrim"></div>
+        <div class="b3-dialog__container " style="width:520px;height:auto;
+        left:auto;top:auto">
+        <svg class="b3-dialog__close"><use xlink:href="#iconCloseRound"></use></svg>
+        <div class="resize__move b3-dialog__header" onselectstart="return false;">${title}</div>
+        <div class="b3-dialog__body"><div class="b3-dialog__content">
+        <div class="ft__breakword">${html}</div>
+        </div>
+        <div class="b3-dialog__action">
+        <button class="b3-button b3-button--cancel" id="confirmDialogCancelBtn">${cancelBtnText}</button><div class="fn__space"></div>
+        <button class="b3-button b3-button--outline" id="confirmDialogConfirmBtn">${okBtnText}</button>
+        </div></div>
+        <div class="resize__rd"></div><div class="resize__ld"></div><div class="resize__lt"></div><div class="resize__rt"></div><div class="resize__r"></div><div class="resize__d"></div><div class="resize__t"></div><div class="resize__l"></div>
+        </div></div></div>`;
+            document.body.insertAdjacentHTML('beforeend', dialogHtml);
+            const dialog = document.querySelector('.b3-dialog--confirm');
+            const resolveHandle = (result) => {
+                dialog.remove();
+                resolve(result);
+                document.removeEventListener('keydown', keydownHandle, true);
+            };
+            const keydownHandle = (event) => {
+                const notOtherKey = !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey;
+                if (event.key === 'Enter' && notOtherKey && document.querySelector('.b3-dialog--confirm')) {
+                    // 确定
+                    resolveHandle(true);
+                } else if (event.key === 'Escape' && notOtherKey && document.querySelector('.b3-dialog--confirm')) {
+                    // 取消
+                    resolveHandle(false);
+                }
+            };
+            dialog.addEventListener('click', (e) => {
+                if(
+                    e.target.closest('.b3-dialog__scrim') ||
+                    e.target.closest('.b3-dialog__close') ||
+                    e.target.closest('.b3-button--cancel')
+                ) {
+                    // 取消
+                    resolveHandle(false);
+                } else if(e.target.closest('.b3-button--outline')) {
+                    // 确定
+                    resolveHandle(true);
+                }
+            });
+            document.addEventListener('keydown', keydownHandle, true);
         });
     }
 })();
