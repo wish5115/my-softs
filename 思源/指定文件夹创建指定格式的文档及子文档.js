@@ -17,7 +17,7 @@
 
   if(isMobile()) return; // 不支持手机版
 
-  // 当心窗口时置顶窗口
+  // 当新窗口时置顶窗口
   if(config.newWindow.pin && localStorage.getItem('__custom_new_win') === 'true'){
     pinWindow();
     return;
