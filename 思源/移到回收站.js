@@ -1,6 +1,7 @@
 // 移到回收站（支持批量移动）
 // see https://ld246.com/article/1742083860299
-// version 0.0.6
+// version 0.0.7
+// 0.0.7 增加当文档移动到回收站时锁定文档，还原时恢复
 // 0.0.6 用自定义弹出代替confirm
 // 0.0.5 修复咋非回收站笔记右键菜单上显示清空回收站和移动到回收站的bug
 // 0.0.4 文档右上侧按钮中的下拉菜单增加移动到回收站功能
@@ -13,6 +14,10 @@
 
     // 删除文档或清空回收站时，是否弹窗确认对话框，true弹出，false不弹出
     const isShowConfirm = true;
+
+    // 是否锁定回收站文档，true 锁定 false 不锁定
+    // 未作严格限制，仅简单锁定文档
+    const lockBinFiles = false;
     
     // 监听右键菜单，动态显示文件夹的文档数
     const treeSelector = isMobile()? '#sidebar .b3-list--mobile' : '.sy__file';
@@ -72,6 +77,16 @@
                                 });
                                 if(!result || result.code !== 0) {
                                     failCount++;
+                                } else {
+                                    // 去除多余属性
+                                    await fetchSyncPost('/api/attr/setBlockAttrs', {
+                                        "id": li.dataset.nodeId,
+                                        "attrs": {
+                                            "custom-from-path": "",
+                                            "custom-from-box": "",
+                                            "custom-sy-readonly":"false",
+                                        }
+                                    });
                                 }
                             }
                             if(focusList.length === failCount){
@@ -102,6 +117,7 @@
                                 "attrs": {
                                     "custom-from-path": item.path,
                                     "custom-from-box": item.box,
+                                    "custom-sy-readonly": lockBinFiles ? "true" : "false",
                                 }
                             });
                         }
@@ -187,6 +203,7 @@
                         "attrs": {
                             "custom-from-path": doc.path,
                             "custom-from-box": doc.box,
+                            "custom-sy-readonly": lockBinFiles ? "true" : "false",
                         }
                     });
 
@@ -227,16 +244,6 @@
 
     function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
-    }
-    
-    function whenElementExist(selector, node) {
-        return new Promise(resolve => {
-            const check = () => {
-                const el = typeof selector==='function'?selector():(node||document).querySelector(selector);
-                if (el) resolve(el); else requestAnimationFrame(check);
-            };
-            check();
-        });
     }
 
     async function querySql(sql) {
