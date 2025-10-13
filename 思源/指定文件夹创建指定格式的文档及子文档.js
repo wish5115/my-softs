@@ -28,21 +28,21 @@
   setTimeout(()=>addCreateSubDocButton(), 2000);
 
   // 监控并重置新窗口打开大小
-  OnNewWindowOpenThenResizeWindow(config.newWindow.width, config.newWindow.height);
-  function OnNewWindowOpenThenResizeWindow(width, height) {
-    const ipcRenderer = require('electron').ipcRenderer;
-    const originalSend = ipcRenderer.send;
-    // 重写 ipcRenderer.send 方法
-    ipcRenderer.send = async function (...args) {
-        if(args[0] === 'siyuan-open-window' && !args[1].width && !args[1].height){
-            args[1].width = width;
-            args[1].height = height;
-            originalSend.apply(ipcRenderer, args);
-        } else {
-            originalSend.apply(ipcRenderer, args);
-        }
-    };
-  }
+//   OnNewWindowOpenThenResizeWindow(config.newWindow.width, config.newWindow.height);
+//   function OnNewWindowOpenThenResizeWindow(width, height) {
+//     const ipcRenderer = require('electron').ipcRenderer;
+//     const originalSend = ipcRenderer.send;
+//     // 重写 ipcRenderer.send 方法
+//     ipcRenderer.send = async function (...args) {
+//         if(args[0] === 'siyuan-open-window' && !args[1].width && !args[1].height){
+//             args[1].width = width;
+//             args[1].height = height;
+//             originalSend.apply(ipcRenderer, args);
+//         } else {
+//             originalSend.apply(ipcRenderer, args);
+//         }
+//     };
+//   }
   
   // 该函数用于获取当前日期并返回符合要求的文件名（如：23.10.11.未命名）
   function getFileName() {
