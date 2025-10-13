@@ -10,6 +10,7 @@
     newDocTpl: `<iframe src="/widgets/listChildDocs/" data-subtype="widget" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>`,
     subDocNames: ['第一篇', '第二篇', '第三篇'],
     subDocTpl: `## 文章\n## 生词\n## 笔记\n`,
+    subDocTags: '英文,学习',
     openType: 'newWindow', // newTab 新标签打开 newWindow 新窗口打开 为空不打开
     newWindow: {width: 490, height: 568, pin: true}, // 新窗口设置，宽高为0将使用思源默认宽高，pin是否置顶
     btnPos: 'dock', // 按钮位置 toolbar 工具栏 dock 左侧边栏 
@@ -25,6 +26,23 @@
 
   // 调用函数在工具栏添加按钮
   setTimeout(()=>addCreateSubDocButton(), 2000);
+
+  // 监控并重置新窗口打开大小
+  OnNewWindowOpenThenResizeWindow(config.newWindow.width, config.newWindow.height);
+  function OnNewWindowOpenThenResizeWindow(width, height) {
+    const ipcRenderer = require('electron').ipcRenderer;
+    const originalSend = ipcRenderer.send;
+    // 重写 ipcRenderer.send 方法
+    ipcRenderer.send = async function (...args) {
+        if(args[0] === 'siyuan-open-window' && !args[1].width && !args[1].height){
+            args[1].width = width;
+            args[1].height = height;
+            originalSend.apply(ipcRenderer, args);
+        } else {
+            originalSend.apply(ipcRenderer, args);
+        }
+    };
+  }
   
   // 该函数用于获取当前日期并返回符合要求的文件名（如：23.10.11.未命名）
   function getFileName() {
@@ -48,7 +66,7 @@
   }
   
   // 创建子文档
-  async function createSubDocument(content = '', openType = '', parentPath = '', fileName = '') {
+  async function createSubDocument(content = '', openType = '', parentPath = '', fileName = '', tags = '') {
     const { token, notebookId, apiUrl } = config;  // 解构获取配置参数
     parentPath = parentPath || config.parentPath;
   
@@ -63,6 +81,7 @@
       notebook: notebookId,
       path: `${parentPath}/${fileName}`,  // 子文档的路径
       markdown: markdownContent,  // 子文档内容
+      tags: tags,
     };
   
     // 调用思源笔记 API 创建子文档
@@ -162,7 +181,8 @@
               config.subDocTpl,
               '',
               parentPath,
-              name
+              name,
+              config.subDocTags
             );
             const path = await requestApi('/api/filetree/getPathByID', {id});
             if(path?.data?.path) paths.push(path?.data?.path);
