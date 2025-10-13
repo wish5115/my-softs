@@ -6,14 +6,22 @@
     token: '', // 替换为你的API Token
     notebookId: '20240224233354-t4fptpl', // 替换为目标笔记本ID
     parentPath: '/English/学习笔记', // 替换为目标父文档的路径
+    parentId: '20251012024801-ikdc75v', // 父文档id,enableCopy2WeekDocs true时必填
     apiUrl: 'api/filetree/createDocWithMd', // 思源笔记API的URL
     newDocTpl: `<iframe src="/widgets/listChildDocs/" data-subtype="widget" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>`,
     subDocNames: ['第一篇', '第二篇', '第三篇'],
     subDocTpl: `## 文章\n## 生词\n## 笔记\n`,
-    subDocTags: '英文,学习',
+    subDocTags: 'english,study',
     openType: 'newWindow', // newTab 新标签打开 newWindow 新窗口打开 为空不打开
     newWindow: {width: 490, height: 568, pin: true}, // 新窗口设置，宽高为0将使用思源默认宽高，pin是否置顶
-    btnPos: 'dock', // 按钮位置 toolbar 工具栏 dock 左侧边栏 
+    btnPos: 'dock', // 按钮位置 toolbar 工具栏 dock 左侧边栏
+    enableCopy2WeekDocs: true, // 是否开启复制两周内文档功能
+    copyStartKeyword: "生词",
+    copyEndKeyword: "笔记",
+    // 复制内容模板 {{__content__}} 是动态输入内容模板
+    copyTpl: `
+ {{__content__}}
+    `,
   };
 
   if(isMobile()) return; // 不支持手机版
@@ -139,8 +147,58 @@
       const dockItems = document.querySelector('#dockLeft .dock__items');
       dockItems.querySelector('.dock__item--pin').insertAdjacentHTML('beforebegin', html);
       createSubDocBtn = dockItems.querySelector('[data-type="barCreateSubDoc_simulate"]');
+      if(config.enableCopy2WeekDocs) {
+        const html = `<span data-height="null" data-width="273" data-type="barCreateSubDoc_copy2WeekDocs" data-index="0" data-hotkey="" data-hotkeylangid="" data-title="" class="dock__item ariaLabel" aria-label="复制两周内的文档">
+                        <svg><use xlink:href="#iconCopy"></use></svg>
+                      </span>
+        `;
+        dockItems.querySelector('.dock__item--pin').insertAdjacentHTML('beforebegin', html);
+        copyBtn = dockItems.querySelector('[data-type="barCreateSubDoc_copy2WeekDocs"]');
+        copyBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          // 获取文档PATH
+          const path = (await requestApi('/api/filetree/getPathByID', {id:config?.parentId}))?.data?.path;
+          if(!path) return;
+          // 获取笔记列表
+          let docs = await requestApi('/api/filetree/listDocTree', {
+              "notebook": config.notebookId,
+              "path": path.replace('.sy', '')
+          });
+          docs = docs.data.tree.slice(0, 14);
+          const docIds = [];
+          for(const doc of docs) {
+            for(const d of doc?.children) {
+              if(d.id) docIds.push(d.id);
+            }
+          }
+          const markdowns = [];
+          all:for(const id of docIds) {
+            const doc = await requestApi('/api/block/getChildBlocks', {id});
+            if(doc && doc?.data?.length > 0) {
+              let start = false;
+              for(const block of doc?.data) {
+                if(block.content === config.copyEndKeyword) break;
+                if(start) {
+                  markdowns.push(block.markdown);
+                  continue;
+                }
+                if(block.content === config.copyStartKeyword) {
+                  start = true;
+                  continue;
+                }
+              }
+            }
+          }
+          const text = markdowns.join('\n');
+          copyToClipboard(text);
+          showMessage('复制成功');
+        });
+      }
     }
-    createSubDocBtn.addEventListener("click", async function (e) {
+    createSubDocBtn?.addEventListener("click", async function (e) {
+      e.preventDefault();
       e.stopPropagation();
     
       // 禁用按钮，防止重复点击
@@ -210,6 +268,19 @@
         createSubDocBtn.style.pointerEvents = "auto";
       }
     }, false);
+  }
+
+  function copyToClipboard(contents) {
+    if ('clipboard' in navigator) {
+        navigator.clipboard.writeText(contents);
+        return;
+    }
+	const textarea = document.createElement('textarea');
+	textarea.value = contents;
+	document.body.appendChild(textarea);
+	textarea.select();
+	document.execCommand('copy');
+	document.body.removeChild(textarea);
   }
 
   async function requestApi(url, data, method = 'POST') {
