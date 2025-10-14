@@ -16,10 +16,11 @@
     newWindow: {width: 490, height: 568, pin: true}, // 新窗口设置，宽高为0将使用思源默认宽高，pin是否置顶
     btnPos: 'dock', // 按钮位置 toolbar 工具栏 dock 左侧边栏
     enableCopy2WeekDocs: true, // 是否开启复制两周内文档功能
+	mergeLn: true, // 生词是否合并换行为空格
 	learnBeginDate: '2025-10-13', // 开始学习时间
     knownVocabulary: 2000, // 已掌握词汇量
-    copyStartKeyword: "生词",
-    copyEndKeyword: "总结",
+	wordsBetween: ["生词", "总结"],
+	articleBetween: ["文章", "生词"],
     // 复制内容模板 {{__content1__}} {{__content2__}} 是动态输入内容模板
     copyTpl: `
 ## 说明
@@ -31,31 +32,32 @@
 2. 根据我目前的水平生成3篇不同题材的分级阅读文章，题材不限，随机生成。
 
 ## 生成文章要求
-1. 文章中尽量根据遗忘曲线适当重复我之前学习过的单词(但也不要重复太多，不然文章都相似了，3篇文章中可分开重复，总之根据文章需要决定是否重复)。
+1. 文章包含标题
 2. 遵循“i+1”可理解输入的方式生成文章
 3. 如果可能，尽量配一些适合的插图
 4. 按照 News in Levels 2-3 的标准生成文章
 5. 根据用户目前水平决定是否出现**学术高频词**（如 AWL 词汇等）
-6. 标注 困难，不熟的词汇根据需要可适当给予重复
-7. 按照高频词汇或星级词汇的标准生成文章
-8. 文章长度在300词左右，可根据用户水平和需要决定
-9. 文末列出生词表及短语词组等并说明其用法
+6. 按照高频词汇或星级词汇的标准生成文章
+7. 文章长度在300词左右，可根据用户水平和需要决定
+8. 文末列出生词表及短语词组等并说明其用法（生词表仅列出本次新增的新词即可）
+9. 【注意】因学习需要，词汇可以重复，但不要主题类似，要保证个性化复习与内容多样性之间的平衡，新主题、新语境中巩固旧词，又拓展新知。
+10. 根据需要增加新词量，但注意新词量不要太少，3篇至少要10个左右
 
 ## 数据参考
 
 ### 最近2周学习过的单词
 {{__content1__}}
 
- ### 所有学习过的单词
- {{__content2__}}
+### 所有学习过的单词
+{{__content2__}}
 
+### 最近学习过的文章
+{{__content3__}}
 ---
 
 下面请开始生成学习内容：
     `,
   };
-
-  if(isMobile()) return; // 不支持手机版
 
   // 当新窗口时置顶窗口
   if(config.newWindow.pin && localStorage.getItem('__custom_new_win') === 'true'){
@@ -137,6 +139,7 @@
   
     if (result.code === 0) {
       console.log('子文档创建成功:', result.data);
+	if(openType && isMobile()) showMessage('创建成功');
       const newDocId = result.data;  // 获取新创建文档的 ID
       if(openType === 'newTab') openDocumentInEditor(newDocId);  // 调用编辑窗口
       if(openType === 'newWindow') openDocumentInNewWindow(newDocId);
@@ -181,13 +184,14 @@
 		}
 	  }
 	  // 拼接生词文本
-	  const newWords = [], allWords = [], usedPids = [];
+	  let newWords = [], allWords = [], articles = [], usedPids = [], usedIds = [];
 	  all:for(const id of docIds) {
 		const docBlocks = await requestApi('/api/block/getChildBlocks', {id});
 		if(docBlocks && docBlocks?.data?.length > 0) {
+		  // 获取生词
 		  let start = false;
 		  for(const block of docBlocks?.data) {
-			if(block.content === config.copyEndKeyword) break;
+			if(block.content === config.wordsBetween[1]) break;
 			if(start) {
 			  if(twoWeekIds.includes(pIds[id])) {
 				  // 输出日期标题
@@ -200,23 +204,51 @@
 					  }
 				  }
 				  // 输出块
-				  newWords.push(block.markdown);
+				  newWords.push(config.mergeLn?block.markdown.trim():block.markdown);
 			  }
-			  allWords.push(block.markdown);
+			  allWords.push(config.mergeLn?block.markdown.trim():block.markdown);
 			  continue;
 			}
-			if(block.content === config.copyStartKeyword) {
+			if(block.content === config.wordsBetween[0]) {
+			  start = true;
+			  continue;
+			}
+		  }
+		  // 获取文章
+		  start = false;
+		  let count = 0;
+		  for(const block of docBlocks?.data) {
+			count++;
+			if(count > 14 || block.content === config.articleBetween[1]) break;
+			if(start) {
+			  if(!usedIds.includes(id)) {
+				  const docInfo = await requestApi('/api/block/getDocInfo', {id});
+				  if(docInfo?.data?.name) {
+					  articles.push('\n#### ' + docInfo?.data?.name);
+					  usedIds.push(id);
+				  }
+			  }
+			  articles.push(block.markdown);
+			  continue;
+			}
+			if(block.content === config.articleBetween[0]) {
 			  start = true;
 			  continue;
 			}
 		  }
 		}
 	  }
+	  if(config.mergeLn) newWords = newWords.map(w => w.replace(/\n(?=.*\S)/g, ' / '));
+	  if(config.mergeLn) allWords = allWords.map(w => w.replace(/\n(?=.*\S)/g, ' / '));
+	  // const content1 = newWords.join(!config.mergeLn?'\n':' / ');
+	  // const content2 = allWords.join(!config.mergeLn?'\n':' / ');
 	  const content1 = newWords.join('\n');
 	  const content2 = allWords.join('\n');
+	  const content3 = articles.join('\n');
 	  const text = config.copyTpl.trim()
 		  .replace('{{__content1__}}', content1)
 		  .replace('{{__content2__}}', content2)
+		  .replace('{{__content3__}}', content3)
 		  .replace('{{__knowWordsNum__}}', config.knownVocabulary)
 		  .replace('{{__learnDays__}}', daysFromToday(config.learnBeginDate));
 	  copyToClipboard(text);
@@ -226,43 +258,62 @@
   // 插入按钮，点击时创建子文档
   function addCreateSubDocButton() {
     let createSubDocBtn, copyBtn;
-    if(config.btnPos === 'toolbar') {
-      let barSync = document.getElementById("barSync");
-      barSync.insertAdjacentHTML(
-        "afterEnd",
-        '<div id="barCreateSubDoc_simulate" class="toolbar__item ariaLabel" aria-label="创建子文档" ></div>'
-      );
-      createSubDocBtn = document.getElementById("barCreateSubDoc_simulate");
-      createSubDocBtn.innerHTML = `<svg><use xlink:href="#iconCalendar"></use></svg>`;
-	  if(config.enableCopy2WeekDocs) {
-		  barSync.insertAdjacentHTML(
+	if(isMobile()) {
+		// 手机版
+		const newNote = document.querySelector('#menu #menuNewNotebook');
+		if(config.enableCopy2WeekDocs) {
+			const html = `<div id="copyWordsBtn" class="b3-menu__item">
+		                <svg class="b3-menu__icon"><use xlink:href="#iconCopy"></use></svg><span class="b3-menu__label">复制生词</span>
+		              </div>`;
+			newNote.insertAdjacentHTML('afterend', html);
+			copyBtn = newNote.parentElement.querySelector('#copyWordsBtn');
+		}
+		const html = `<div id="newLearnsBtn" class="b3-menu__item">
+		                <svg class="b3-menu__icon"><use xlink:href="#iconCalendar"></use></svg><span class="b3-menu__label">新建学习</span>
+		              </div>`;
+		newNote.insertAdjacentHTML('afterend', html);
+		createSubDocBtn = newNote.parentElement.querySelector('#newLearnsBtn');
+	} else {
+		// pc
+		if(config.btnPos === 'toolbar') {
+	      let barSync = document.getElementById("barSync");
+	      barSync.insertAdjacentHTML(
 	        "afterEnd",
-	        '<div id="barCreateSubDoc_copy2WeekDocs" class="toolbar__item ariaLabel" aria-label="复制两周内的文档" ></div>'
+	        '<div id="barCreateSubDoc_simulate" class="toolbar__item ariaLabel" aria-label="创建子文档" ></div>'
 	      );
-		  copyBtn = document.getElementById("barCreateSubDoc_copy2WeekDocs");
-          copyBtn.innerHTML = `<svg><use xlink:href="#iconCalendar"></use></svg>`;
-		  
-	  }
-    } else {
-      const html = `<span data-height="null" data-width="273" data-type="barCreateSubDoc_simulate" data-index="0" data-hotkey="" data-hotkeylangid="" data-title="" class="dock__item ariaLabel" aria-label="创建带日期的子文档">
-                        <svg><use xlink:href="#iconCalendar"></use></svg>
-                    </span>
-      `;
-      const dockItems = document.querySelector('#dockLeft .dock__items');
-      dockItems.querySelector('.dock__item--pin').insertAdjacentHTML('beforebegin', html);
-      createSubDocBtn = dockItems.querySelector('[data-type="barCreateSubDoc_simulate"]');
-      if(config.enableCopy2WeekDocs) {
-        const html = `<span data-height="null" data-width="273" data-type="barCreateSubDoc_copy2WeekDocs" data-index="0" data-hotkey="" data-hotkeylangid="" data-title="" class="dock__item ariaLabel" aria-label="复制两周内的文档">
-                        <svg><use xlink:href="#iconCopy"></use></svg>
-                      </span>
-        `;
-        dockItems.querySelector('.dock__item--pin').insertAdjacentHTML('beforebegin', html);
-        copyBtn = dockItems.querySelector('[data-type="barCreateSubDoc_copy2WeekDocs"]');
-      }
-    }
+	      createSubDocBtn = document.getElementById("barCreateSubDoc_simulate");
+	      createSubDocBtn.innerHTML = `<svg><use xlink:href="#iconCalendar"></use></svg>`;
+		  if(config.enableCopy2WeekDocs) {
+			  barSync.insertAdjacentHTML(
+		        "afterEnd",
+		        '<div id="barCreateSubDoc_copy2WeekDocs" class="toolbar__item ariaLabel" aria-label="复制两周内的文档" ></div>'
+		      );
+			  copyBtn = document.getElementById("barCreateSubDoc_copy2WeekDocs");
+	          copyBtn.innerHTML = `<svg><use xlink:href="#iconCalendar"></use></svg>`;
+			  
+		  }
+	    } else {
+	      const html = `<span data-height="null" data-width="273" data-type="barCreateSubDoc_simulate" data-index="0" data-hotkey="" data-hotkeylangid="" data-title="" class="dock__item ariaLabel" aria-label="创建带日期的子文档">
+	                        <svg><use xlink:href="#iconCalendar"></use></svg>
+	                    </span>
+	      `;
+	      const dockItems = document.querySelector('#dockLeft .dock__items');
+	      dockItems.querySelector('.dock__item--pin').insertAdjacentHTML('beforebegin', html);
+	      createSubDocBtn = dockItems.querySelector('[data-type="barCreateSubDoc_simulate"]');
+	      if(config.enableCopy2WeekDocs) {
+	        const html = `<span data-height="null" data-width="273" data-type="barCreateSubDoc_copy2WeekDocs" data-index="0" data-hotkey="" data-hotkeylangid="" data-title="" class="dock__item ariaLabel" aria-label="复制两周内的文档">
+	                        <svg><use xlink:href="#iconCopy"></use></svg>
+	                      </span>
+	        `;
+	        dockItems.querySelector('.dock__item--pin').insertAdjacentHTML('beforebegin', html);
+	        copyBtn = dockItems.querySelector('[data-type="barCreateSubDoc_copy2WeekDocs"]');
+	      }
+	    }
+	}
 	copyBtn.addEventListener('click', async (e) => {
 	  e.preventDefault();
 	  e.stopPropagation();
+		if(isMobile()) closePanel();
 	  copyAiPrompt();
     });
     createSubDocBtn?.addEventListener("click", async function (e) {
@@ -280,6 +331,10 @@
         const ids = await requestApi('/api/filetree/getIDsByHPath', {notebook:config.notebookId, path:parentPath});
         if(ids?.data?.length > 0) {
           if(config.openType) {
+			if(isMobile()) {
+				showMessage('已创建');
+				return;
+			}
             const docId = ids?.data[0];
             if(config.openType === 'newTab') openDocumentInEditor(docId);  // 调用编辑窗口
             if(config.openType === 'newWindow') openDocumentInNewWindow(docId);
@@ -432,4 +487,31 @@
 	
 	  return diffDays;
   }
+  function isMobile() {
+    return !!document.getElementById("sidebar");
+  }
+  function whenElementExist(selector, node = document, timeout = 5000) {
+    return new Promise((resolve, reject) => {
+        const start = Date.now();
+        function check() {
+            let el;
+            try {
+                el = typeof selector === 'function' ? selector() : node.querySelector(selector);
+            } catch (err) { return resolve(null); }
+            if (el) resolve(el);
+            else if (Date.now() - start >= timeout) resolve(null);
+            else requestAnimationFrame(check);
+        }
+        check();
+    });
+  }
+	function closePanel() {
+		document.getElementById("menu").style.transform = "";
+		document.getElementById("sidebar").style.transform = "";
+		document.getElementById("model").style.transform = "";
+		const maskElement = document.querySelector(".side-mask");
+		maskElement.classList.add("fn__none");
+		maskElement.style.opacity = "";
+		window.siyuan.menus.menu.remove();
+	}
 })();
