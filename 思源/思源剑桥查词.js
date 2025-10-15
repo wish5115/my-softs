@@ -156,6 +156,7 @@
           border-top: 1px solid #eee;
           background: #fafafa;
           color: #888;
+          line-height: 20px;
         }
     
         .cambridge-popup .footer a {
