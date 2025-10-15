@@ -355,7 +355,7 @@
   const placeHoder = document.querySelector('#cambridgePopup .popup-body').outerHTML;
 
   const baseUrl = 'https://dictionary.cambridge.org';
-  const showAd = false;
+  const showAd = true;
 
   document.addEventListener('selectionchange', (event) => {
     const selection = window.getSelection().toString().trim();
