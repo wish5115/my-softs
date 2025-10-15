@@ -443,7 +443,7 @@
           const ads = [
             `
               <strong>🎁 七牛AI平台大放送！</strong><br>
-              体验立赠送 <b>1300万Token</b>，邀请10人即享 <b>1亿+Token</b>！<br>
+              体验即送 <b>1300万Token</b>，邀请10人即享 <b>1亿+Token</b>！<br>
               <a data-href="https://s.qiniu.com/FfQvia">👉 点击立即领取 ←</a>
             `,
             `
