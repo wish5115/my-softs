@@ -196,6 +196,12 @@
           text-decoration: none;
         }
 
+        .cambridge-popup .close-btn::before {
+          content: "×";
+          transform: translateY(-1.6px);
+          display: block;
+        }
+
         /*************************** 这里添加黑色主题样式 *************************/
         .cambridge-popup.cb-dark {
           background: #1e1e1e;
@@ -300,7 +306,7 @@
       <div id="cambridgePopup" class="cambridge-popup">
         <div class="popup-header" id="dragHandle">
           <h2 class="popup-title"><img style="vertical-align:middle;" src="https://dictionary.cambridge.org/zhs/external/images/favicon.ico?version=6.0.57" /> 剑桥词典</h2>
-          <button class="close-btn">×</button>
+          <button class="close-btn"></button>
         </div>
         <div class="popup-body">
           <!-- 数据占位 -->
@@ -343,10 +349,10 @@
         </div>
         <div class="footer">
           <a class="cb-more" target="_blank"
-            href="https://dictionary.cambridge.org/zhs/%E8%AF%8D%E5%85%B8/%E8%8B%B1%E8%AF%AD-%E6%B1%89%E8%AF%AD-%E7%AE%80%E4%BD%93/example">更多释义</a>
+            href="https://dictionary.cambridge.org/zhs/%E8%AF%8D%E5%85%B8/%E8%8B%B1%E8%AF%AD-%E6%B1%89%E8%AF%AD-%E7%AE%80%E4%BD%93/">更多释义</a>
           |
           <a class="cb-ai" target="_blank"
-            href="https://chat.baidu.com/search?word=你是一个查词助手，帮我查询下example，并注明音标，发音，常见释义，例句等，如果可能可适当配些插图">问AI</a>
+            href="https://chat.baidu.com/search?word=">问AI</a>
           <span class="copyright">打赏作者</span>
         </div>
       </div>
