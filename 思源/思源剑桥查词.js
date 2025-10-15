@@ -444,15 +444,15 @@
             `
               <strong>🎁 七牛AI平台大放送！</strong><br>
               体验立赠送 <b>1300万Token</b>，邀请10人即享 <b>1亿+Token</b>！<br>
-              <a href="https://s.qiniu.com/FfQvia" target="_blank">👉 点击立即领取 ←</a>
+              <a data-href="https://s.qiniu.com/FfQvia">👉 点击立即领取 ←</a>
             `,
             `
               推荐免费AI平台：
-              <a href="https://cloud.siliconflow.cn/i/8kP68u0B" target="_blank">硅基流动</a>
+              <a data-href="https://cloud.siliconflow.cn/i/8kP68u0B">硅基流动</a>
             `,
             `
               推荐国外AI平台：
-              <a href="https://api.gpt.ge/register?aff=GlNE" target="_blank">V-API</a>&nbsp;
+              <a data-href="https://api.gpt.ge/register?aff=GlNE">V-API</a>&nbsp;
               <span>模型多、稳定快速，价格比官方更划算。</span>
             `
           ];
@@ -462,7 +462,7 @@
           adEl.innerHTML = `<div>${randomAd}</div>`;
           body.appendChild(adEl);
           body.querySelector('.cambridge-ad').addEventListener('click', function() {
-            window.open(this.querySelector('a[href]').href);
+            window.open(this.querySelector('a[data-href]')?.dataset?.href);
           });
         }
 
