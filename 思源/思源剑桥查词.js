@@ -1,5 +1,5 @@
 // 思源剑桥查词
-// see 
+// see https://ld246.com/article/1760544378300
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
 (() => {
@@ -780,6 +780,6 @@
   });
   // 打赏作者
   popup.querySelector('.copyright').addEventListener('click', () => {
-    window.open('');
+    window.open('https://ld246.com/article/1760544378300#%E6%89%93%E8%B5%8F%E4%BD%9C%E8%80%85');
   });
 })();
