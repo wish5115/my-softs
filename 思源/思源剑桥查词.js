@@ -351,7 +351,7 @@
         <div class="footer">
           <a class="cb-more" target="_blank"
             href="https://dictionary.cambridge.org/zhs/%E8%AF%8D%E5%85%B8/%E8%8B%B1%E8%AF%AD-%E6%B1%89%E8%AF%AD-%E7%AE%80%E4%BD%93/">更多释义</a>
-          |
+          &nbsp;&nbsp;|&nbsp;&nbsp;
           <a class="cb-ai" target="_blank"
             href="https://chat.baidu.com/search?word=">问AI</a>
           <span class="copyright">打赏作者</span>
@@ -443,7 +443,7 @@
           const ads = [
             `
               <strong>🎁 七牛AI平台大放送！</strong><br>
-              体验即赠送 <b>1000万Token</b>，邀请10人即享 <b>1亿+Token</b>！<br>
+              体验立赠送 <b>1300万Token</b>，邀请10人即享 <b>1亿+Token</b>！<br>
               <a href="https://s.qiniu.com/FfQvia" target="_blank">👉 点击立即领取 ←</a>
             `,
             `
