@@ -2,7 +2,27 @@
 // see https://ld246.com/article/1760544378300
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
+// version 0.0.2
+// 0.0.2 增加备用词典，默认是沙拉查词，也可通过配置修改为其他查词
 (() => {
+  // 开启备用词典 true 开启 false不开启
+  const enableAnotherDict = true;
+
+  // 备用词典信息
+  const anotherDict = {
+    // 名字，通常用于提示或显示
+    name: '沙拉查词',
+    // 图标，默认沙拉查词
+    icon: 'https://saladict.crimx.com/icons/favicon-16x16.png',
+    // 打开命令，默认沙拉查词
+    command: `utools://沙拉查词/沙拉查词?{{keyword}}`,
+    // 显示位置 toolbar 工具栏; dictpage 剑桥词典内; both 两者都有; 默认both
+    position: 'both',
+  };
+
+  // AI查词提示词
+  const aiPrompt = `你是一个查词助手，帮我查询{{keyword}}，并注明音标，发音，常见释义，例句等，如果可能可适当配些插图或视频。`;
+  
   if(!!document.getElementById("sidebar")) return; // 不支持手机版
   const html = `
       <style>
@@ -203,6 +223,21 @@
           display: block;
         }
 
+        .another-dict-icon {
+          float: right;
+          vertical-align: middle;
+          margin-top: 6px;
+          cursor: pointer;
+        }
+
+        .another-dict-result {
+          font-size: 16px;
+          font-weight: normal;
+        }
+        #anotherDictLink {
+          cursor: pointer;
+        }
+
         /*************************** 这里添加黑色主题样式 *************************/
         .cambridge-popup.cb-dark {
           background: #1e1e1e;
@@ -393,7 +428,15 @@
       const selection = window.getSelection().toString().trim();
       translate({ text: selection, detectFrom: "en" }, (result) => {
         if (result.error) {
-          popup.querySelector('.popup-body').innerHTML = '<div class="word">未找到结果</div>';
+          let anotherDictStr = '';
+          if(enableAnotherDict) {
+            anotherDictStr = `<span class="another-dict-result">试试 <a id="anotherDictLink">${anotherDict.name}</a><span>`;
+          }
+          const popupBody = popup.querySelector('.popup-body');
+          popupBody.innerHTML = `<div class="word">未找到结果！${anotherDictStr}</div>`;
+          popupBody.querySelector('#anotherDictLink').addEventListener('click', (e) => {
+            window.open(anotherDict.command.replace('{{keyword}}', selection));
+          });
           return;
         }
         const toDict = result.result.toDict;
@@ -406,6 +449,17 @@
         const wordEl = document.createElement('div');
         wordEl.className = 'word';
         wordEl.textContent = toDict.word;
+        // 创建备用词典图标
+        if(enableAnotherDict && (anotherDict.position === 'dictpage' || anotherDict.position === 'both')) {
+          const anotherDictIcon = document.createElement('img');
+          anotherDictIcon.src = anotherDict.icon;
+          anotherDictIcon.title = anotherDict.name;
+          anotherDictIcon.className = 'another-dict-icon';
+          wordEl.appendChild(anotherDictIcon);
+          anotherDictIcon.addEventListener('click', (e) => {
+            window.open(anotherDict.command.replace('{{keyword}}', toDict.word));
+          });
+        }
         body.appendChild(wordEl);
 
         // 音标
@@ -500,12 +554,23 @@
         }
         const ai = popup.querySelector('.footer a.cb-ai');
         if (ai) {
-          const encodedWord = encodeURIComponent(`你是一个查词助手，帮我查询${toDict.word}，并注明音标，发音，常见释义，例句等，如果可能可适当配些插图或视频。`);
+          const encodedWord = encodeURIComponent(aiPrompt.replace('{{keyword}}', toDict.word));
           ai.href = `https://chat.baidu.com/search?word=${encodedWord}`;
         }
       });
     };
     assistantSelectBtn.addEventListener('click', clickHandler);
+
+    // 创建备用词典按钮
+    if(enableAnotherDict && (anotherDict.position === 'toolbar' || anotherDict.position === 'both')) {
+      const button = `<button class="protyle-toolbar__item b3-tooltips b3-tooltips__ne" style="font-size:14px;" data-type="anotherDict" aria-label="${anotherDict.name}"><img style="vertical-align:middle;" src="${anotherDict.icon}" /></button>`;
+      toolbar.insertAdjacentHTML('afterbegin', button);
+      btn = toolbar.querySelector('button[data-type="anotherDict"]');
+      btn.addEventListener('click', (e) => {
+        const selection = window.getSelection().toString().trim();
+        window.open(anotherDict.command.replace('{{keyword}}', selection));
+      });
+    }
   });
 
   /**
