@@ -2,9 +2,19 @@
 // see https://ld246.com/article/1760544378300
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
-// version 0.0.2
+// version 0.0.3
+// 0.0.3 新增自动朗读和钉住功能
 // 0.0.2 增加备用词典，默认是沙拉查词，也可通过配置修改为其他查词
 (() => {
+  // 是发查词完成自动朗读 true 自动朗读 false 不自动朗读
+  const isAutoReadOnLoaded = false;
+
+  // 自动朗读哪种发音 us 美式发音 uk 英式发音
+  const autoReadType = 'us';
+
+  // 是否开启钉住功能，钉住后窗口失去焦不会关闭 true 开启 false 不开启
+  const enablePin = true;
+  
   // 开启备用词典 true 开启 false不开启
   const enableAnotherDict = true;
 
@@ -63,7 +73,8 @@
         }
     
         /* 关闭按钮 */
-        .cambridge-popup .close-btn {
+        .cambridge-popup .close-btn,
+        .cambridge-popup .pin-btn{
           position: absolute;
           top: 8px;
           right: 8px;
@@ -81,8 +92,12 @@
           font-size: 20px;
           opacity: 0.7;
         }
+        .cambridge-popup .pin-btn{
+            right: 40px;
+        }
     
-        .cambridge-popup .close-btn:hover {
+        .cambridge-popup .close-btn:hover,
+        .cambridge-popup .pin-btn:hover{
           background: #dee2e6;
           opacity: 1;
         }
@@ -238,6 +253,14 @@
           cursor: pointer;
         }
 
+        .pin-btn svg {
+          height: 13.5px;
+          width: 13.5px;
+          fill: currentColor;
+          transform: scale(1.18);
+          margin-top: 2px;
+        }
+
         /*************************** 这里添加黑色主题样式 *************************/
         .cambridge-popup.cb-dark {
           background: #1e1e1e;
@@ -254,12 +277,14 @@
           color: #f0f0f0;
         }
 
-        .cambridge-popup.cb-dark .close-btn {
+        .cambridge-popup.cb-dark .close-btn,
+        .cambridge-popup.cb-dark .pin-btn{
           background: #3c3c3c;
           color: #aaa;
         }
 
-        .cambridge-popup.cb-dark .close-btn:hover {
+        .cambridge-popup.cb-dark .close-btn:hover,
+        .cambridge-popup.cb-dark .pin-btn:hover{
           background: #555;
           color: #fff;
         }
@@ -342,6 +367,9 @@
       <div id="cambridgePopup" class="cambridge-popup">
         <div class="popup-header" id="dragHandle">
           <h2 class="popup-title"><img style="vertical-align:middle;" src="https://dictionary.cambridge.org/zhs/external/images/favicon.ico?version=6.0.57" /> 剑桥词典</h2>
+          <button class="pin-btn">
+            <svg><use xlink:href="#iconPin"></use></svg>
+          </button>
           <button class="close-btn"></button>
         </div>
         <div class="popup-body">
@@ -481,6 +509,10 @@
                         </button>
                     `;
           phoneticsEl.appendChild(item);
+          // 自动朗读
+          if(isAutoReadOnLoaded && autoReadType === p.region) {
+            playAudio(baseUrl + p.audio);
+          }
         });
         body.appendChild(phoneticsEl);
 
@@ -789,9 +821,11 @@
     audio.play();
   }
 
-  function closePopup() {
-    popup.style.display = 'none';
-    //popupBody.innerHTML = placeHoder;
+  function closePopup(isPined = false) {
+    if(!isPined) {
+      popup.style.display = 'none';
+      //popupBody.innerHTML = placeHoder;
+    }
   }
 
   // === 拖动逻辑：仅限标题栏 ===
@@ -829,7 +863,7 @@
   // 点击空白关闭
   document.addEventListener('click', (e) => {
     if (!popup.contains(e.target)) {
-      closePopup();
+      closePopup(isPined);
     }
   });
 
@@ -849,6 +883,20 @@
       if (e.key === 'Escape' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
         if(popup?.style?.display !== 'none') closePopup();
       }
+  });
+  // 钉住取消钉住
+  let isPined = false;
+  popup.querySelector('.pin-btn').addEventListener('click', function(e) {
+    const use = this.querySelector('svg use');
+    if(use.getAttribute('xlink:href') === '#iconPin') {
+      // 钉住
+      isPined = true;
+      use.setAttribute('xlink:href', '#iconUnpin');
+    } else {
+      // 取消钉住
+      isPined = false;
+      use.setAttribute('xlink:href', '#iconPin');
+    }
   });
   // 打赏作者
   popup.querySelector('.copyright').addEventListener('click', () => {
