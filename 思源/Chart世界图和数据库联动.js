@@ -1,4 +1,4 @@
-// chart世界图和数据库联动
+// Chart世界图和数据库联动
 // see https://ld246.com/article/1760670464780
 (async () => {
     // 加载世界地图
