@@ -65,12 +65,34 @@
       // 打开命令，默认沙拉查词
       command: aiSearchUrl,
       position: 'notfound',
-    }
+    },
+    /*{
+      // 名字，通常用于提示或显示
+      name: 'Bing',
+      // 图标16x16大小，默认沙拉查词
+      icon: 'https://cn.bing.com/favicon.ico',
+      // 打开命令，默认沙拉查词
+      command: 'https://cn.bing.com/search?q={{keyword}}',
+      position: 'toolbar',
+    },
+    {
+      // 名字，通常用于提示或显示
+      name: '百度',
+      // 图标16x16大小，默认沙拉查词
+      icon: 'https://www.baidu.com/favicon.ico',
+      // 打开命令，默认沙拉查词
+      command: 'https://www.baidu.com/s?wd={{keyword}}',
+      position: 'toolbar',
+    }*/
   ];
 
   if(!!document.getElementById("sidebar")) return; // 不支持手机版
   const html = `
       <style>
+        button.protyle-toolbar__item img {
+            max-width: 16px;
+            max-height: 16px;
+        }
         .cambridge-popup {
           position: fixed;
           top: 100px;
