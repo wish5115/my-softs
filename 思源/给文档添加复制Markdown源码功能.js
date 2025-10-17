@@ -8,26 +8,27 @@
                 if(!copyBtn) return;
                 // 生成按钮
                 const copyMarkdownButtonHTML = `
-                    <button data-id="copyMarkdown" class="b3-menu__item b3-menu__item--current">
+                    <button data-id="copyMarkdown2" class="b3-menu__item b3-menu__item--current">
                         <svg class="b3-menu__icon" style="">
                             <use xlink:href="#iconCopy"></use>
                         </svg>
                         <span class="b3-menu__label">复制Markdown源码</span>
                     </button>`;
                 copyBtn.insertAdjacentHTML('afterend', copyMarkdownButtonHTML);
-                copyMarkdownBtn = copyBtn.parentElement.querySelector('button[data-id="copyMarkdown"]');
+                copyMarkdownBtn = copyBtn.parentElement.querySelector('button[data-id="copyMarkdown2"]');
                 // 复制Markdown源码
                 const protyle = event.target.closest('.protyle');
                 const docId = protyle?.querySelector('.protyle-title')?.dataset?.nodeId;
                 if(!docId) return;
-                copyMarkdownBtn.onclick = async () => {
+                copyMarkdownBtn.addEventListener('click', async () => {
+                    window.siyuan.menus.menu.remove();
                     const response = await requestApi("/api/lute/copyStdMarkdown", {
                        id: docId,
                     });
                     writeText(response.data);
                     showMessage('已复制到剪切板');
                     document.body.click();
-                };
+                });
             });
         }
     });
