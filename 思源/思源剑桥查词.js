@@ -90,8 +90,8 @@
   const html = `
       <style>
         button.protyle-toolbar__item img {
-            max-width: 16px;
-            max-height: 16px;
+            max-width: 14px;
+            max-height: 14px;
         }
         .cambridge-popup {
           position: fixed;
