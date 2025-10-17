@@ -2,7 +2,8 @@
 // see https://ld246.com/article/1760544378300
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
-// version 0.0.5.1
+// version 0.0.6
+// 0.0.6 改进第三方词典配置，可以自由搭配显示位置
 // 0.0.5.1 增加在未查到时也可以自定义第三方词典
 // 0.0.5 把备用词典和第三方词典整合为一个，统一叫第三方词典，统一配置
 // 0.0.4 增加更多词典支持，仅限在文本选择工具栏显示，默认不开启（已废弃）
@@ -21,7 +22,7 @@
   // AI 搜索url
   const aiSearchUrl = 'https://chat.baidu.com/search?word={{keyword}}';
   // AI查词提示词
-  const aiPrompt = `你是一个查词助手，帮我查询{{keyword}}，并注明音标，发音，常见释义，例句等，如果可能可适当配些插图或视频。`;
+  const aiPrompt = `你是一个查词助手，帮我查询“{{keyword}}”，并注明音标，发音，常见释义，例句等，如果可能可适当配些插图或视频。`;
 
   // 是否开启更多词典 true 开启 false 不开启
   const enableTheThirdDicts = true;
@@ -35,7 +36,7 @@
       icon: 'https://saladict.crimx.com/icons/favicon-16x16.png',
       // 打开命令，默认沙拉查词
       command: `utools://沙拉查词/沙拉查词?{{keyword}}`,
-      // 显示位置 toolbar 工具栏; dictpage 剑桥词典内; notfound 查不到时; all 都有; 默认all
+      // 显示位置 toolbar 工具栏; dictpage 剑桥词典内; notfound 查不到时; all 所有位置; 也可以任意组合，用逗号隔开即可; 默认all
       position: 'all',
     },
     {
@@ -45,7 +46,16 @@
       icon: 'https://b3logfile.com/file/2025/10/1760663431439TYe0SV_2-ujPYk4O.png?imageView2/2/interlace/1/format/webp',
       // 打开命令，默认沙拉查词
       command: `utools://中英词典/中英词典?{{keyword}}`,
-      position: 'all',
+      position: 'dictpage, notfound',
+    },
+    {
+      // 名字，通常用于提示或显示
+      name: 'AI助手',
+      // 图标16x16大小，默认沙拉查词
+      icon: 'https://b3logfile.com/file/2025/10/ailogo-rcvBWYB.png?imageView2/2/interlace/1/format/webp',
+      // 打开命令，默认沙拉查词
+      command: `utools://AI%20助手/AI%20助手?${aiPrompt}`,
+      position: 'dictpage, notfound',
     },
     {
       // 名字，通常用于提示或显示
@@ -273,6 +283,8 @@
         .third-dict-links {
           font-size: 16px;
           font-weight: normal;
+          margin-top: 10px;
+          display: inline-block;
         }
         .thirdDictLink {
           cursor: pointer;
@@ -483,8 +495,9 @@
         if (result.error) {
           let theTirdDictStr = '';
           if(enableTheThirdDicts) {
-            const theTirdDictLinks = theThirdDicts.filter(d=>['notfound', 'both', 'all'].includes(d.position)).map(d => `<a class="thirdDictLink" data-href="${encodeURIComponent(d.command)}">${d?.name}</a>`);
-            theTirdDictStr = `<span class="third-dict-links">试试 ${theTirdDictLinks.join(' 或 ')}<span>`;
+            const positionFilter = d => !d.position||d.position.split(/[,，]/).map(p=>p.trim()).filter(Boolean).some(p=>['notfound', 'both', 'all'].includes(p));
+            const theTirdDictLinks = theThirdDicts.filter(positionFilter).map(d => `<a class="thirdDictLink" data-href="${encodeURIComponent(d.command)}">${d?.name}</a>`);
+            theTirdDictStr = `<br /><span class="third-dict-links">试试 ${theTirdDictLinks.join(' 或 ')}<span>`;
           }
           const popupBody = popup.querySelector('.popup-body');
           popupBody.innerHTML = `<div class="word">未找到结果！${theTirdDictStr}</div>`;
@@ -509,7 +522,8 @@
         // 更多词典图标
         if(enableTheThirdDicts) {
           theThirdDicts.forEach((theThirdDict, index) => {
-            if(['dictpage', 'both', 'all'].includes(theThirdDict.position)) {
+            const positionFilter = pos => !pos||pos.split(/[,，]/).map(p=>p.trim()).filter(Boolean).some(p=>['dictpage', 'both', 'all'].includes(p));
+            if(positionFilter(theThirdDict.position)) {
               const theThirdDictIcon = document.createElement('img');
               theThirdDictIcon.src = theThirdDict.icon;
               theThirdDictIcon.title = theThirdDict.name;
@@ -630,7 +644,8 @@
     // 更多词典
     if(enableTheThirdDicts) {
       theThirdDicts.forEach((theThirdDict, index) => {
-        if(['toolbar', 'both', 'all'].includes(theThirdDict.position)){
+        const positionFilter = pos => !pos||pos.split(/[,，]/).map(p=>p.trim()).filter(Boolean).some(p=>['toolbar', 'both', 'all'].includes(p));
+        if(positionFilter(theThirdDict.position)){
           const button = `<button class="protyle-toolbar__item b3-tooltips b3-tooltips__ne" style="font-size:14px;" data-type="theThirdDict${index}" aria-label="${theThirdDict.name}"><img style="vertical-align:middle;" src="${theThirdDict.icon}" /></button>`;
           toolbar.insertAdjacentHTML('afterbegin', button);
           btn = toolbar.querySelector(`button[data-type="theThirdDict${index}"]`);
