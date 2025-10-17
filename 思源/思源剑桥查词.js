@@ -2,7 +2,8 @@
 // see https://ld246.com/article/1760544378300
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
-// version 0.0.5
+// version 0.0.5.1
+// 0.0.5.1 增加在未查到时也可以自定义第三方词典
 // 0.0.5 把备用词典和第三方词典整合为一个，统一叫第三方词典，统一配置
 // 0.0.4 增加更多词典支持，仅限在文本选择工具栏显示，默认不开启（已废弃）
 // 0.0.3 新增自动朗读和钉住功能，默认自动朗读
@@ -17,6 +18,8 @@
   // 是否开启钉住功能，钉住后窗口失去焦不会关闭 true 开启 false 不开启
   const enablePin = true;
 
+  // AI 搜索url
+  const aiSearchUrl = 'https://chat.baidu.com/search?word={{keyword}}';
   // AI查词提示词
   const aiPrompt = `你是一个查词助手，帮我查询{{keyword}}，并注明音标，发音，常见释义，例句等，如果可能可适当配些插图或视频。`;
 
@@ -32,8 +35,8 @@
       icon: 'https://saladict.crimx.com/icons/favicon-16x16.png',
       // 打开命令，默认沙拉查词
       command: `utools://沙拉查词/沙拉查词?{{keyword}}`,
-      // 显示位置 toolbar 工具栏; dictpage 剑桥词典内; both 两者都有; 默认both
-      position: 'both',
+      // 显示位置 toolbar 工具栏; dictpage 剑桥词典内; notfound 查不到时; all 都有; 默认all
+      position: 'all',
     },
     {
       // 名字，通常用于提示或显示
@@ -42,7 +45,16 @@
       icon: 'https://b3logfile.com/file/2025/10/1760663431439TYe0SV_2-ujPYk4O.png?imageView2/2/interlace/1/format/webp',
       // 打开命令，默认沙拉查词
       command: `utools://中英词典/中英词典?{{keyword}}`,
-      position: 'both',
+      position: 'all',
+    },
+    {
+      // 名字，通常用于提示或显示
+      name: '问AI',
+      // 图标16x16大小，默认沙拉查词
+      icon: 'https://gips0.baidu.com/it/u=1125504705,2263448440&fm=3028&app=3028&f=PNG&fmt=auto&q=75&size=f16_16',
+      // 打开命令，默认沙拉查词
+      command: aiSearchUrl,
+      position: 'notfound',
     }
   ];
 
@@ -471,7 +483,7 @@
         if (result.error) {
           let theTirdDictStr = '';
           if(enableTheThirdDicts) {
-            const theTirdDictLinks = theThirdDicts.map(d => `<a class="thirdDictLink" data-href="${encodeURIComponent(d.command)}">${d?.name}</a>`);
+            const theTirdDictLinks = theThirdDicts.filter(d=>['notfound', 'both', 'all'].includes(d.position)).map(d => `<a class="thirdDictLink" data-href="${encodeURIComponent(d.command)}">${d?.name}</a>`);
             theTirdDictStr = `<span class="third-dict-links">试试 ${theTirdDictLinks.join(' 或 ')}<span>`;
           }
           const popupBody = popup.querySelector('.popup-body');
@@ -479,7 +491,8 @@
           popupBody.querySelector('.third-dict-links').addEventListener('click', (e) => {
             const link = e.target?.closest('.thirdDictLink');
             const command = decodeURIComponent(link?.dataset?.href || '');
-            window.open(command.replace('{{keyword}}', selection));
+            if(command === aiSearchUrl) window.open(command.replace('{{keyword}}', aiPrompt.replace('{{keyword}}', selection)));
+            else window.open(command.replace('{{keyword}}', selection));
           });
           return;
         }
@@ -496,7 +509,7 @@
         // 更多词典图标
         if(enableTheThirdDicts) {
           theThirdDicts.forEach((theThirdDict, index) => {
-            if(theThirdDict.position === 'dictpage' || theThirdDict.position === 'both') {
+            if(['dictpage', 'both', 'all'].includes(theThirdDict.position)) {
               const theThirdDictIcon = document.createElement('img');
               theThirdDictIcon.src = theThirdDict.icon;
               theThirdDictIcon.title = theThirdDict.name;
@@ -608,7 +621,7 @@
         const ai = popup.querySelector('.footer a.cb-ai');
         if (ai) {
           const encodedWord = encodeURIComponent(aiPrompt.replace('{{keyword}}', toDict.word));
-          ai.href = `https://chat.baidu.com/search?word=${encodedWord}`;
+          ai.href = aiSearchUrl.replace('{{keyword}}', encodedWord);
         }
       });
     };
@@ -617,7 +630,7 @@
     // 更多词典
     if(enableTheThirdDicts) {
       theThirdDicts.forEach((theThirdDict, index) => {
-        if(theThirdDict.position === 'toolbar' || theThirdDict.position === 'both'){
+        if(['toolbar', 'both', 'all'].includes(theThirdDict.position)){
           const button = `<button class="protyle-toolbar__item b3-tooltips b3-tooltips__ne" style="font-size:14px;" data-type="theThirdDict${index}" aria-label="${theThirdDict.name}"><img style="vertical-align:middle;" src="${theThirdDict.icon}" /></button>`;
           toolbar.insertAdjacentHTML('afterbegin', button);
           btn = toolbar.querySelector(`button[data-type="theThirdDict${index}"]`);
