@@ -2,7 +2,8 @@
 // see https://ld246.com/article/1760544378300
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
-// version 0.0.6
+// version 0.0.6.6
+// 0.0.6.6 增强全球真人发音
 // 0.0.6 改进第三方词典配置，可以自由搭配显示位置
 // 0.0.5.1 增加在未查到时也可以自定义第三方词典
 // 0.0.5 把备用词典和第三方词典整合为一个，统一叫第三方词典，统一配置
@@ -186,7 +187,8 @@
           gap: 6px;
         }
     
-        .cambridge-popup .audio-btn {
+        .cambridge-popup .audio-btn,
+        .cambridge-popup .global-btn{
           background: none;
           border: none;
           color: #007AFF;
@@ -195,15 +197,25 @@
           padding: 0px 2px;
         }
     
-        .cambridge-popup .audio-btn .audio-icon {
+        .cambridge-popup .audio-btn .audio-icon,
+        .cambridge-popup .global-btn .global-icon{
           vertical-align: middle;
           cursor: pointer;
           border: none;
           fill: none;
           stroke: #555;
         }
+        .cambridge-popup .global-btn .global-icon{
+          width: 19px;
+          height: 19px;
+          stroke: none;
+          fill: #555;
+        }
         .cambridge-popup .audio-btn .audio-icon:hover{
           stroke: #000;
+        }
+        .cambridge-popup .global-btn .global-icon:hover{
+          fill: #000;
         }
     
         .cambridge-popup .part-item {
@@ -360,12 +372,16 @@
           color: #cccccc;
         }
 
-        .cambridge-popup.cb-dark .audio-btn {
+        .cambridge-popup.cb-dark .audio-btn,
+        .cambridge-popup.cb-dark .global-btn{
           color: #4da6ff;
         }
 
         .cambridge-popup.cb-dark .audio-icon {
           stroke: #cccccc;
+        }
+        .cambridge-popup.cb-dark .global-icon {
+          fill: #cccccc;
         }
 
         .cambridge-popup.cb-dark .part-item {
@@ -412,6 +428,9 @@
         .cambridge-popup.cb-dark .audio-btn .audio-icon:hover{
           stroke: #fff;
         }
+        .cambridge-popup.cb-dark .global-btn .global-icon:hover{
+          fill: #fff;
+        }
 
         .cambridge-popup.cb-dark .cambridge-ad div {
           background: #332d22;
@@ -421,6 +440,107 @@
 
         .cambridge-popup.cb-dark .cambridge-ad a {
           color: #ffcc80 !important;
+        }
+
+        /* 全球发音列表样式 */
+        .cambridge-popup .global-voices-list {
+          position: absolute;
+          background: white;
+          border: 1px solid #ddd;
+          border-radius: 6px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          width: 50%;
+          z-index: 10000;
+          display: none;
+          padding: 0;
+          top: 0;
+          right: 15px;
+        }
+
+        .cambridge-popup .global-voices-list .voice-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 12px;
+          background: #f8f9fa;
+          border-bottom: 1px solid #eee;
+          font-weight: bold;
+        }
+
+        .cambridge-popup .global-voices-list .voice-header .close-voices-btn {
+          background: none;
+          border: none;
+          font-size: 18px;
+          cursor: pointer;
+          color: #666;
+          opacity: 0.7;
+        }
+
+        .cambridge-popup .global-voices-list .voice-header .close-voices-btn:hover {
+          opacity: 1;
+        }
+
+        .cambridge-popup .global-voices-list .voice-content {
+          max-height: 180px;
+          overflow-y: auto;
+        }
+
+        .cambridge-popup .global-voices-list .voice-item {
+          display: flex;
+          align-items: center;
+          padding: 8px 12px;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+
+        .cambridge-popup .global-voices-list .voice-item:hover {
+          background-color: #f5f5f5;
+        }
+
+        .cambridge-popup .global-voices-list .voice-item .voice-icon {
+          margin-right: 8px;
+          width: 20px;
+          height: 20px;
+          fill: #555;
+          margin-top: -8px;
+        }
+
+        .cambridge-popup .global-voices-list .voice-item .voice-info {
+          display: flex;
+          gap: 8px;
+          font-size: 14px;
+        }
+
+        .cambridge-popup.cb-dark .global-voices-list {
+          background: #1e1e1e;
+          border-color: #444;
+          color: #e0e0e0;
+        }
+
+        .cambridge-popup.cb-dark .global-voices-list .voice-header {
+          background: #2d2d2d;
+          border-bottom-color: #444;
+          color: #f0f0f0;
+        }
+
+        .cambridge-popup.cb-dark .global-voices-list .voice-header .close-voices-btn {
+          color: #aaa;
+        }
+
+        .cambridge-popup.cb-dark .global-voices-list .voice-header .close-voices-btn:hover {
+          color: #fff;
+        }
+
+        .cambridge-popup.cb-dark .global-voices-list .voice-item:hover {
+          background-color: #2d2d2d;
+        }
+
+        .cambridge-popup.cb-dark .global-voices-list .voice-item .voice-icon {
+          fill: #cccccc;
+        }
+
+        .cambridge-popup.cb-dark .global-voices-list .voice-item .voice-info {
+          color: #e0e0e0;
         }
       </style>
       <div id="cambridgePopup" class="cambridge-popup">
@@ -547,7 +667,7 @@
             const positionFilter = pos => !pos||pos.split(/[,，]/).map(p=>p.trim()).filter(Boolean).some(p=>['dictpage', 'both', 'all'].includes(p));
             if(positionFilter(theThirdDict.position)) {
               const theThirdDictIcon = document.createElement('img');
-              theThirdDictIcon.src = theThirdDict.icon;
+              theThirdDictIcon.src = theThirdDict?.icon;
               theThirdDictIcon.title = theThirdDict.name;
               theThirdDictIcon.className = 'third-dict-icon';
               if(index > 0) theThirdDictIcon.style.marginRight = '10px';
@@ -579,12 +699,117 @@
                         </button>
                     `;
           phoneticsEl.appendChild(item);
+          
           // 自动朗读
           if(isAutoReadOnLoaded && autoReadType === p.region) {
             playAudio(baseUrl + p.audio);
           }
         });
+        
+        // 全球发音
+        const item = document.createElement('div');
+        item.className = 'phonetic-item';
+        item.innerHTML = `<button class="global-btn" title="全球真人发音">
+                            <svg t="1760713446134" class="global-icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="17008" width="28" height="28">
+                              <path stroke-width="1.5" d="M512 85.333333c234.666667 0 426.666667 192 426.666667 426.666667s-192 426.666667-426.666667 426.666667S85.333333 746.666667 85.333333 512 277.333333 85.333333 512 85.333333z m136.533333 89.6v64c-0.341333 30.122667-1.365333 57.344-4.266666 76.8-8.192 53.162667-55.552 94.549333-108.288 94.165334L520.533333 409.6l-59.733333-8.533333h-4.266667c-15.36 0-27.264 10.368-32.597333 24.874666L422.4 430.933333v106.666667c0 44.330667-26.624 84.864-65.536 100.010667L349.866667 640l-8.533334 4.266667-153.6 38.4c59.733333 115.2 183.466667 192 320 192 17.066667 0 34.133333 0 51.2-2.176l12.8-2.090667-4.266666-4.266667-25.6-21.333333c-38.4-29.866667-46.933333-89.6-17.066667-128l8.277333-8.064c6.058667-5.674667 13.098667-11.52 20.394667-15.232l5.461333-2.304 8.533334-4.266667 42.666666-17.066666c12.8-4.266667 21.333333-17.066667 21.333334-34.133334-4.266667-64 12.8-110.933333 55.466666-128 59.733333-25.6 115.2-8.533333 183.466667 55.466667 4.266667-17.066667 4.266667-34.133333 4.266667-51.2 0-153.6-93.866667-281.6-226.133334-337.066667z m64 401.066667c-8.533333 4.266667-12.8 17.066667-8.533333 55.466667 4.266667 46.933333-21.333333 85.333333-64 106.666666l-8.533333 4.266667-14.464 4.906667-17.237334 6.357333-8.533333 3.541333c-6.144 2.730667-9.813333 4.906667-10.965333 6.528-4.266667 8.533333-4.266667 17.066667 4.266666 25.6l51.2 42.666667 15.658667 15.445333 5.674667-2.645333c83.157333-37.418667 154.154667-107.221333 189.312-193.706667l1.578666-3.114666a15.744 15.744 0 0 0 0.810667-1.792 18.261333 18.261333 0 0 0-5.248-7.509334l-2.986667-2.944c-59.733333-59.733333-93.866667-72.533333-128-59.733333zM512 145.066667c-200.533333 0-362.666667 162.133333-362.666667 362.666666 0 28.458667 2.986667 56.874667 8.874667 85.333334l3.925333 17.066666 157.866667-38.4c11.392-3.797333 22.741333-14.336 25.173333-25.6l0.426667-4.266666v-106.666667a105.514667 105.514667 0 0 1 99.541333-106.453333L452.266667 328.533333h17.066666l59.733334 8.533334a41.258667 41.258667 0 0 0 36.949333-25.344L567.466667 302.933333l4.266666-98.133333V153.6c-17.066667-4.266667-40.533333-8.533333-59.733333-8.533333z" p-id="17009"></path>
+                            </svg>
+                          </button>`;
+        phoneticsEl.appendChild(item);
         body.appendChild(phoneticsEl);
+
+        // 全球发音列表容器
+        const globalVoicesList = document.createElement('div');
+        globalVoicesList.className = 'global-voices-list';
+        body.appendChild(globalVoicesList);
+
+        // 添加全球发音点击事件
+        item.querySelector('.global-btn').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          // Loading
+          globalVoicesList.innerHTML = 'Loading...';
+          setTimeout(() => {
+            if(globalVoicesList.style.display !== 'block') globalVoicesList.style.display = 'block';
+          }, 500);
+          // 计算并设置弹窗位置
+          const btnRect = item.getBoundingClientRect();
+          const popupRect = popup.getBoundingClientRect();
+          const topOffset = btnRect.bottom - popupRect.top;
+          globalVoicesList.style.top = `${topOffset}px`;
+          // 获取全球发音
+          const keyword = toDict.word;
+          const voices = await getGlobalVoices(keyword);
+          // 清空内容
+          globalVoicesList.innerHTML = '';
+          // 构建标题
+          const header = document.createElement('div');
+          header.className = 'voice-header';
+          header.innerHTML = `
+            <span>有 ${voices.length} 个发音</span>
+            <button class="close-voices-btn">×</button>
+          `;
+          globalVoicesList.appendChild(header);
+
+          // 创建内容容器
+          const contentContainer = document.createElement('div');
+          contentContainer.className = 'voice-content';
+          globalVoicesList.appendChild(contentContainer);
+
+          if (voices.length === 0) {
+            const noVoiceItem = document.createElement('div');
+            noVoiceItem.className = 'voice-item';
+            noVoiceItem.textContent = '暂无全球发音';
+            contentContainer.appendChild(noVoiceItem);
+          } else {
+            voices.forEach(voice => {
+              const voiceItem = document.createElement('div');
+              voiceItem.className = 'voice-item';
+              voiceItem.innerHTML = `
+                <svg class="voice-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10.7143 18.1786H8C7.44772 18.1786 7 17.7109 7 17.134V10.866C7 10.2891 7.44772 9.82136 8 9.82136H10.7143L14.3177 7.28302C14.9569 6.65978 16 7.1333 16 8.04673V19.9533C16 20.8667 14.9569 21.3402 14.3177 20.717L10.7143 18.1786Z" stroke-width="1.5"></path>
+                  <path d="M19 18C19.6341 17.4747 20.1371 16.8511 20.4802 16.1648C20.8234 15.4785 21 14.7429 21 14C21 13.2571 20.8234 12.5215 20.4802 11.8352C20.1371 11.1489 19.6341 10.5253 19 10" stroke-width="1.5" stroke-linecap="round"></path>
+                </svg>
+                <div class="voice-info">
+                  <span>${voice.gender}</span>
+                  <span>${voice.country}</span>
+                </div>
+              `;
+              voiceItem.addEventListener('click', () => {
+                playAudio(voice.audio);
+              });
+              contentContainer.appendChild(voiceItem);
+            });
+            // 更多发音
+            const voiceItem = document.createElement('div');
+            voiceItem.className = 'voice-item';
+            voiceItem.innerHTML = `<div class="voice-info" style="margin-left:7px;">更多&gt;&gt;</div>`;
+            voiceItem.addEventListener('click', () => {
+              window.open(`https://zh.forvo.com/search/${toDict.word}/en_usa/`);
+            });
+            contentContainer.appendChild(voiceItem);
+          }
+          if(globalVoicesList.style.display !== 'block') globalVoicesList.style.display = 'block';
+
+          // 绑定关闭按钮事件
+          header.querySelector('.close-voices-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            globalVoicesList.style.display = 'none';
+          });
+        });
+
+        // 绑定查词弹窗事件
+        popup.addEventListener('click', (e) => {
+          if(!e.target.closest('.global-voices-list')) {
+            e.stopPropagation();
+            globalVoicesList.style.display = 'none';
+          }
+        });
+        
+        // 点击空白关闭全球发音列表
+        document.addEventListener('click', (e) => {
+          if (!globalVoicesList.contains(e.target) && !item.contains(e.target)) {
+            globalVoicesList.style.display = 'none';
+          }
+        });
 
         // 所有翻译（parts）
         toDict.parts.forEach(part => {
@@ -977,4 +1202,36 @@
   popup.querySelector('.copyright').addEventListener('click', () => {
     window.open('https://ld246.com/article/1760544378300#%E6%89%93%E8%B5%8F%E4%BD%9C%E8%80%85');
   });
+
+  // 获取全球发音
+  async function getGlobalVoices(keyword) {
+    const url = `https://dict.eudic.net/dicts/en/${encodeURIComponent(keyword)}`;
+    const response = await fetch(url);
+    const html = await response.text();
+  
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+  
+    const gvDetails = doc.querySelector('.gv_details');
+    if (!gvDetails) return [];
+  
+    const items = gvDetails.querySelectorAll('.gv_item');
+    const result = [];
+  
+    for (const item of items) {
+      const voice = item.querySelector('.gv-voice');
+      const gender = item.querySelector('.gv_person');
+      const country = item.querySelector('.gv_contury'); // 注意拼写
+  
+      if (voice && gender && country) {
+        result.push({
+          audio: voice.getAttribute('data-rel')?.trim() || '',
+          gender: gender.textContent.trim(),
+          country: country.textContent.trim()
+        });
+      }
+    }
+  
+    return result;
+  }
 })();
