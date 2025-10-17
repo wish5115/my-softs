@@ -3,7 +3,7 @@
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
 // version 0.0.6.6
-// 0.0.6.6 增强全球真人发音
+// 0.0.6.6 增加全球真人发音
 // 0.0.6 改进第三方词典配置，可以自由搭配显示位置
 // 0.0.5.1 增加在未查到时也可以自定义第三方词典
 // 0.0.5 把备用词典和第三方词典整合为一个，统一叫第三方词典，统一配置
