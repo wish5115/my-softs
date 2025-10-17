@@ -23,7 +23,7 @@
   // 是否开启更多词典 true 开启 false 不开启
   const enableTheThirdDicts = true;
 
-  // 更多词典设置（仅限在文本选择工具栏显示）
+  // 更多词典设置
   const theThirdDicts = [
     {
       // 名字，通常用于提示或显示
