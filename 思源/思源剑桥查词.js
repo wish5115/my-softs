@@ -629,6 +629,7 @@
         // 亮色主题
         popup.classList.remove('cb-dark');
       }
+      popup.style.zIndex = ++window.siyuan.zIndex;
       popup.style.display = 'flex';
       //assistantSelectBtn.removeEventListener('click', clickHandler);
       // 开始查词
@@ -728,7 +729,10 @@
           // Loading
           globalVoicesList.innerHTML = 'Loading...';
           setTimeout(() => {
-            if(globalVoicesList.style.display !== 'block') globalVoicesList.style.display = 'block';
+            if(globalVoicesList.style.display !== 'block') {
+              globalVoicesList.style.zIndex = ++window.siyuan.zIndex;
+              globalVoicesList.style.display = 'block';
+            }
           }, 500);
           // 计算并设置弹窗位置
           const btnRect = item.getBoundingClientRect();
@@ -787,7 +791,10 @@
             });
             contentContainer.appendChild(voiceItem);
           }
-          if(globalVoicesList.style.display !== 'block') globalVoicesList.style.display = 'block';
+          if(globalVoicesList.style.display !== 'block') {
+            globalVoicesList.style.zIndex = ++window.siyuan.zIndex;
+            globalVoicesList.style.display = 'block';
+          }
 
           // 绑定关闭按钮事件
           header.querySelector('.close-voices-btn').addEventListener('click', (e) => {
