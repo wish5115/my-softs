@@ -2,40 +2,39 @@
 // see https://ld246.com/article/1760544378300
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
-// version 0.0.4
-// 0.0.4 增加更多词典支持，仅限在文本选择工具栏显示，默认不开启
-// 0.0.3 新增自动朗读和钉住功能，默认不自动朗读
+// version 0.0.5
+// 0.0.5 把备用词典和第三方词典整合为一个，统一叫第三方词典，统一配置
+// 0.0.4 增加更多词典支持，仅限在文本选择工具栏显示，默认不开启（已废弃）
+// 0.0.3 新增自动朗读和钉住功能，默认自动朗读
 // 0.0.2 增加备用词典，默认是沙拉查词，也可通过配置修改为其他查词
 (() => {
   // 是发查词完成自动朗读 true 自动朗读 false 不自动朗读
-  const isAutoReadOnLoaded = false;
+  const isAutoReadOnLoaded = true;
 
   // 自动朗读哪种发音 us 美式发音 uk 英式发音
   const autoReadType = 'us';
 
   // 是否开启钉住功能，钉住后窗口失去焦不会关闭 true 开启 false 不开启
   const enablePin = true;
-  
-  // 开启备用词典 true 开启 false 不开启
-  const enableAnotherDict = true;
 
-  // 备用词典信息
-  const anotherDict = {
-    // 名字，通常用于提示或显示
-    name: '沙拉查词',
-    // 图标6x16大小，默认沙拉查词
-    icon: 'https://saladict.crimx.com/icons/favicon-16x16.png',
-    // 打开命令，默认沙拉查词
-    command: `utools://沙拉查词/沙拉查词?{{keyword}}`,
-    // 显示位置 toolbar 工具栏; dictpage 剑桥词典内; both 两者都有; 默认both
-    position: 'both',
-  };
+  // AI查词提示词
+  const aiPrompt = `你是一个查词助手，帮我查询{{keyword}}，并注明音标，发音，常见释义，例句等，如果可能可适当配些插图或视频。`;
 
   // 是否开启更多词典 true 开启 false 不开启
-  const enableTheThirdDicts = false;
+  const enableTheThirdDicts = true;
 
   // 更多词典设置（仅限在文本选择工具栏显示）
   const theThirdDicts = [
+    {
+      // 名字，通常用于提示或显示
+      name: '沙拉查词',
+      // 图标6x16大小，默认沙拉查词
+      icon: 'https://saladict.crimx.com/icons/favicon-16x16.png',
+      // 打开命令，默认沙拉查词
+      command: `utools://沙拉查词/沙拉查词?{{keyword}}`,
+      // 显示位置 toolbar 工具栏; dictpage 剑桥词典内; both 两者都有; 默认both
+      position: 'both',
+    },
     {
       // 名字，通常用于提示或显示
       name: '中英词典',
@@ -43,12 +42,10 @@
       icon: 'https://b3logfile.com/file/2025/10/1760663431439TYe0SV_2-ujPYk4O.png?imageView2/2/interlace/1/format/webp',
       // 打开命令，默认沙拉查词
       command: `utools://中英词典/中英词典?{{keyword}}`,
+      position: 'both',
     }
   ];
 
-  // AI查词提示词
-  const aiPrompt = `你是一个查词助手，帮我查询{{keyword}}，并注明音标，发音，常见释义，例句等，如果可能可适当配些插图或视频。`;
-  
   if(!!document.getElementById("sidebar")) return; // 不支持手机版
   const html = `
       <style>
@@ -254,18 +251,18 @@
           display: block;
         }
 
-        .another-dict-icon {
+        .third-dict-icon {
           float: right;
           vertical-align: middle;
           margin-top: 6px;
           cursor: pointer;
         }
 
-        .another-dict-result {
+        .third-dict-links {
           font-size: 16px;
           font-weight: normal;
         }
-        #anotherDictLink {
+        .thirdDictLink {
           cursor: pointer;
         }
 
@@ -472,14 +469,17 @@
       const selection = window.getSelection().toString().trim();
       translate({ text: selection, detectFrom: "en" }, (result) => {
         if (result.error) {
-          let anotherDictStr = '';
-          if(enableAnotherDict) {
-            anotherDictStr = `<span class="another-dict-result">试试 <a id="anotherDictLink">${anotherDict.name}</a><span>`;
+          let theTirdDictStr = '';
+          if(enableTheThirdDicts) {
+            const theTirdDictLinks = theThirdDicts.map(d => `<a class="thirdDictLink" data-href="${encodeURIComponent(d.command)}">${d?.name}</a>`);
+            theTirdDictStr = `<span class="third-dict-links">试试 ${theTirdDictLinks.join(' 或 ')}<span>`;
           }
           const popupBody = popup.querySelector('.popup-body');
-          popupBody.innerHTML = `<div class="word">未找到结果！${anotherDictStr}</div>`;
-          popupBody.querySelector('#anotherDictLink').addEventListener('click', (e) => {
-            window.open(anotherDict.command.replace('{{keyword}}', selection));
+          popupBody.innerHTML = `<div class="word">未找到结果！${theTirdDictStr}</div>`;
+          popupBody.querySelector('.third-dict-links').addEventListener('click', (e) => {
+            const link = e.target?.closest('.thirdDictLink');
+            const command = decodeURIComponent(link?.dataset?.href || '');
+            window.open(command.replace('{{keyword}}', selection));
           });
           return;
         }
@@ -493,15 +493,20 @@
         const wordEl = document.createElement('div');
         wordEl.className = 'word';
         wordEl.textContent = toDict.word;
-        // 创建备用词典图标
-        if(enableAnotherDict && (anotherDict.position === 'dictpage' || anotherDict.position === 'both')) {
-          const anotherDictIcon = document.createElement('img');
-          anotherDictIcon.src = anotherDict.icon;
-          anotherDictIcon.title = anotherDict.name;
-          anotherDictIcon.className = 'another-dict-icon';
-          wordEl.appendChild(anotherDictIcon);
-          anotherDictIcon.addEventListener('click', (e) => {
-            window.open(anotherDict.command.replace('{{keyword}}', toDict.word));
+        // 更多词典图标
+        if(enableTheThirdDicts) {
+          theThirdDicts.forEach((theThirdDict, index) => {
+            if(theThirdDict.position === 'dictpage' || theThirdDict.position === 'both') {
+              const theThirdDictIcon = document.createElement('img');
+              theThirdDictIcon.src = theThirdDict.icon;
+              theThirdDictIcon.title = theThirdDict.name;
+              theThirdDictIcon.className = 'third-dict-icon';
+              if(index > 0) theThirdDictIcon.style.marginRight = '10px';
+              wordEl.appendChild(theThirdDictIcon);
+              theThirdDictIcon.addEventListener('click', (e) => {
+                window.open(theThirdDict.command.replace('{{keyword}}', toDict.word));
+              });
+            }
           });
         }
         body.appendChild(wordEl);
@@ -609,27 +614,18 @@
     };
     assistantSelectBtn.addEventListener('click', clickHandler);
 
-    // 创建备用词典按钮
-    if(enableAnotherDict && (anotherDict.position === 'toolbar' || anotherDict.position === 'both')) {
-      const button = `<button class="protyle-toolbar__item b3-tooltips b3-tooltips__ne" style="font-size:14px;" data-type="anotherDict" aria-label="${anotherDict.name}"><img style="vertical-align:middle;" src="${anotherDict.icon}" /></button>`;
-      toolbar.insertAdjacentHTML('afterbegin', button);
-      btn = toolbar.querySelector('button[data-type="anotherDict"]');
-      btn.addEventListener('click', (e) => {
-        const selection = window.getSelection().toString().trim();
-        window.open(anotherDict.command.replace('{{keyword}}', selection));
-      });
-    }
-
     // 更多词典
     if(enableTheThirdDicts) {
       theThirdDicts.forEach((theThirdDict, index) => {
-        const button = `<button class="protyle-toolbar__item b3-tooltips b3-tooltips__ne" style="font-size:14px;" data-type="theThirdDict${index}" aria-label="${theThirdDict.name}"><img style="vertical-align:middle;" src="${theThirdDict.icon}" /></button>`;
-        toolbar.insertAdjacentHTML('afterbegin', button);
-        btn = toolbar.querySelector(`button[data-type="theThirdDict${index}"]`);
-        btn.addEventListener('click', (e) => {
-          const selection = window.getSelection().toString().trim();
-          window.open(theThirdDict.command.replace('{{keyword}}', selection));
-        });
+        if(theThirdDict.position === 'toolbar' || theThirdDict.position === 'both'){
+          const button = `<button class="protyle-toolbar__item b3-tooltips b3-tooltips__ne" style="font-size:14px;" data-type="theThirdDict${index}" aria-label="${theThirdDict.name}"><img style="vertical-align:middle;" src="${theThirdDict.icon}" /></button>`;
+          toolbar.insertAdjacentHTML('afterbegin', button);
+          btn = toolbar.querySelector(`button[data-type="theThirdDict${index}"]`);
+          btn.addEventListener('click', (e) => {
+            const selection = window.getSelection().toString().trim();
+            window.open(theThirdDict.command.replace('{{keyword}}', selection));
+          });
+        }
       });
     }
   });
