@@ -198,6 +198,7 @@
           gap: 16px;
           margin-bottom: 16px;
           font-size: 14px;
+          flex-wrap: wrap;
         }
     
         .cambridge-popup .phonetic-item {
@@ -496,6 +497,7 @@
           opacity: 0.7;
           transform: scale(1.18);
           margin-top: -3px;
+          margin-right: -5px;
         }
 
         .cambridge-popup .global-voices-list .voice-header .close-voices-btn:hover {
@@ -797,6 +799,22 @@
         // 计算并设置弹窗位置
         const btnRect = item.getBoundingClientRect();
         const popupRect = popup.getBoundingClientRect();
+        // 判断按钮在弹窗中的相对位置（以弹窗中心为界）
+        const btnCenterX = btnRect.left + btnRect.width / 2;
+        const popupCenterX = popupRect.left + popupRect.width / 2;
+        if (btnCenterX < popupCenterX) {
+          // 按钮靠左 → 弹窗显示在右侧（对齐按钮右边缘）
+          //const leftPos = btnRect.right - popupRect.left;
+          //globalVoicesList.style.left = `${leftPos}px`;
+          globalVoicesList.style.right = '';
+          globalVoicesList.style.left = `15px`;
+        } else {
+          // 按钮靠右 → 弹窗显示在左侧（对齐按钮左边缘）
+          //const rightPos = popupRect.right - btnRect.left;
+          //globalVoicesList.style.right = `${rightPos}px`;
+          globalVoicesList.style.left = '';
+          globalVoicesList.style.right = `15px`;
+        }
         const topOffset = btnRect.bottom - popupRect.top;
         globalVoicesList.style.top = `${topOffset}px`;
         // 获取全球发音
