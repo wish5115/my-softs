@@ -10,6 +10,7 @@
         line-height: 150%;
         color: var(--b3-theme-on-background); /* 文字颜色 */
         background-color:var(--b3-theme-background); /* 背景色 */
+        /* 提示-边框样式 */
         border-radius: var(--b3-border-radius);
         box-shadow: var(--b3-dialog-shadow);
         border: 1px solid var(--b3-theme-surface-lighter);
