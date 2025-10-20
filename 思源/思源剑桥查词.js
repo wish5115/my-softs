@@ -174,6 +174,7 @@
           font-size: 24px;
           font-weight: bold;
           margin-bottom: 8px;
+          word-wrap: break-word;
         }
 
         .cambridge-popup .word #searchInput {
