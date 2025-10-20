@@ -1,5 +1,6 @@
 // 备注自定义提示框
 // see https://ld246.com/article/1745742440889
+// v0.0.2 兼容3.3.5；修改tooltip样式
 (()=>{
     // 这里设置提示框样式
     const tooltipStyles = `
@@ -7,6 +8,11 @@
         max-height: 200px;
         font-size: 16px;
         line-height: 150%;
+        color: var(--b3-theme-on-background); /* 文字颜色 */
+        background-color:var(--b3-theme-background); /* 背景色 */
+        border-radius: var(--b3-border-radius);
+        box-shadow: var(--b3-dialog-shadow);
+        border: 1px solid var(--b3-theme-surface-lighter);
     `;
 
     // 闪烁情况选择
@@ -73,6 +79,7 @@
         element.addEventListener('mouseover', async (e)=>{
             const memo = e.target.closest(".protyle-attr--memo");
             if(!memo) return;
+            hideDefaultTooltip();
             if(!hasBoundMouseout) {
                 memo.addEventListener('mouseleave', () => {
                     hideTooltip();
@@ -156,6 +163,10 @@
         } else {
             document.getElementById("mytooltip").classList.remove("fn__none");
         }
+    }
+    async function hideDefaultTooltip() {
+        const tooltip = await whenElementExist("#tooltip:not(.fn__none)");
+        if(tooltip) tooltip.classList.add('fn__none');
     }
     function addStyle(css) {
         // 创建一个新的style元素
