@@ -921,6 +921,11 @@
             推荐国外AI平台：
             <a data-href="https://api.gpt.ge/register?aff=GlNE">V-API</a>&nbsp;
             <span>模型多、稳定快速，价格比官方更划算。</span>
+          `,
+          `
+            学知识，学编程 
+            <a data-href="https://www.zhihu.com/people/wilsonses">关注作者</a>&nbsp;
+            <span>不迷路！</span>
           `
         ];
         const randomAd = ads[Math.floor(Math.random() * ads.length)];
