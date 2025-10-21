@@ -43,6 +43,9 @@
     const defaultImageZoom = '150% 150%';
     const defaultImageTop = '3.3px';
 
+    // 代码生效标记
+    window.enableLinkAudioJs = true;
+
     // 监听指定的链接被添加
     audioLinkKeywords.unshift('auto:');
     audioLinkKeywords.unshift('icb:');
