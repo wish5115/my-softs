@@ -43,7 +43,7 @@
     const defaultImageZoom = '150% 150%';
     const defaultImageTop = '3.3px';
 
-    // 代码生效标记
+    // 代码生效标记，用于与其他代码协作
     window.enableLinkAudioJs = true;
 
     // 监听指定的链接被添加
