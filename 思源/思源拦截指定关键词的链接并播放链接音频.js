@@ -1,14 +1,15 @@
 // 拦截指定关键词的链接并播放链接音频
 // see https://ld246.com/article/1732632964559
-// version 0.0.2
+// version 0.0.3
 // 更新记录
+// 0.0.3 兼容3.3.4+；自动发音支持有道词典
 // 0.0.2 增加缓存，已获取过的音频链接直接使用缓存链接
 // 使用说明
 // 一、手动插入链接
 // 编辑器输入 /链接 或 /lianjie 在链接中输入你的链接即可，比如https://res.iciba.com/xxxx.mp3，当你的链接中含有audioLinkKeywords参数指定的关键词时，则自动拦截链接的点击并播放音频
 // 当锚文本链接输入*号时，则会使用图片作为播放音频的按钮，图片可以在defaultImage相关参数中配置或使用默认配置即可
 // 当链接地址中输入auto:开头的链接时，将自动获取音频，默认从iciba.com网站获取音频，可在getAudioSrcByNet函数中修改获取逻辑
-// 自动获取连接规则，比如，auto:hello:en，这里auto:是关键词，hello是要查询的关键词，en是代表英音，am代表美音，默认是am，比如auto:hello
+// 自动获取连接规则，比如，auto:hello:en，这里auto:是关键词，这里auto也可以是icb/iciba/yd/youdao分别代表爱词霸/爱词霸/有道/有道，hello是要查询的关键词，en是代表英音，am代表美音，默认是am，比如auto:hello
 // 二，批量插入链接
 // 批量插入指在其他编辑中格式化好后，批量插入。
 // 批量插入的格式举例如下：
@@ -28,6 +29,7 @@
         'tts.iciba.com',
         'res-tts.iciba.com',
         'staticedu-wps.cache.iciba.com',
+        'dict.youdao.com/dictvoice',
     ];
 
     // 默认播放按钮Emoji
@@ -42,6 +44,10 @@
 
     // 监听指定的链接被添加
     audioLinkKeywords.unshift('auto:');
+    audioLinkKeywords.unshift('icb:');
+    audioLinkKeywords.unshift('iciba:');
+    audioLinkKeywords.unshift('yd:');
+    audioLinkKeywords.unshift('youdao:');
     const selectors = audioLinkKeywords.map(audioLinkKeyword=>audioLinkKeyword?'span[data-type~="a"][data-href*="'+audioLinkKeyword.trim()+'"]:not([data-replaced])':'').filter(i=>i).join(',');
     if(selectors) observeLinkBlock(selectors, async (link) => {
         // 初始化
@@ -59,21 +65,23 @@
             event.stopPropagation();
             let linkHref = link.dataset?.href?.replace('&amp;', '&');
             const params = getQueryParams(linkHref);
-            if(/^auto:/i.test(linkHref)) {
-                const keywords = linkHref.replace(/auto:/i, '').trim().split('?')[0].split(':');
+            if(/^(auto|iciba|icb|yd|youdao):/i.test(linkHref)) {
+                const soundFrom = linkHref?.split(':')?.[0] || '';
+                const keywords = linkHref.replace(/(auto|iciba|icb|yd|youdao):/i, '').trim().split('?')[0].split(':');
                 const word = keywords[0];
                 if(!word) return;
                 const soundType = keywords[1] || '';
-                linkHref = await getAudioSrcByNet(word, soundType);
+                linkHref = await getAudioSrcByNet(word, soundType, soundFrom);
                 if(!linkHref) return;
             }
             playAudio(linkHref, formatTimeToSeconds(params.start) || 0, formatTimeToSeconds(params.end) || 0);
         });
         // 去掉提示框
         link.addEventListener('mouseover', (event) => {
-            whenElementExist('.tooltip--href').then((tooltip) => {
-                tooltip.remove();
-            });
+            link.classList.add('play-link-hover');
+        });
+        link.addEventListener('mouseout', (event) => {
+            link.classList.remove('play-link-hover');
         });
         // 右键菜单
         // link.addEventListener('contextmenu', (event) => {
@@ -105,11 +113,19 @@
         [data-theme-mode="dark"] .protyle-wysiwyg [data-node-id] span[data-type~=a][data-img="true"]{
             filter: invert(100%);
         }
+        body:has(span.play-link-hover) #tooltip{
+            display: none!important;
+        }
     `);
 
     // 通过iciba.com查询音频URL
     let soundCaches = {};
-    async function getAudioSrcByNet(word, soundType) {
+    async function getAudioSrcByNet(word, soundType, soundFrom) {
+        if(soundFrom==='yd'||soundFrom==='youdao') {
+            // type=1表示英式发音，type=2表示美式发音
+            soundType = soundType === 'en' ? '1' : '2';
+            return `http://dict.youdao.com/dictvoice?type=${soundType}&audio=${word}`;
+        }
         if(soundCaches[word+'-'+soundType]) return soundCaches[word+'-'+soundType];
         try {
             let html = await fetch("https://www.iciba.com/word?w=" + word, {
@@ -233,10 +249,10 @@
                                 // 调用回调函数
                                 if(callback) callback(node);
                             } else {
-                                const link = node.querySelector(selector);
-                                if (link) {
+                                const links = node.querySelectorAll(selector);
+                                if (links.length && callback) {
                                     // 调用回调函数
-                                    if(callback) callback(link);
+                                    links.forEach(link => callback(link));
                                 }
                             }
                         } else if(node.nodeType === Node.TEXT_NODE) {
