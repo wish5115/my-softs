@@ -1,5 +1,6 @@
 // 拦截指定关键词的链接并播放链接音频
-// see https://ld246.com/article/1732632964559
+// see https://ld246.com/article/1734238897997
+// 关联 https://ld246.com/article/1732632964559
 // version 0.0.3
 // 更新记录
 // 0.0.3 兼容3.3.4+；自动发音支持有道词典
