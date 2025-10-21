@@ -72,18 +72,18 @@
     /*{
       // 名字，通常用于提示或显示
       name: 'Bing',
-      // 图标16x16大小，默认沙拉查词
+      // 图标16x16大小
       icon: 'https://cn.bing.com/favicon.ico',
-      // 打开命令，默认沙拉查词
+      // 打开命令
       command: 'https://cn.bing.com/search?q={{keyword}}',
       position: 'toolbar',
     },
     {
       // 名字，通常用于提示或显示
       name: '百度',
-      // 图标16x16大小，默认沙拉查词
+      // 图标16x16大小
       icon: 'https://www.baidu.com/favicon.ico',
-      // 打开命令，默认沙拉查词
+      // 打开命令
       command: 'https://www.baidu.com/s?wd={{keyword}}',
       position: 'toolbar',
     },*/
