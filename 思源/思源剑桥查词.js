@@ -2,7 +2,8 @@
 // see https://ld246.com/article/1760544378300
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
-// version 0.0.6.8
+// version 0.0.6.9
+// 0.0.6.9 theThirdDicts.command 支持回调函数；增加生词本功能
 // 0.0.6.8 点击单词标题可以输入查词
 // 0.0.6.6 增加全球真人发音
 // 0.0.6 改进第三方词典配置，可以自由搭配显示位置
@@ -25,7 +26,7 @@
   const aiSearchUrl = 'https://chat.baidu.com/search?word={{keyword}}';
   // AI查词提示词
   const aiPrompt = `你是一个查词助手，帮我查询“{{keyword}}”，并注明音标，发音，常见释义，例句等，如果可能可适当配些插图或视频。`;
-
+  
   // 是否开启更多词典 true 开启 false 不开启
   const enableTheThirdDicts = true;
 
@@ -34,37 +35,37 @@
     {
       // 名字，通常用于提示或显示
       name: '沙拉查词',
-      // 图标6x16大小，默认沙拉查词
+      // 图标6x16大小
       icon: 'https://saladict.crimx.com/icons/favicon-16x16.png',
-      // 打开命令，默认沙拉查词
+      // 打开命令
       command: `utools://沙拉查词/沙拉查词?{{keyword}}`,
-      // 显示位置 toolbar 工具栏; dictpage 剑桥词典内; notfound 查不到时; all 所有位置; 也可以任意组合，用逗号隔开即可; 默认all
+      // 显示位置 toolbar 工具栏; dictpage 剑桥词典内; notfound 查不到时; all 所有位置; 也可以任意组合，用逗号隔开即可; 为空均不显示
       position: 'all',
     },
     {
       // 名字，通常用于提示或显示
       name: '中英词典',
-      // 图标16x16大小，默认沙拉查词
+      // 图标16x16大小
       icon: 'https://b3logfile.com/file/2025/10/1760663431439TYe0SV_2-ujPYk4O.png?imageView2/2/interlace/1/format/webp',
-      // 打开命令，默认沙拉查词
+      // 打开命令
       command: `utools://中英词典/中英词典?{{keyword}}`,
       position: 'dictpage, notfound',
     },
     {
       // 名字，通常用于提示或显示
       name: 'AI助手',
-      // 图标16x16大小，默认沙拉查词
+      // 图标16x16大小
       icon: 'https://b3logfile.com/file/2025/10/ailogo-rcvBWYB.png?imageView2/2/interlace/1/format/webp',
-      // 打开命令，默认沙拉查词
+      // 打开命令
       command: `utools://AI%20助手/AI%20助手?${aiPrompt}`,
       position: 'dictpage, notfound',
     },
     {
       // 名字，通常用于提示或显示
       name: '问AI',
-      // 图标16x16大小，默认沙拉查词
+      // 图标16x16大小
       icon: 'https://gips0.baidu.com/it/u=1125504705,2263448440&fm=3028&app=3028&f=PNG&fmt=auto&q=75&size=f16_16',
-      // 打开命令，默认沙拉查词
+      // 打开命令
       command: aiSearchUrl,
       position: 'notfound',
     },
@@ -85,7 +86,62 @@
       // 打开命令，默认沙拉查词
       command: 'https://www.baidu.com/s?wd={{keyword}}',
       position: 'toolbar',
-    }*/
+    },*/
+    // 添加到生词本
+    {
+      // 名字，通常用于提示或显示
+      name: '添加到生词本',
+      // 图标16x16大小
+      icon: 'https://b3logfile.com/file/2025/10/%E7%94%9F%E8%AF%8D%E6%9C%AC-GQxAnkD.png?imageView2/2/interlace/1/format/webp',
+      // 打开命令
+      command: async ({selection, theThirdDict, result}) => {
+        // 设置生词本笔记本ID和路径
+        const notebookId = '20240224233354-t4fptpl'; // 笔记本id
+        const wordBookPath = '/English/学习笔记'; // 生词本路径
+        
+        const today = new Date().toLocaleDateString().replace(/\//g, '-');
+        const todayPath = wordBookPath.replace(/\/$/, '')+'/'+today;
+        const wordBookDocId = await requestApi('/api/filetree/getIDsByHPath', {notebook:notebookId, path:wordBookPath});
+        if(wordBookDocId?.data?.length === 0){
+          showMessage('笔记ID或生词本路径错误', true);
+          return;
+        }
+        const todyDocId = await requestApi('/api/filetree/getIDsByHPath', {notebook:notebookId, path:todayPath});
+        let docId = todyDocId?.data?.[0] || '';
+        if(todyDocId?.data?.length === 0) {
+          const res = await requestApi('api/filetree/createDocWithMd', {notebook:notebookId, path:todayPath, markdown:''});
+          docId = res?.data || '';
+        }
+        if(!docId){
+          showMessage('今日生词文档不存在', true);
+          return;
+        }
+        const wordList = await querySql(`select * from blocks where root_id='${docId}' and type='p' and ial like '%custom-word="${selection}"%' limit 1`);
+        if(wordList.length > 0){
+          showMessage('该生词已添加');
+          return;
+        }
+        const res = await requestApi('/api/block/insertBlock', {
+          "dataType": "markdown",
+          "data": `${selection}\n`,
+          "nextID": "",
+          "previousID": "",
+          "parentID": docId
+        });
+        if(!res || res.code !== 0) {
+          showMessage('添加失败' + res.msg, true);
+        }
+        const blockId = res?.data?.[0]?.doOperations?.[0]?.id || '';
+        if(blockId) {
+          await requestApi('/api/attr/setBlockAttrs', {
+            "id": blockId,
+            "attrs": { "custom-word": selection }
+          });
+        }
+        showMessage('添加成功');
+      },
+      position: 'toolbar, dictpage',
+    }
   ];
 
   if(!!document.getElementById("sidebar")) return; // 不支持手机版
@@ -674,7 +730,11 @@
           btn = toolbar.querySelector(`button[data-type="theThirdDict${index}"]`);
           btn.addEventListener('click', (e) => {
             const selection = window.getSelection().toString().trim();
-            window.open(theThirdDict.command.replace('{{keyword}}', selection));
+            if(typeof theThirdDict.command === 'function') {
+              theThirdDict.command({selection, theThirdDict, result: null});
+            } else {
+              window.open(theThirdDict.command.replace('{{keyword}}', selection));
+            }
           });
         }
       });
@@ -688,16 +748,24 @@
         let theTirdDictStr = '';
         if(enableTheThirdDicts) {
           const positionFilter = d => !d.position||d.position.split(/[,，]/).map(p=>p.trim()).filter(Boolean).some(p=>['notfound', 'both', 'all'].includes(p));
-          const theTirdDictLinks = theThirdDicts.filter(positionFilter).map(d => `<a class="thirdDictLink" data-href="${encodeURIComponent(d.command)}">${d?.name}</a>`);
+          const theTirdDictLinks = theThirdDicts.filter(positionFilter).map((d,i) => `<a class="thirdDictLink" data-href="${encodeURIComponent(d.command)}" data-index="${i}">${d?.name}</a>`);
           theTirdDictStr = `<br /><span class="third-dict-links">试试 ${theTirdDictLinks.join(' 或 ')}<span>`;
         }
         const popupBody = popup.querySelector('.popup-body');
         popupBody.innerHTML = `<div class="word">未找到结果！${theTirdDictStr}</div>`;
         popupBody.querySelector('.third-dict-links').addEventListener('click', (e) => {
           const link = e.target?.closest('.thirdDictLink');
+          if(!link) return;
           const command = decodeURIComponent(link?.dataset?.href || '');
           if(command === aiSearchUrl) window.open(command.replace('{{keyword}}', aiPrompt.replace('{{keyword}}', selection)));
-          else window.open(command.replace('{{keyword}}', selection));
+          else {
+            const theThirdDict = theThirdDicts[link?.dataset?.index];
+            if(typeof theThirdDict?.command === 'function') {
+              theThirdDict.command({selection, theThirdDict, result});
+            } else {
+              window.open(command.replace('{{keyword}}', selection));
+            }
+          }
         });
         return;
       }
@@ -733,7 +801,11 @@
             if(index > 0) theThirdDictIcon.style.marginRight = '10px';
             wordEl.appendChild(theThirdDictIcon);
             theThirdDictIcon.addEventListener('click', (e) => {
-              window.open(theThirdDict.command.replace('{{keyword}}', toDict.word));
+              if(typeof theThirdDict?.command === 'function') {
+                theThirdDict.command({toDict, theThirdDict, result});
+              } else {
+                window.open(theThirdDict.command.replace('{{keyword}}', toDict.word));
+              }
             });
           }
         });
@@ -1307,4 +1379,21 @@
   
     return result;
   }
+  async function requestApi(url, data, method = 'POST') {
+      return await (await fetch(url, {method: method, body: JSON.stringify(data||{})})).json();
+  }
+  function showMessage(message, isError = false, delay = 7000) {
+    return fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
+        "method": "POST",
+        "body": JSON.stringify({"msg": message, "timeout": delay})
+    });
+  }
+  async function querySql(sql) {
+    const result = await requestApi('/api/query/sql', { "stmt": sql });
+    if (result.code !== 0) {
+        console.error("查询数据库出错", result.msg);
+        return [];
+    }
+    return result.data;
+ }
 })();
