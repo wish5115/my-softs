@@ -95,9 +95,10 @@
       icon: 'https://b3logfile.com/file/2025/10/%E7%94%9F%E8%AF%8D%E6%9C%AC-GQxAnkD.png?imageView2/2/interlace/1/format/webp',
       // 打开命令
       command: async ({selection, theThirdDict, result}) => {
-        // 设置生词本笔记本ID和路径
+        // 设置生词本笔记本ID和路径等
         const notebookId = '20240224233354-t4fptpl'; // 笔记本id
         const wordBookPath = '/English/学习笔记'; // 生词本路径
+        const hasAddedScope = 'today'; // 是否已添加判断范围 today 仅今天生词中判断，all 所有生成中判断
         
         const today = new Date().toLocaleDateString().replace(/\//g, '-');
         const todayPath = wordBookPath.replace(/\/$/, '')+'/'+today;
@@ -116,7 +117,8 @@
           showMessage('今日生词文档不存在', true);
           return;
         }
-        const wordList = await querySql(`select * from blocks where root_id='${docId}' and type='p' and ial like '%custom-word="${selection}"%' limit 1`);
+        const queryScopeSql = hasAddedScope === 'today' ? `root_id='${docId}'` : '1'
+        const wordList = await querySql(`select * from blocks where ${queryScopeSql} and type='p' and ial like '%custom-word="${selection}"%' limit 1`);
         if(wordList.length > 0){
           showMessage('该生词已添加');
           return;
