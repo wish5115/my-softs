@@ -722,7 +722,7 @@
     };
     assistantSelectBtn.addEventListener('click', clickHandler);
 
-    // 更多词典
+    // 工具栏第三方词典列表
     if(enableTheThirdDicts) {
       theThirdDicts.forEach((theThirdDict, index) => {
         const positionFilter = pos => !pos||pos.split(/[,，]/).map(p=>p.trim()).filter(Boolean).some(p=>['toolbar', 'both', 'all'].includes(p));
@@ -746,6 +746,7 @@
   // 开始查词
   function queryWords(keyword) {
     translate({ text: keyword, detectFrom: "en" }, (result) => {
+      // 未查到
       if (result.error) {
         let theTirdDictStr = '';
         if(enableTheThirdDicts) {
@@ -791,7 +792,7 @@
       searchInput.addEventListener('blur', function(e) {
         if(this.value !== this.dataset?.value) this.value = this.dataset?.value;
       });
-      // 更多词典图标
+      // 查词页面右侧-第三方词典图标
       if(enableTheThirdDicts) {
         theThirdDicts.forEach((theThirdDict, index) => {
           const positionFilter = pos => !pos||pos.split(/[,，]/).map(p=>p.trim()).filter(Boolean).some(p=>['dictpage', 'both', 'all'].includes(p));
@@ -804,7 +805,7 @@
             wordEl.appendChild(theThirdDictIcon);
             theThirdDictIcon.addEventListener('click', (e) => {
               if(typeof theThirdDict?.command === 'function') {
-                theThirdDict.command({toDict, theThirdDict, result});
+                theThirdDict.command({selection:toDict.word, theThirdDict, result});
               } else {
                 window.open(theThirdDict.command.replace('{{keyword}}', toDict.word));
               }
