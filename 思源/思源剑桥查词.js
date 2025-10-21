@@ -997,8 +997,8 @@
             <span>模型多、稳定快速，价格比官方更划算。</span>
           `,
           `
-            学知识，学编程 
-            <a data-href="https://www.zhihu.com/people/wilsonses">关注作者</a>&nbsp;
+            学知识，学编程，
+            <a data-href="https://www.zhihu.com/people/wilsonses">关注作者</a>，
             <span>不迷路！</span>
           `
         ];
