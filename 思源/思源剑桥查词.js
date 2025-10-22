@@ -2,7 +2,8 @@
 // see https://ld246.com/article/1760544378300
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
-// version 0.0.7
+// version 0.0.8
+// 0.0.8 增加添加生词时右键按钮可以输入备注
 // 0.0.7 钉住时，选中即可查词；添加生词可不新增今日文档；新增添加到书签、发音、插入发音按钮
 // 0.0.6.9 theThirdDicts.command 支持回调函数；增加生词本功能
 // 0.0.6.8 点击单词标题可以输入查词
@@ -94,11 +95,11 @@
     // 添加到生词本
     {
       // 名字，通常用于提示或显示
-      name: '添加到生词本',
+      name: '添加到生词本（右键输入备注）',
       // 图标16x16大小
       icon: 'https://b3logfile.com/file/2025/10/%E7%94%9F%E8%AF%8D%E6%9C%AC-GQxAnkD.png?imageView2/2/interlace/1/format/webp',
-      // 打开命令
-      command: async ({selection, theThirdDict, result}) => {
+      // 打开命令 eventType:click/contextmenu
+      command: async ({selection, theThirdDict, result, event, eventType}) => {
         // 设置生词本笔记本ID和路径等
         const notebookId = '20240224233354-t4fptpl'; // 笔记本id
         const wordBookPath = '/English/学习笔记'; // 生词本路径
@@ -134,14 +135,52 @@
           showMessage('该生词已添加');
           return;
         }
+        let remark = '', pos = '';
+        if(eventType === 'contextmenu') {
+          // 获取右键按钮的位置
+          let inputPos = '', parentEl, btnEl;
+          let btn = event.target.closest('.protyle-toolbar button[data-type^="theThirdDict"]');
+          if(btn) {
+            pos = 'toolbar';
+            btnEl = btn;
+            parentEl = btn.closest('.protyle-toolbar');
+            inputPos = {top: 30, left: 0};
+          } else {
+            btn = event.target.closest('.word img[title="'+theThirdDict?.name+'"]');
+            if(btn) {
+              pos = 'dictpage';
+              btnEl = btn;
+              parentEl = btn.closest('.word');
+              inputPos = {top: 78, right: 15};
+            }
+          }
+          if(!pos || !parentEl || !btnEl) return;
+          // 简单记忆
+          window.tmpCBLastWord = window.tmpCBLastWord || '';
+          if(selection && window.tmpCBLastWord !== selection) {
+            window.tmpCBLastWord = selection;
+            setTimeout(()=>parentEl.querySelector('.quick-input-box').value = '', 50);
+          }
+          // 保存选区
+          if(pos === 'toolbar') saveSelection();
+          // 获取输入框备注
+          remark = await showInputBox(btnEl, parentEl, '', '请输入备注', inputPos) || '';
+          if(!remark) {
+            if(pos === 'toolbar') restoreSelection();
+            //showMessage('已取消添加');
+            return;
+          }
+          remark = `（备注：${remark}）`;
+        }
         const res = await requestApi('/api/block/insertBlock', {
           "dataType": "markdown",
-          "data": `${selection}\n`,
+          "data": `${selection}${remark}\n`,
           "nextID": "",
           "previousID": "",
           "parentID": docId
         });
         if(!res || res.code !== 0) {
+          if(pos === 'toolbar') restoreSelection();
           showMessage('添加失败' + res.msg, true);
         }
         const blockId = res?.data?.[0]?.doOperations?.[0]?.id || '';
@@ -151,6 +190,7 @@
             "attrs": { "custom-word": selection }
           });
         }
+        if(pos === 'toolbar') restoreSelection();
         showMessage('添加成功');
       },
       position: 'toolbar, dictpage',
@@ -162,7 +202,7 @@
       // 图标16x16大小
       icon: 'https://b3logfile.com/file/2025/10/bookmarek-md3lOLx.png?imageView2/2/interlace/1/format/webp',
       // 打开命令
-      command: async ({selection, theThirdDict, result}) => {
+      command: async ({selection, theThirdDict, result, event}) => {
         const bookmarkName = '英语学习';
         const block = getCursorElement()?.closest('.protyle-wysiwyg [data-node-id][data-type]');
         if(!block?.dataset?.nodeId) return;
@@ -182,7 +222,7 @@
       // 图标16x16大小
       icon: 'https://b3logfile.com/file/2025/10/sound-iu4utGB.png?imageView2/2/interlace/1/format/webp',
       // 打开命令
-      command: async ({selection, theThirdDict, result}) => {
+      command: async ({selection, theThirdDict, result, event, eventType}) => {
         const soundRegion = 'us'; // 你希望的区域发音 uk 英音 us 美音
         // 有道参数 type=1表示英式发音，type=2表示美式发音
         playAudio(`http://dict.youdao.com/dictvoice?type=${soundRegion === 'uk' ? '1' : '2'}&audio=${selection}`);
@@ -196,7 +236,7 @@
       // 图标16x16大小
       icon: 'https://b3logfile.com/file/2025/10/insertSound-NKjrjlO.png?imageView2/2/interlace/1/format/webp',
       // 打开命令
-      command: async ({selection, theThirdDict, result}) => {
+      command: async ({selection, theThirdDict, result, event, eventType}) => {
         const soundRegion = 'am'; // 你希望的区域发音 en 英音 am 美音
         if(!window.enableLinkAudioJs){
           showMessage('请先安装自动发音链接最新版代码！<br /><a href="https://ld246.com/article/1734238897997" target="_blank">点这里查看和安装</a><br />', true);
@@ -802,11 +842,17 @@
           btn.addEventListener('click', (e) => {
             const selection = window.getSelection().toString().trim();
             if(typeof theThirdDict.command === 'function') {
-              theThirdDict.command({selection, theThirdDict, result: null});
+              theThirdDict.command({selection, theThirdDict, result: null, event:e, eventType:'click'});
             } else {
               window.open(theThirdDict.command.replace('{{keyword}}', selection));
             }
           });
+          if(typeof theThirdDict.command === 'function') {
+            btn.addEventListener('contextmenu', (e) => {
+              const selection = window.getSelection().toString().trim();
+              theThirdDict.command({selection, theThirdDict, result: null, event:e, eventType:'contextmenu'});
+            });
+          }
         }
       });
     }
@@ -833,7 +879,7 @@
           else {
             const theThirdDict = theThirdDicts[link?.dataset?.index];
             if(typeof theThirdDict?.command === 'function') {
-              theThirdDict.command({selection, theThirdDict, result});
+              theThirdDict.command({selection, theThirdDict, result, event:e});
             } else {
               window.open(command.replace('{{keyword}}', selection));
             }
@@ -874,11 +920,16 @@
             wordEl.appendChild(theThirdDictIcon);
             theThirdDictIcon.addEventListener('click', (e) => {
               if(typeof theThirdDict?.command === 'function') {
-                theThirdDict.command({selection:toDict.word, theThirdDict, result});
+                theThirdDict.command({selection:toDict.word, theThirdDict, result, event:e, eventType:'click'});
               } else {
                 window.open(theThirdDict.command.replace('{{keyword}}', toDict.word));
               }
             });
+            if(typeof theThirdDict?.command === 'function') {
+              theThirdDictIcon.addEventListener('contextmenu', (e) => {
+                theThirdDict.command({selection:toDict.word, theThirdDict, result, event:e, eventType:'contextmenu'});
+              });
+            }
           }
         });
       }
@@ -1490,5 +1541,98 @@
     // 触发 input 事件
     const inputEvent = new Event('input', { bubbles: true });
     element.dispatchEvent(inputEvent);
+  }
+  function showInputBox(element, parentEl=document.body, defaultValue='', placeholder='', pos={}, style='') {
+    return new Promise((resove)=>{
+      // 创建并显示输入框
+      let inputBox = parentEl.querySelector('.quick-input-box');
+      if (!inputBox) {
+          inputBox = document.createElement('input');
+          inputBox.type = 'text';
+          inputBox.value = defaultValue;
+          inputBox.className = 'quick-input-box b3-text-field fn__block';
+          inputBox.placeholder = placeholder;
+          inputBox.style = `
+              position: absolute;
+              top: 30px;
+              let: 0;
+              width: 300px;
+              padding: 5px;
+              border: 1px solid #888;
+              margin-top: 5px;
+              background-color: var(--b3-theme-background);
+              box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+              display: none;
+              z-index: ${++siyuan.zIndex};
+              ${style}
+          `;
+  
+          parentEl.appendChild(inputBox); // 将输入框插入到 body 中，确保它浮动显示
+      }
+  
+      // 设置输入框的显示位置
+      const rect = element.getBoundingClientRect();
+      inputBox.style.top = (pos.top || rect.height) + 'px';
+      if(pos.right) {
+        inputBox.style.left = 'auto';
+        inputBox.style.right = pos.right + 'px';
+      } else {
+        inputBox.style.left = (pos.left || 0) + 'px';
+        inputBox.style.right = 'auto';
+      }
+      
+      // 显示输入框
+      inputBox.style.display = 'block';
+  
+      // 监听 Enter 键提交
+      inputBox.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') {
+              inputBox.style.display = 'none';
+              resove(inputBox.value); // 这里可以替换成其他提交逻辑
+              //parentEl?.removeChild(inputBox); // 提交后移除输入框
+          }
+          // 监听 Esc 键关闭
+          if (e.key === 'Escape') {
+              e.stopPropagation();
+              inputBox.style.display = 'none';
+              resove('');
+              //parentEl?.removeChild(inputBox); // 按 Esc 关闭输入框
+          }
+      });
+      // 失去焦点关闭
+      inputBox.addEventListener('blur', function (e) {
+        inputBox.style.display = 'none';
+        resove('');
+        //parentEl?.removeChild(inputBox);
+      });
+  
+      // 聚焦输入框
+      inputBox.focus();
+    });
+  }
+  let savedSelection = null;
+  function saveSelection() {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      savedSelection = {
+        startContainer: range.startContainer,
+        startOffset: range.startOffset,
+        endContainer: range.endContainer,
+        endOffset: range.endOffset
+      };
+    }
+  }
+  function restoreSelection() {
+    if (!savedSelection) return;
+  
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+  
+    const range = document.createRange();
+    range.setStart(savedSelection.startContainer, savedSelection.startOffset);
+    range.setEnd(savedSelection.endContainer, savedSelection.endOffset);
+  
+    selection.addRange(range);
   }
 })();
