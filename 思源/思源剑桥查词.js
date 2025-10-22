@@ -3,7 +3,7 @@
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
 // version 0.0.7
-// 0.0.7 钉住时，选中即可查词；添加生词可不新增今日文档；新增插入到书签、发音、插入发音
+// 0.0.7 钉住时，选中即可查词；添加生词可不新增今日文档；新增添加到书签、发音、插入发音按钮
 // 0.0.6.9 theThirdDicts.command 支持回调函数；增加生词本功能
 // 0.0.6.8 点击单词标题可以输入查词
 // 0.0.6.6 增加全球真人发音
