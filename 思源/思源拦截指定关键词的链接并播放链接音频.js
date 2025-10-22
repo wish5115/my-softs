@@ -3,14 +3,14 @@
 // 关联 https://ld246.com/article/1732632964559
 // version 0.0.3
 // 更新记录
-// 0.0.3 兼容3.3.4+；自动发音支持有道词典
+// 0.0.3 兼容3.3.4+；自动发音支持有道词典和剑桥词典
 // 0.0.2 增加缓存，已获取过的音频链接直接使用缓存链接
 // 使用说明
 // 一、手动插入链接
 // 编辑器输入 /链接 或 /lianjie 在链接中输入你的链接即可，比如https://res.iciba.com/xxxx.mp3，当你的链接中含有audioLinkKeywords参数指定的关键词时，则自动拦截链接的点击并播放音频
 // 当锚文本链接输入*号时，则会使用图片作为播放音频的按钮，图片可以在defaultImage相关参数中配置或使用默认配置即可
 // 当链接地址中输入auto:开头的链接时，将自动获取音频，默认从iciba.com网站获取音频，可在getAudioSrcByNet函数中修改获取逻辑
-// 自动获取连接规则，比如，auto:hello:en，这里auto:是关键词，这里auto也可以是icb/iciba/yd/youdao分别代表爱词霸/爱词霸/有道/有道，hello是要查询的关键词，en是代表英音，am代表美音，默认是am，比如auto:hello
+// 自动获取连接规则，比如，auto:hello:en，这里auto:是关键词，这里auto也可以是icb/iciba/yd/youdao/cb分别代表爱词霸/爱词霸/有道/有道/剑桥，hello是要查询的关键词，en是代表英音，am代表美音，默认是am，比如auto:hello
 // 二，批量插入链接
 // 批量插入指在其他编辑中格式化好后，批量插入。
 // 批量插入的格式举例如下：
@@ -52,6 +52,7 @@
     audioLinkKeywords.unshift('iciba:');
     audioLinkKeywords.unshift('yd:');
     audioLinkKeywords.unshift('youdao:');
+    audioLinkKeywords.unshift('cb:');
     const selectors = audioLinkKeywords.map(audioLinkKeyword=>audioLinkKeyword?'span[data-type~="a"][data-href*="'+audioLinkKeyword.trim()+'"]:not([data-replaced])':'').filter(i=>i).join(',');
     if(selectors) observeLinkBlock(selectors, async (link) => {
         // 初始化
@@ -69,9 +70,9 @@
             event.stopPropagation();
             let linkHref = link.dataset?.href?.replace('&amp;', '&');
             const params = getQueryParams(linkHref);
-            if(/^(auto|iciba|icb|yd|youdao):/i.test(linkHref)) {
+            if(/^(auto|iciba|icb|yd|youdao|cb):/i.test(linkHref)) {
                 const soundFrom = linkHref?.split(':')?.[0] || '';
-                const keywords = linkHref.replace(/(auto|iciba|icb|yd|youdao):/i, '').trim().split('?')[0].split(':');
+                const keywords = linkHref.replace(/(auto|iciba|icb|yd|youdao|cb):/i, '').trim().split('?')[0].split(':');
                 const word = keywords[0];
                 if(!word) return;
                 const soundType = keywords[1] || '';
@@ -129,6 +130,10 @@
             // type=1表示英式发音，type=2表示美式发音
             soundType = soundType === 'en' ? '1' : '2';
             return `http://dict.youdao.com/dictvoice?type=${soundType}&audio=${word}`;
+        }
+        if(soundFrom==='cb') {
+            soundType = soundType === 'en' ? 'uk' : 'us';
+            return getAudioUrlFromCamBridge(word, soundType);
         }
         if(soundCaches[word+'-'+soundType]) return soundCaches[word+'-'+soundType];
         try {
@@ -211,6 +216,44 @@
             params[key] = value;
         }
         return params;
+    }
+
+    /**
+     * 从剑桥词典获取指定单词的发音 URL
+     * @param {string} word - 要查询的英文单词（支持多词，如 "take off"）
+     * @param {string} region - 发音区域：'us'（美式）或 'uk'（英式）
+     * @returns {Promise<string|''>} 返回完整的 MP3 音频 URL，若未找到则返回 ''
+     */
+    async function getAudioUrlFromCamBridge(word, region = 'us') {
+      if (!word || (region !== 'us' && region !== 'uk')) {
+        return '';
+      }
+    
+      const baseUrl = 'https://dictionary.cambridge.org';
+      const formattedWord = word.split(' ').join('-');
+      const encodedWord = encodeURIComponent(formattedWord);
+      const url = `${baseUrl}/dictionary/english-chinese-simplified/${encodedWord}`;
+    
+      try {
+        const response = await fetch(url);
+        if (!response.ok) return '';
+    
+        const htmlText = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+    
+        const block = doc.querySelector(region === 'us' ? '.us' : '.uk');
+        if (!block) return '';
+    
+        const audioEl = block.querySelector('source[type="audio/mpeg"]');
+        const relativePath = audioEl?.getAttribute('src');
+        if (!relativePath) return '';
+    
+        return baseUrl + relativePath;
+      } catch (err) {
+        console.error('获取剑桥发音失败:', err);
+        return '';
+      }
     }
 
     // 添加style标签
