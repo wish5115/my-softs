@@ -1197,7 +1197,8 @@
 
     const text = query.text.split(' ').join('-');
     const encodedText = encodeURIComponent(text);
-    const url = `${baseUrl}/zhs/%E8%AF%8D%E5%85%B8/%E8%8B%B1%E8%AF%AD-%E6%B1%89%E8%AF%AD-%E7%AE%80%E4%BD%93/${encodedText}`;
+    const url = `${baseUrl}/dictionary/english-chinese-simplified/${encodedText}`;
+    //const url = `${baseUrl}/zhs/%E8%AF%8D%E5%85%B8/%E8%8B%B1%E8%AF%AD-%E6%B1%89%E8%AF%AD-%E7%AE%80%E4%BD%93/${encodedText}`;
 
     try {
       const response = await fetch(url);
