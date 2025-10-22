@@ -2,7 +2,8 @@
 // see https://ld246.com/article/1760544378300
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
-// version 0.0.6.9
+// version 0.0.7
+// 0.0.7 钉住时，选中即可查词；添加生词可不新增今日文档；新增插入到书签、发音、插入发音
 // 0.0.6.9 theThirdDicts.command 支持回调函数；增加生词本功能
 // 0.0.6.8 点击单词标题可以输入查词
 // 0.0.6.6 增加全球真人发音
@@ -21,6 +22,9 @@
 
   // 是否开启钉住功能，钉住后窗口失去焦不会关闭 true 开启 false 不开启
   const enablePin = true;
+
+  // 钉住时，是否选中直接查词？true 直接查词 false 点击剑桥词典按钮查词
+  const isQueryWhenSelectWhenPined = true;
 
   // AI 搜索url
   const aiSearchUrl = 'https://chat.baidu.com/search?word={{keyword}}';
@@ -98,7 +102,8 @@
         // 设置生词本笔记本ID和路径等
         const notebookId = '20240224233354-t4fptpl'; // 笔记本id
         const wordBookPath = '/English/学习笔记'; // 生词本路径
-        const hasAddedScope = 'today'; // 是否已添加判断范围 today 仅今天生词中判断，all 所有生成中判断
+        const addNewWordInTodayDoc = true; // 是否把生词添加到今日文档中，true是 false 添加到wordBookPath文档中 
+        const haveAddedScope = 'today'; // 是否已添加判断范围 today 仅在今日生词文档中判断；all 在所有生词文档中判断
         
         const today = new Date().toLocaleDateString().replace(/\//g, '-');
         const todayPath = wordBookPath.replace(/\/$/, '')+'/'+today;
@@ -107,17 +112,23 @@
           showMessage('笔记ID或生词本路径错误', true);
           return;
         }
-        const todyDocId = await requestApi('/api/filetree/getIDsByHPath', {notebook:notebookId, path:todayPath});
-        let docId = todyDocId?.data?.[0] || '';
-        if(todyDocId?.data?.length === 0) {
-          const res = await requestApi('api/filetree/createDocWithMd', {notebook:notebookId, path:todayPath, markdown:''});
-          docId = res?.data || '';
+        let docId = '';
+        if(addNewWordInTodayDoc) {
+          const todyDocId = await requestApi('/api/filetree/getIDsByHPath', {notebook:notebookId, path:todayPath});
+          docId = todyDocId?.data?.[0] || '';
+          if(todyDocId?.data?.length === 0) {
+            const res = await requestApi('api/filetree/createDocWithMd', {notebook:notebookId, path:todayPath, markdown:''});
+            docId = res?.data || '';
+          }
+        } else {
+          const wordDocId = await requestApi('/api/filetree/getIDsByHPath', {notebook:notebookId, path:wordBookPath});
+          docId = wordDocId?.data?.[0] || '';
         }
         if(!docId){
-          showMessage('今日生词文档不存在', true);
+          showMessage(addNewWordInTodayDoc?'今日生词文档不存在':'获取生词本文档ID失败', true);
           return;
         }
-        const queryScopeSql = hasAddedScope === 'today' ? `root_id='${docId}'` : '1'
+        const queryScopeSql = haveAddedScope === 'today' ? `root_id='${docId}'` : '1'
         const wordList = await querySql(`select * from blocks where ${queryScopeSql} and type='p' and ial like '%custom-word="${selection}"%' limit 1`);
         if(wordList.length > 0){
           showMessage('该生词已添加');
@@ -143,6 +154,59 @@
         showMessage('添加成功');
       },
       position: 'toolbar, dictpage',
+    },
+    // 添加当前块到书签
+    {
+      // 名字，通常用于提示或显示
+      name: '添加当前块到书签',
+      // 图标16x16大小
+      icon: 'https://b3logfile.com/file/2025/10/bookmarek-md3lOLx.png?imageView2/2/interlace/1/format/webp',
+      // 打开命令
+      command: async ({selection, theThirdDict, result}) => {
+        const bookmarkName = '英语学习';
+        const block = getCursorElement()?.closest('.protyle-wysiwyg [data-node-id][data-type]');
+        if(!block?.dataset?.nodeId) return;
+        const res = await requestApi('/api/attr/setBlockAttrs', {
+          "id": block.dataset.nodeId,
+          "attrs": { "bookmark": bookmarkName }
+        });
+        if(res && res.code == 0) showMessage('书签添加成功');
+        else showMessage('书签添加失败' + res.msg, true);
+      },
+      position: 'toolbar',
+    },
+    // 朗读
+    {
+      // 名字，通常用于提示或显示
+      name: '朗读',
+      // 图标16x16大小
+      icon: 'https://b3logfile.com/file/2025/10/sound-iu4utGB.png?imageView2/2/interlace/1/format/webp',
+      // 打开命令
+      command: async ({selection, theThirdDict, result}) => {
+        const soundRegion = 'us'; // 你希望的区域发音 uk 英音 us 美音
+        // 有道参数 type=1表示英式发音，type=2表示美式发音
+        playAudio(`http://dict.youdao.com/dictvoice?type=${soundRegion === 'uk' ? '1' : '2'}&audio=${selection}`);
+      },
+      position: 'toolbar',
+    },
+    // 在该词后插入发音按钮
+    {
+      // 名字，通常用于提示或显示
+      name: '在该词后插入发音按钮',
+      // 图标16x16大小
+      icon: 'https://b3logfile.com/file/2025/10/insertSound-NKjrjlO.png?imageView2/2/interlace/1/format/webp',
+      // 打开命令
+      command: async ({selection, theThirdDict, result}) => {
+        const soundRegion = 'am'; // 你希望的区域发音 en 英音 am 美音
+        if(!window.enableLinkAudioJs){
+          showMessage('请先安装自动发音链接最新版代码！<br /><a href="https://ld246.com/article/1734238897997" target="_blank">点这里查看和安装</a><br />', true);
+          return;
+        }
+        const block = getCursorElement()?.closest('.protyle-wysiwyg [data-node-id][data-type]');
+        if(!block?.dataset?.nodeId) return;
+        sendTextToEditable(block, `${selection} [*](yd:${selection}:${soundRegion})`);
+      },
+      position: 'toolbar',
     }
   ];
 
@@ -685,6 +749,7 @@
     `;
   document.body.insertAdjacentHTML('beforeend', html);
   const placeHoder = document.querySelector('#cambridgePopup .popup-body').outerHTML;
+  if(!enablePin) document.querySelector('#cambridgePopup .pin-btn').style.display = 'none';
 
   const baseUrl = 'https://dictionary.cambridge.org';
   const showAd = true;
@@ -698,6 +763,10 @@
     const toolbar = protyle.querySelector('.protyle-toolbar');
     if (!toolbar) return;
     let assistantSelectBtn = toolbar.querySelector('button[data-type="cambridgePopup"]');
+    // 钉住时，选择即查词
+    if(assistantSelectBtn && enablePin && isQueryWhenSelectWhenPined && isPined) {
+      assistantSelectBtn.click();
+    }
     if (assistantSelectBtn) return;
     // 创建按钮
     const button = `<button class="protyle-toolbar__item b3-tooltips b3-tooltips__ne" style="font-size:14px;" data-type="cambridgePopup" aria-label="剑桥词典"><img style="vertical-align:middle;" src="https://dictionary.cambridge.org/zhs/external/images/favicon.ico?version=6.0.57" /></button>`;
@@ -1399,4 +1468,27 @@
     }
     return result.data;
  }
+  function getCursorElement() {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        // 获取选择范围的起始位置所在的节点
+        const startContainer = range.startContainer;
+        // 如果起始位置是文本节点，返回其父元素节点
+        const cursorElement = startContainer.nodeType === Node.TEXT_NODE
+            ? startContainer.parentElement
+            : startContainer;
+        return cursorElement;
+    }
+    return null;
+ }
+ function sendTextToEditable(element, text) {
+    // 聚焦到编辑器
+    element.focus();
+    // 发送文本
+    document.execCommand('insertHTML', false, text);
+    // 触发 input 事件
+    const inputEvent = new Event('input', { bubbles: true });
+    element.dispatchEvent(inputEvent);
+  }
 })();
