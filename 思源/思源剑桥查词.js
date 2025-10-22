@@ -102,7 +102,7 @@
         // 设置生词本笔记本ID和路径等
         const notebookId = '20240224233354-t4fptpl'; // 笔记本id
         const wordBookPath = '/English/学习笔记'; // 生词本路径
-        const addNewWordInTodayDoc = true; // 是否把生词添加到今日文档中，true是 false 添加到wordBookPath文档中 
+        const addNewWordInTodayDoc = true; // 是否把生词添加到今日文档中，true 是 false 添加到wordBookPath文档中 
         const haveAddedScope = 'today'; // 是否已添加判断范围 today 仅在今日生词文档中判断；all 在所有生词文档中判断
         
         const today = new Date().toLocaleDateString().replace(/\//g, '-');
