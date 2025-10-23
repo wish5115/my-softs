@@ -244,7 +244,7 @@
       icon: 'https://b3logfile.com/file/2025/10/insertSound-NKjrjlO.png?imageView2/2/interlace/1/format/webp',
       // 打开命令
       command: async ({selection, theThirdDict, result, event, eventType}) => {
-        const soundRegion = 'am'; // 你希望的区域发音 en 英音 am 美音
+        const soundRegion = 'both'; // 你希望的区域发音 en 英音 am 美音 both 两者都有，默认both
         const soundFrom = 'cb'; // 声音来源 yd 有道 cb 剑桥 
         
         if(!window.enableLinkAudioJs){
@@ -253,13 +253,15 @@
         }
         const block = getCursorElement()?.closest('.protyle-wysiwyg [data-node-id][data-type]');
         if(!block?.dataset?.nodeId) return;
-        sendTextToEditable(block, `${selection} [*](${soundFrom}:${selection}:${soundRegion})`);
+        const soundCode = soundRegion === 'both' ? `us: [*](${soundFrom}:${selection}:am) uk: [*](${soundFrom}:${selection}:en)` : `[*](${soundFrom}:${selection}:${soundRegion})`;
+        sendTextToEditable(block, `${selection} ${soundCode}`);
       },
       position: 'toolbar',
     }
   ];
 
   if(!!document.getElementById("sidebar")) return; // 不支持手机版
+  // 查词UI界面
   const html = `
       <style>
         button.protyle-toolbar__item img {
