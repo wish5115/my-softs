@@ -12,20 +12,21 @@
     subDocNames: ['第一篇', '第二篇', '第三篇'],
     subDocTpl: `## 文章\n## 生词\n## 总结\n## 笔记\n`,
     subDocTags: 'english,study',
+	FSRSMaxDay: 14, // 间隔重复算法最大天数
+	skipTodayDocOnCopy: true, // 复制时跳过今天的文档
     openType: 'newWindow', // newTab 新标签打开 newWindow 新窗口打开 为空不打开
     newWindow: {width: 490, height: 568, pin: true}, // 新窗口设置，宽高为0将使用思源默认宽高，pin是否置顶
     btnPos: 'dock', // 按钮位置 toolbar 工具栏 dock 左侧边栏
     enableCopy2WeekDocs: true, // 是否开启复制两周内文档功能
 	mergeLn: true, // 生词是否合并换行为空格
-	learnBeginDate: '2025-10-13', // 开始学习时间
-    knownVocabulary: 2000, // 已掌握词汇量
+    knownVocabulary: 2500, // 已掌握词汇量
 	wordsBetween: ["生词", "总结"],
 	articleBetween: ["文章", "生词"],
     // 复制内容模板 {{__content1__}} {{__content2__}} 是动态输入内容模板
     copyTpl: `
 ## 说明
 我开始学习时约掌握{{__knowWordsNum__}}左右的词汇量，目前已学习{{__learnDays__}}天。
-现在请按照我下面的要求帮我生成复习内容，及随机生成适合我目前水平阅读的3篇不同题材的分级阅读文章。
+现在请按照我下面的要求帮我生成学习内容，随机生成适合我目前水平阅读的3篇不同题材的分级阅读文章。
 
 ## 生成内容要求
 1. 根据间隔重复算法帮我生成今天要复习的单词
@@ -34,14 +35,12 @@
 ## 生成文章要求
 1. 文章包含标题
 2. 遵循“i+1”可理解输入的方式生成文章
-3. 如果可能，尽量配一些适合的插图
-4. 按照 News in Levels 2-3 的标准生成文章
-5. 根据用户目前水平决定是否出现**学术高频词**（如 AWL 词汇等）
-6. 按照高频词汇或星级词汇的标准生成文章
-7. 文章长度在300词左右，可根据用户水平和需要决定
-8. 文末列出生词表及短语词组等并说明其用法（生词表仅列出本次新增的新词即可）
-9. 【注意】因学习需要，词汇可以重复，但不要主题类似，要保证个性化复习与内容多样性之间的平衡，新主题、新语境中巩固旧词，又拓展新知。
-10. 根据需要增加新词量，但注意新词量不要太少，3篇至少要10个左右
+3. 按照 News in Levels 2-3 的标准生成文章
+4. 根据用户目前水平决定是否出现**学术高频词**（如 AWL 词汇等）
+5. 按照星级词汇或高频词汇的标准生成文章
+6. 文章长度在300-500词左右，可根据用户水平和需要决定
+7. 文末列出生词表及短语词组等并说明其用法（生词表仅列出本次新增的新词即可）
+8. 根据需要增加新词量，但注意新词量不要太少，3篇至少要10个左右
 
 ## 数据参考
 
@@ -172,10 +171,13 @@
 		  "notebook": config.notebookId,
 		  "path": path.replace('.sy', '')
 	  });
-	  const twoWeekDocs = docs.data.tree.slice(0, 14);
+	  docs?.data?.tree?.reverse(); // 注意如果这里不是最近添加的文档在前，不需要翻转
+	  if(config.skipTodayDocOnCopy) docs?.data?.tree?.shift();
+	  const twoWeekDocs = docs?.data?.tree.slice(0, config.FSRSMaxDay);
 	  const twoWeekIds = twoWeekDocs.map(d => d.id);
 	  const docIds = [], pIds = {};
 	  for(const doc of docs?.data?.tree) {
+		if(!doc?.children) continue;
 		for(const d of doc?.children) {
 		  if(d.id) {
 			  docIds.push(d.id);
@@ -186,6 +188,7 @@
 	  // 拼接生词文本
 	  let newWords = [], allWords = [], articles = [], usedPids = [], usedIds = [];
 	  all:for(const id of docIds) {
+		// 获取文档块列表
 		const docBlocks = await requestApi('/api/block/getChildBlocks', {id});
 		if(docBlocks && docBlocks?.data?.length > 0) {
 		  // 获取生词
@@ -199,14 +202,17 @@
 					  const docInfo = await requestApi('/api/block/getDocInfo', {id:pIds[id]});
 					  if(docInfo?.data?.name) {
 						  //newWords.push('### ' + docInfo?.data?.name + '\n');
-						  newWords.push('### Day' + (usedPids.length+1) + '\n');
+						  // 注意如果这里不是最近添加的文档在前，usedPids.length+1 即可
+						  let index = twoWeekIds.findIndex(i => i === pIds[id]);
+						  index = index > 0 ? index : 0;
+						  newWords.push('### Day' + (twoWeekIds.length-index) + '\n');
 						  usedPids.push(pIds[id]);
 					  }
 				  }
 				  // 输出块
-				  newWords.push(config.mergeLn?block.markdown.trim():block.markdown);
+				  if(block.markdown) newWords.push(config.mergeLn?block.markdown.trim():block.markdown);
 			  }
-			  allWords.push(config.mergeLn?block.markdown.trim():block.markdown);
+			  if(block.markdown) allWords.push(config.mergeLn?block.markdown.trim():block.markdown);
 			  continue;
 			}
 			if(block.content === config.wordsBetween[0]) {
@@ -219,7 +225,7 @@
 		  let count = 0;
 		  for(const block of docBlocks?.data) {
 			count++;
-			if(count > 14 || block.content === config.articleBetween[1]) break;
+			if(count > config.FSRSMaxDay || block.content === config.articleBetween[1]) break;
 			if(start) {
 			  if(!usedIds.includes(id)) {
 				  const docInfo = await requestApi('/api/block/getDocInfo', {id});
@@ -250,7 +256,7 @@
 		  .replace('{{__content2__}}', content2)
 		  .replace('{{__content3__}}', content3)
 		  .replace('{{__knowWordsNum__}}', config.knownVocabulary)
-		  .replace('{{__learnDays__}}', daysFromToday(config.learnBeginDate));
+		  .replace('{{__learnDays__}}', docs?.data?.tree?.length || 1);
 	  copyToClipboard(text);
 	  showMessage('复制成功');
   }
@@ -316,6 +322,8 @@
 		if(isMobile()) closePanel();
 	  copyAiPrompt();
     });
+
+	// 创建文档和子文档
     createSubDocBtn?.addEventListener("click", async function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -328,32 +336,62 @@
         const dateFileName = getFileName();
         const parentPath = `${config.parentPath}/${dateFileName}`;
 
-        const ids = await requestApi('/api/filetree/getIDsByHPath', {notebook:config.notebookId, path:parentPath});
-        if(ids?.data?.length > 0) {
+        let parentDocPath = '', parentId = '';
+		const ids = await requestApi('/api/filetree/getIDsByHPath', {notebook:config.notebookId, path:parentPath});
+        let hasSubDocs = true;
+		if(ids?.data?.length > 0) {
+			const docId = ids?.data[0];
+			parentDocPath = parentPath;
+			parentId = docId;
+			// 判断是否存在子文档
+			const path = (await requestApi('/api/filetree/getPathByID', {id:docId}))?.data?.path;
+			if(path){
+				const children = await requestApi('/api/filetree/listDocTree', {
+				  "notebook": config.notebookId,
+				  "path": path.replace('.sy', '')
+				});
+				// 子文档不存在
+				if(!children?.data?.tree?.length) {
+					hasSubDocs = false;
+
+					// 判断父是否存在listChildDocs widget 块
+					const res = await querySql(`select * from blocks where root_id='${docId}' and type='widget' and markdown like '%<iframe src="/widgets/listChildDocs/"%' limit 1`);
+					if(!res || !res?.length) {
+						// 添加listChildDocs widget 块
+						const r = await requestApi('/api/block/appendBlock', {data:config.newDocTpl, dataType:'markdown', parentID: docId});
+						if(!r || r.code !== 0) console.error('添加listChildDocs widget 块失败', r);
+					}
+				}
+			}
+		}
+		// 当父文档存在，并且有子文档时
+		if(ids?.data?.length > 0 && hasSubDocs) {
           if(config.openType) {
 			if(isMobile()) {
 				showMessage('已创建');
 				return;
 			}
-            const docId = ids?.data[0];
-            if(config.openType === 'newTab') openDocumentInEditor(docId);  // 调用编辑窗口
-            if(config.openType === 'newWindow') openDocumentInNewWindow(docId);
+            if(config.openType === 'newTab') openDocumentInEditor(parentId);  // 调用编辑窗口
+            if(config.openType === 'newWindow') openDocumentInNewWindow(parentId);
             return;
           } else {
             throw new Error('创建文件识别，文件已存在');
           }
         }
     
-        // 创建父文档（日期文件夹）
-        const {path:parentDocPath, id:parentId} = await createSubDocument(
-          config.newDocTpl,
-          config.openType,
-          config.parentPath,
-          dateFileName
-        );
-    
-        if (!parentDocPath) return;
-    
+        // 父文档不存在，则创建父文档（日期文件夹）
+		if(!ids?.data?.length) {
+			const {path:pDocPath, id:pId} = await createSubDocument(
+	          config.newDocTpl,
+	          config.openType,
+	          config.parentPath,
+	          dateFileName
+	        );
+	        if (!pDocPath) return;
+			parentDocPath = pDocPath;
+			parentId = pId;
+		}
+        
         // 创建子文档
         if (config.subDocNames && config.subDocNames.length > 0) {
           let paths = [];
@@ -513,5 +551,13 @@
 		maskElement.classList.add("fn__none");
 		maskElement.style.opacity = "";
 		window.siyuan.menus.menu.remove();
+	}
+	async function querySql(sql) {
+	    const result = await requestApi('/api/query/sql', { "stmt": sql });
+	    if (result.code !== 0) {
+	        console.error("查询数据库出错", result.msg);
+	        return [];
+	    }
+	    return result.data;
 	}
 })();
