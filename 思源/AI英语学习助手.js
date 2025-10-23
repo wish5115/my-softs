@@ -248,6 +248,7 @@
 	  if(config.mergeLn) allWords = allWords.map(w => w.replace(/\n(?=.*\S)/g, ' / '));
 	  // const content1 = newWords.join(!config.mergeLn?'\n':' / ');
 	  // const content2 = allWords.join(!config.mergeLn?'\n':' / ');
+	  const allWordsLength = allWords.reduce((sum, str) => sum + str.split('/').length, 0);
 	  const content1 = newWords.join('\n');
 	  const content2 = allWords.join('\n');
 	  const content3 = articles.join('\n');
@@ -255,7 +256,7 @@
 		  .replace('{{__content1__}}', content1)
 		  .replace('{{__content2__}}', content2)
 		  .replace('{{__content3__}}', content3)
-		  .replace('{{__knowWordsNum__}}', config.knownVocabulary)
+		  .replace('{{__knowWordsNum__}}', config.knownVocabulary + allWordsLength)
 		  .replace('{{__learnDays__}}', docs?.data?.tree?.length || 1);
 	  copyToClipboard(text);
 	  showMessage('复制成功');
