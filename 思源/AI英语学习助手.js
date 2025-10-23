@@ -12,7 +12,7 @@
     subDocNames: ['第一篇', '第二篇', '第三篇'],
     subDocTpl: `## 文章\n## 生词\n## 总结\n## 笔记\n`,
     subDocTags: 'english,study',
-	FSRSMaxDay: 14, // 间隔重复算法最大天数
+	FSRSMaxDay: 14, // 间隔重复算法最大天数（最近学习的文章个数也取这个字段）
 	skipTodayDocOnCopy: true, // 复制时跳过今天的文档
     openType: 'newWindow', // newTab 新标签打开 newWindow 新窗口打开 为空不打开
     newWindow: {width: 490, height: 568, pin: true}, // 新窗口设置，宽高为0将使用思源默认宽高，pin是否置顶
