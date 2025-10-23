@@ -2,7 +2,8 @@
 // see https://ld246.com/article/1760544378300
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
-// version 0.0.8
+// version 0.0.8.1
+// 0.0.8.1 修改全球发音bug；改进工具栏默认用剑桥词典发音和默认插入剑桥词典发音
 // 0.0.8 增加添加生词时右键按钮可以输入备注
 // 0.0.7 钉住时，选中即可查词；添加生词可不新增今日文档；新增添加到书签、发音、插入发音按钮
 // 0.0.6.9 theThirdDicts.command 支持回调函数；增加生词本功能
@@ -224,8 +225,14 @@
       // 打开命令
       command: async ({selection, theThirdDict, result, event, eventType}) => {
         const soundRegion = 'us'; // 你希望的区域发音 uk 英音 us 美音
-        // 有道参数 type=1表示英式发音，type=2表示美式发音
-        playAudio(`http://dict.youdao.com/dictvoice?type=${soundRegion === 'uk' ? '1' : '2'}&audio=${selection}`);
+        const soundFrom = 'cb'; // 声音来源 yd 有道 cb 剑桥
+        
+        if(soundFrom === 'yd') {
+          // 有道参数 type=1表示英式发音，type=2表示美式发音
+          playAudio(`http://dict.youdao.com/dictvoice?type=${soundRegion === 'uk' ? '1' : '2'}&audio=${selection}`);
+        } else {
+          playAudio(await getAudioUrlFromCamBridge(selection, soundRegion));
+        }
       },
       position: 'toolbar',
     },
@@ -238,13 +245,15 @@
       // 打开命令
       command: async ({selection, theThirdDict, result, event, eventType}) => {
         const soundRegion = 'am'; // 你希望的区域发音 en 英音 am 美音
+        const soundFrom = 'cb'; // 声音来源 yd 有道 cb 剑桥 
+        
         if(!window.enableLinkAudioJs){
           showMessage('请先安装自动发音链接最新版代码！<br /><a href="https://ld246.com/article/1734238897997" target="_blank">点这里查看和安装</a><br />', true);
           return;
         }
         const block = getCursorElement()?.closest('.protyle-wysiwyg [data-node-id][data-type]');
         if(!block?.dataset?.nodeId) return;
-        sendTextToEditable(block, `${selection} [*](yd:${selection}:${soundRegion})`);
+        sendTextToEditable(block, `${selection} [*](${soundFrom}:${selection}:${soundRegion})`);
       },
       position: 'toolbar',
     }
@@ -860,6 +869,7 @@
 
   // 开始查词
   function queryWords(keyword) {
+    const selection = keyword;
     translate({ text: keyword, detectFrom: "en" }, (result) => {
       // 未查到
       if (result.error) {
@@ -1015,7 +1025,10 @@
         globalVoicesList.style.top = `${topOffset}px`;
         // 获取全球发音
         const keyword = toDict.word;
-        const voices = await getGlobalVoices(keyword);
+        let voices = await getGlobalVoices(keyword.toLowerCase());
+        if(voices.length === 0 && keyword.toLowerCase() !== selection.toLowerCase()) {
+          voices = await getGlobalVoices(selection.toLowerCase());
+        }
         // 清空内容
         globalVoicesList.innerHTML = '';
         // 构建标题
@@ -1636,4 +1649,35 @@
   
     selection.addRange(range);
   }
+  async function getAudioUrlFromCamBridge(word, region = 'us') {
+      if (!word || (region !== 'us' && region !== 'uk')) {
+        return '';
+      }
+    
+      const baseUrl = 'https://dictionary.cambridge.org';
+      const formattedWord = word.split(' ').join('-');
+      const encodedWord = encodeURIComponent(formattedWord);
+      const url = `${baseUrl}/dictionary/english-chinese-simplified/${encodedWord}`;
+    
+      try {
+        const response = await fetch(url);
+        if (!response.ok) return '';
+    
+        const htmlText = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+    
+        const block = doc.querySelector(region === 'us' ? '.us' : '.uk');
+        if (!block) return '';
+    
+        const audioEl = block.querySelector('source[type="audio/mpeg"]');
+        const relativePath = audioEl?.getAttribute('src');
+        if (!relativePath) return '';
+    
+        return baseUrl + relativePath;
+      } catch (err) {
+        console.error('获取剑桥发音失败:', err);
+        return '';
+      }
+    }
 })();
