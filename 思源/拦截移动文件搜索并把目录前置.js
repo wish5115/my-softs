@@ -68,7 +68,7 @@ GROUP BY box;
         // 获取所有文档path
         const paths = data.map(item => item.path.replace('.sy', ''));
         // 获取path子文档数映射
-        const pathMap = await getSubDocNumsByPaths(paths);
+        const pathMap = await getSubDocNumByPaths(paths);
         // 前置所有匹配到的目录
         const front = [];  // 存放前置目录
         const rest = [];   // 其他保留原序
@@ -84,7 +84,7 @@ GROUP BY box;
         return front.concat(rest);
     }
 
-    async function getSubDocNumsByPaths(paths) {
+    async function getSubDocNumByPaths(paths) {
         const normalizedPaths = paths.map(p => p.startsWith('/') ? p : '/' + p);
     
         const caseFields = normalizedPaths.map(p => 
