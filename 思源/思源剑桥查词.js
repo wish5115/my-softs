@@ -2,7 +2,8 @@
 // see https://ld246.com/article/1760544378300
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
-// version 0.0.8.1
+// version 0.0.8.2
+// 0.0.8.2 单词下增加词性；增加动词变化；增加弱读音标
 // 0.0.8.1 修改全球发音bug；改进工具栏默认用剑桥词典发音和默认插入剑桥词典发音
 // 0.0.8 增加添加生词时右键按钮可以输入备注
 // 0.0.7 钉住时，选中即可查词；添加生词可不新增今日文档；新增添加到书签、发音、插入发音按钮
@@ -346,8 +347,12 @@
         .cambridge-popup .word {
           font-size: 24px;
           font-weight: bold;
-          margin-bottom: 8px;
+          /*margin-bottom: 8px;*/
           word-wrap: break-word;
+        }
+
+        .cambridge-popup .posgram{
+          padding-left: 5px;
         }
 
         .cambridge-popup .word #searchInput {
@@ -369,8 +374,11 @@
     
         .cambridge-popup .phonetics {
           display: flex;
-          gap: 16px;
-          margin-bottom: 16px;
+          gap: 2px;
+          /* gap: 16px; */
+          margin-top: 5px;
+          margin-bottom: 5px;
+          /*margin-bottom: 8px;*/
           font-size: 14px;
           flex-wrap: wrap;
         }
@@ -565,6 +573,10 @@
 
         .cambridge-popup.cb-dark .phonetic-item {
           color: #cccccc;
+        }
+
+        .cambridge-popup.cb-dark .global-btn{
+          margin-left: 2px;
         }
 
         .cambridge-popup.cb-dark .audio-btn,
@@ -947,6 +959,12 @@
       }
       body.appendChild(wordEl);
 
+      // 单词词性
+      const posgramEl = document.createElement('div');
+      posgramEl.className = 'posgram';
+      posgramEl.textContent = toDict.posgram;
+      body.appendChild(posgramEl);
+
       // 音标
       const phoneticsEl = document.createElement('div');
       phoneticsEl.className = 'phonetics';
@@ -957,7 +975,7 @@
         const regionText = p.region === 'us' ? '美' : '英';
         item.innerHTML = `
                       <span>${regionText}</span>
-                      <span>[${p.ipa}]</span>
+                      <span>[${p.ipa}]${p.ipaWeak ? ` weak [${p.ipaWeak}]` : ''}</span>
                       <button class="audio-btn" data-audio="${p.audio}">
                         <svg class="audio-icon" width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M10.7143 18.1786H8C7.44772 18.1786 7 17.7109 7 17.134V10.866C7 10.2891 7.44772 9.82136 8 9.82136H10.7143L14.3177 7.28302C14.9569 6.65978 16 7.1333 16 8.04673V19.9533C16 20.8667 14.9569 21.3402 14.3177 20.717L10.7143 18.1786Z" stroke-width="1.5"></path>
@@ -1107,6 +1125,12 @@
         }
       });
 
+      // 动词变化
+      const irregEl = document.createElement('div');
+      irregEl.className = 'posgram';
+      irregEl.innerHTML = toDict.irregText;
+      body.appendChild(irregEl);
+
       // 所有翻译（parts）
       toDict.parts.forEach(part => {
         const partEl = document.createElement('div');
@@ -1245,20 +1269,43 @@
       return;
     }
 
+    // 获取词性
+    const posgram = doc.querySelector('.posgram')?.textContent?.trim() || '';
+
+    // 获取动词变化
+    
+    const irreg = doc.querySelector('.entry:first-of-type')?.querySelector('.pos-header .irreg-infls');
+    const strongs = irreg?.querySelectorAll('b');
+    let irregText = irreg?.textContent?.trim() || '';
+    if(irregText && strongs.length) {
+      strongs.forEach(b => {
+        irregText = irregText.replace(b.textContent, `<b>${b.textContent}</b>`);
+      });
+    }
+
     // 音标和音频
     const usBlock = doc.querySelector('.us');
     const ukBlock = doc.querySelector('.uk');
+
+    let ukWeak = '';
+    const ukWeakBlock = usBlock?.nextElementSibling;
+    if(ukWeakBlock && !ukWeakBlock.matches('.us')) {
+      ukWeak = ukWeakBlock?.querySelector('.pron .ipa')?.textContent?.trim() || '';
+    }
+    const usWeak = usBlock?.nextElementSibling?.querySelector('.pron .ipa')?.textContent?.trim() || '';
 
     const phonetics = [
       makePhonetic(
         usBlock?.querySelector('.pron .ipa'),
         usBlock?.querySelector('[type="audio/mpeg"]'),
-        'us'
+        'us',
+        usWeak
       ),
       makePhonetic(
         ukBlock?.querySelector('.pron .ipa'),
         ukBlock?.querySelector('[type="audio/mpeg"]'),
-        'uk'
+        'uk',
+        ukWeak
       )
     ];
 
@@ -1318,7 +1365,9 @@
         phonetics: phonetics,
         additions: transformToAdditions(parts),
         parts: mapToParts(partMap),
-        word: word
+        word: word,
+        posgram: posgram,
+        irregText: irregText,
       },
       raw: '',
       toParagraphs: [word]
@@ -1374,9 +1423,10 @@
     return Array.from(context.querySelectorAll(selector));
   }
 
-  function makePhonetic(ipaEl, audioEl, region) {
+  function makePhonetic(ipaEl, audioEl, region, ipaWeak) {
     return {
       ipa: getText(ipaEl),
+      ipaWeak: ipaWeak,
       audio: audioEl?.getAttribute('src') || '',
       region: region
     };
