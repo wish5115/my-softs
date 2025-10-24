@@ -1277,6 +1277,7 @@
     const irreg = doc.querySelector('.entry:first-of-type')?.querySelector('.pos-header .irreg-infls');
     const strongs = irreg?.querySelectorAll('b');
     let irregText = irreg?.textContent?.trim() || '';
+    if(irregText?.startsWith('-') && irregText?.endsWith('-')) irregText = '';
     if(irregText && strongs.length) {
       strongs.forEach(b => {
         irregText = irregText.replace(b.textContent, `<b>${b.textContent}</b>`);
