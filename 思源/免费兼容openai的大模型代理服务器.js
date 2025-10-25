@@ -16,8 +16,8 @@
 
     /////////////// 以下是服务主体，非必须要勿动 /////////////////
 
-    // 不支持手机版
-    if(typeof window !== 'undefined' && window.siyuan.mobile) return;
+    // 不支持手机版和浏览器版
+    if(typeof window !== 'undefined' && window?.siyuan && !navigator?.userAgent?.includes('Electron')) return;
 
     const http = require('http');
     const https = require('https');
