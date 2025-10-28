@@ -1480,7 +1480,12 @@
   document.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
     popup.style.left = `${e.clientX - offsetX}px`;
-    popup.style.top = `${e.clientY - offsetY}px`;
+    let top = e.clientY - offsetY;
+    // 限制不能超过距离视窗顶部32px
+    if (top < 32) {
+        top = 32;
+    }
+    popup.style.top = `${top}px`;
   });
 
   document.addEventListener('mouseup', () => {
