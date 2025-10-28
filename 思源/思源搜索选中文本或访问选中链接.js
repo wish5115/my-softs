@@ -21,14 +21,14 @@
                 search.setAttribute('aria-label', '访问');
                 search.querySelector('svg use').setAttribute('xlink:href', '#iconLanguage');
             } else {
-                search.setAttribute('aria-label', '搜索');
+                search.setAttribute('aria-label', '点击搜索 / 双击AI搜索 / 右键翻译');
                 search.querySelector('svg use').setAttribute('xlink:href', '#iconSearch');
             }
             return;
         }
     
         // 创建按钮
-        const button = `<button class="protyle-toolbar__item b3-tooltips b3-tooltips__ne" data-type="search" aria-label="搜索/访问"><svg><use xlink:href="#iconSearch"></use></svg></button>`;
+        const button = `<button class="protyle-toolbar__item b3-tooltips b3-tooltips__ne" data-type="search" aria-label="点击搜索 / 双击AI搜索 / 右键翻译"><svg><use xlink:href="#iconSearch"></use></svg></button>`;
         toolbar.insertAdjacentHTML('afterbegin', button);
         search = toolbar.querySelector('button[data-type="search"]');
 
