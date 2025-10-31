@@ -56,7 +56,7 @@ class WebDAVClient {
                 },
                 onerror: function(error) {
                     console.error(error);
-                    reject(new Error(`请求失败: ${error.statusText || error}`));
+                    reject(new Error(`请求失败: ${error.statusText || error.message}`));
                 },
                 ontimeout: function() {
                     reject(new Error('请求超时'));
