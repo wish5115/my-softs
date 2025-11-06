@@ -1724,27 +1724,34 @@
       const baseUrl = 'https://dictionary.cambridge.org';
       const formattedWord = word.split(' ').join('-');
       const encodedWord = encodeURIComponent(formattedWord);
-      const url = `${baseUrl}/dictionary/english-chinese-simplified/${encodedWord}`;
-    
-      try {
-        const response = await fetch(url);
-        if (!response.ok) return '';
-    
-        const htmlText = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlText, 'text/html');
-    
-        const block = doc.querySelector(region === 'us' ? '.us' : '.uk');
-        if (!block) return '';
-    
-        const audioEl = block.querySelector('source[type="audio/mpeg"]');
-        const relativePath = audioEl?.getAttribute('src');
-        if (!relativePath) return '';
-    
-        return baseUrl + relativePath;
-      } catch (err) {
-        console.error('获取剑桥发音失败:', err);
-        return '';
+      let url = `${baseUrl}/dictionary/english-chinese-simplified/${encodedWord}`;
+      const getAudioSrc = async (url) => {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) return '';
+      
+          const htmlText = await response.text();
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlText, 'text/html');
+      
+          const block = doc.querySelector(region === 'us' ? '.us' : '.uk');
+          if (!block) return '';
+      
+          const audioEl = block.querySelector('source[type="audio/mpeg"]');
+          const relativePath = audioEl?.getAttribute('src');
+          if (!relativePath) return '';
+      
+          return baseUrl + relativePath;
+        } catch (err) {
+          console.error('获取剑桥发音失败:', err);
+          return '';
+        }
+      };
+      let src = await getAudioSrc(url);
+      if(!src) {
+        url = `${baseUrl}/dictionary/english/${encodedWord}`;
+        src = await getAudioSrc(url);
       }
+      return src;
     }
 })();
