@@ -2,7 +2,8 @@
 // see https://ld246.com/article/1760544378300
 // 查词内容解析自 https://dictionary.cambridge.org
 // 核心代码改自 https://github.com/yaobinbin333/bob-plugin-cambridge-dictionary/blob/cbdab3becad9b3b33165ff99dff4bab44ed54e17/src/entry.ts#L17
-// version 0.0.8.2
+// version 0.0.8.3
+// 0.0.8.3 新增当简体中文页面查询不到时自动转到英文页面查询
 // 0.0.8.2 单词下增加词性；增加动词变化；增加弱读音标
 // 0.0.8.1 修改全球发音bug；改进工具栏默认用剑桥词典发音和默认插入剑桥词典发音
 // 0.0.8 增加添加生词时右键按钮可以输入备注
@@ -884,9 +885,15 @@
   // 开始查词
   function queryWords(keyword) {
     const selection = keyword;
-    translate({ text: keyword, detectFrom: "en" }, (result) => {
+    let path = 'dictionary/english-chinese-simplified';
+    const completion = (result) => {
       // 未查到
       if (result.error) {
+        if(path === 'dictionary/english-chinese-simplified') {
+          path = 'dictionary/english';
+          translate({ text: keyword, detectFrom: "en", path: path }, completion);
+          return;
+        }
         let theTirdDictStr = '';
         if(enableTheThirdDicts) {
           const positionFilter = d => !d.position||d.position.split(/[,，]/).map(p=>p.trim()).filter(Boolean).some(p=>['notfound', 'both', 'all'].includes(p));
@@ -1202,14 +1209,15 @@
       const more = popup.querySelector('.footer a.cb-more');
       if (more) {
         const encodedWord = encodeURIComponent(toDict.word);
-        more.href = `${baseUrl}/zhs/%E8%AF%8D%E5%85%B8/%E8%8B%B1%E8%AF%AD-%E6%B1%89%E8%AF%AD-%E7%AE%80%E4%BD%93/${encodedWord}`;
+        more.href = `${baseUrl}/${path}/${encodedWord}`;
       }
       const ai = popup.querySelector('.footer a.cb-ai');
       if (ai) {
         const encodedWord = encodeURIComponent(aiPrompt.replace('{{keyword}}', toDict.word));
         ai.href = aiSearchUrl.replace('{{keyword}}', encodedWord);
       }
-    });
+    }
+    translate({ text: keyword, detectFrom: "en", path: path }, completion);
   }
 
   /**
@@ -1236,7 +1244,8 @@
 
     const text = query.text.split(' ').join('-');
     const encodedText = encodeURIComponent(text);
-    const url = `${baseUrl}/dictionary/english-chinese-simplified/${encodedText}`;
+    const path = query?.path?.trim() || 'dictionary/english-chinese-simplified';
+    const url = `${baseUrl}/${path}/${encodedText}`;
     //const url = `${baseUrl}/zhs/%E8%AF%8D%E5%85%B8/%E8%8B%B1%E8%AF%AD-%E6%B1%89%E8%AF%AD-%E7%AE%80%E4%BD%93/${encodedText}`;
 
     try {
@@ -1371,7 +1380,7 @@
         irregText: irregText,
       },
       raw: '',
-      toParagraphs: [word]
+      toParagraphs: [word],
     };
 
     completion({
