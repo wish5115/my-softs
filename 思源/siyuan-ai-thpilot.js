@@ -2,7 +2,7 @@
 // help see https://ld246.com/article/1763821416540
 // name SiYuan Thpilot
 // author Wilsons
-// version 1.0.1
+// version 1.0.2
 (async () => {
     /////////////////////////// 用户配置区 ///////////////////////////
     
@@ -16,7 +16,7 @@
     // VIP KEY
     // 非vip功能仅能使用划词解释、翻译、纠错、总结等，不能使用聊天功能
     // 也可以在单独的代码片段中通过 var thpilotVipKey = ''; 来配置vipkey，这样防止分享代码时不小心泄露秘钥
-    // 购买vip（自动发货） https://ifdian.net/order/create?plan_id=9a2febe8c79d11f082945254001e7c00&product_type=0&remark=&affiliate_code=
+    // 购买VIP https://ld246.com/article/1763821416540#VIP
     const vipKey = ''; // 👈秘钥填这里
 
     // 配置用到的类库（建议下载到本地使用更稳定，这些类库均是按需加载，仅在用到时下载）
@@ -26,7 +26,7 @@
             "ImageViewer": "https://scriptcat.org/lib/4625/1.0.0/ImageViewer.js?sha384-SX26HDt5ICRIw03Z4JwZWNqMyVgZKHTQQ4Q4S6wDhvNir2NBro81yWtdPq7rPMcm",
             "Popup": "https://scriptcat.org/lib/4657/1.0.0/Popup.js?sha384-j1OfUJ1d4vxTeRoRAhzlY61zez7XLLSqGMPqaMmUZcnCGX12UjtVzbz+PpWSh+eG",
             "LLMStream": "https://scriptcat.org/lib/4568/1.0.4/LLMStream.js?sha384-NpPVSgG1S5YGbLGce31JVI0OOxjRmVVIooCutM9rP+ylQJBoLBlWrcDPiE7xhHOK",
-            "ChatUi": "https://scriptcat.org/lib/4686/1.0.1/aiDialog.js?sha384-Yus8l6SmfBu2C+ezRy9RWFMq2zX9Y4RR5W6FJLyHHEdZhEdKU2Gbq6PEnRYuXRiD",
+            "ChatUi": "https://scriptcat.org/lib/4686/1.0.2/aiDialog.js?sha384-qxeU8epVP2Fgi1Q7Uc2q/+5RpnQBsoLextiZS7H+YX/6Lt46moxkRTorAsBSGTdN",
         },
     };
     
@@ -215,7 +215,7 @@
 
     const help = `
         <a href="https://ld246.com/article/1763821416540" target="_blank">帮助</a>&nbsp;&nbsp;
-        <a href="https://ifdian.net/order/create?plan_id=9a2febe8c79d11f082945254001e7c00&product_type=0&remark=&affiliate_code=" target="_blank">购买VIP</a>
+        <a href="https://ld246.com/article/1763821416540#VIP" target="_blank">购买VIP</a>
     `;
     
     // 监听工具栏出现
