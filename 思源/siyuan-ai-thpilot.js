@@ -1,5 +1,5 @@
 // 思源AI划词解释、翻译、纠错、总结、聊天等
-// help see https://ld246.com/article/1762724289865
+// help see https://ld246.com/article/1763821416540
 // name SiYuan Thpilot
 // author Wilsons
 // version 1.0.1
@@ -214,7 +214,7 @@
     if(isMobile()) return; // 暂不支持手机版
 
     const help = `
-        <a href="" target="_blank">帮助</a>&nbsp;&nbsp;
+        <a href="https://ld246.com/article/1763821416540" target="_blank">帮助</a>&nbsp;&nbsp;
         <a href="https://ifdian.net/order/create?plan_id=9a2febe8c79d11f082945254001e7c00&product_type=0&remark=&affiliate_code=" target="_blank">购买VIP</a>
     `;
     
