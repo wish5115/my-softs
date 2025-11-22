@@ -2,7 +2,7 @@
 // help see https://ld246.com/article/1762724289865
 // name SiYuan Thpilot
 // author Wilsons
-// version 1.0.0
+// version 1.0.1
 (async () => {
     /////////////////////////// 用户配置区 ///////////////////////////
     
@@ -11,7 +11,7 @@
     const maxHeight = 468;
 
     // 设置快捷键打开对话框
-    const shortcut = 'meta+alt+z'; // windows下可用ctrl代替meta
+    const shortcut = 'ctrl+alt+z';
 
     // VIP KEY
     // 非vip功能仅能使用划词解释、翻译、纠错、总结等，不能使用聊天功能
@@ -26,7 +26,7 @@
             "ImageViewer": "https://scriptcat.org/lib/4625/1.0.0/ImageViewer.js?sha384-SX26HDt5ICRIw03Z4JwZWNqMyVgZKHTQQ4Q4S6wDhvNir2NBro81yWtdPq7rPMcm",
             "Popup": "https://scriptcat.org/lib/4657/1.0.0/Popup.js?sha384-j1OfUJ1d4vxTeRoRAhzlY61zez7XLLSqGMPqaMmUZcnCGX12UjtVzbz+PpWSh+eG",
             "LLMStream": "https://scriptcat.org/lib/4568/1.0.4/LLMStream.js?sha384-NpPVSgG1S5YGbLGce31JVI0OOxjRmVVIooCutM9rP+ylQJBoLBlWrcDPiE7xhHOK",
-            "ChatUi": "https://scriptcat.org/lib/4686/1.0.0/aiDialog.js?sha384-BASY27WCv+PIumL3oEdWeSeswNWQu4tigdpLAPSXjbwJuNJHOH8YvfOAjEOA5PFI",
+            "ChatUi": "https://scriptcat.org/lib/4686/1.0.1/aiDialog.js?sha384-Yus8l6SmfBu2C+ezRy9RWFMq2zX9Y4RR5W6FJLyHHEdZhEdKU2Gbq6PEnRYuXRiD",
         },
     };
     
@@ -204,9 +204,12 @@
         },
     ];
 
+    // 全局历史最大条数
+    const globalHistoryNum = 200;
+
     /////////////////////////// 代码区，非必要勿动 ///////////////////////////
 
-    const debug = true;
+    const debug = false;
     
     if(isMobile()) return; // 暂不支持手机版
 
@@ -268,6 +271,7 @@
                     context: await getContext(button),
                     setModel: (m) => model = m,
                     tools: {getCurrentDoc, storeGlobalHistory, getGlobalHistory},
+                    globalHistoryNum,
                     help,
                 });
                 // 开始调用AI
@@ -330,6 +334,7 @@
             context: await getContext(button),
             setModel: (m) => model = m,
             tools: {getCurrentDoc, storeGlobalHistory, getGlobalHistory},
+            globalHistoryNum,
             help,
         });
         // 开始调用AI
@@ -576,6 +581,9 @@
      * @returns {Function} 返回清理函数，用于移除监听器
      */
     function onKeyPress(shortcut, callback) {
+        // 系统兼容处理
+        if(isMac()) shortcut = shortcut.replace(/ctrl|control/i, 'meta');
+        else shortcut = shortcut.replace(/meta|cmd|command/i, 'ctrl');
         // 解析快捷键字符串
         const keys = shortcut.toLowerCase().split('+').map(k => k.trim());
         
@@ -661,6 +669,10 @@
 
     function isMobile() {
         return !!document.getElementById("sidebar");
+    }
+
+    function isMac() {
+        return navigator.platform.indexOf("Mac") > -1;
     }
 
     async function getVipKey() {
