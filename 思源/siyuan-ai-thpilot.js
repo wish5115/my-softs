@@ -2,7 +2,8 @@
 // help see https://ld246.com/article/1763821416540
 // name SiYuan Thpilot
 // author Wilsons
-// version 1.0.2
+// version 1.0.3
+// 1.0.3 新增保存聊天到指定目录（可调用大模型生成标题）；改进重新生成后，默认删除选中区域或最后一个，shift+删除则删除该对话
 (async () => {
     /////////////////////////// 用户配置区 ///////////////////////////
     
@@ -12,6 +13,10 @@
 
     // 设置快捷键打开对话框
     const shortcut = 'ctrl+alt+z';
+
+    // 聊天默认保存的路径（点右上角保存按钮时会把当前聊天保存到指定目录）
+    // ‼️注意：第一个必须是笔记名，然后后面是路径（即笔记名+路径），且路径必须已存在
+    const saveToPath = '我的笔记/AI/聊天历史';
 
     // VIP KEY
     // 非vip功能仅能使用划词解释、翻译、纠错、总结等，不能使用聊天功能
@@ -26,7 +31,7 @@
             "ImageViewer": "https://scriptcat.org/lib/4625/1.0.0/ImageViewer.js?sha384-SX26HDt5ICRIw03Z4JwZWNqMyVgZKHTQQ4Q4S6wDhvNir2NBro81yWtdPq7rPMcm",
             "Popup": "https://scriptcat.org/lib/4657/1.0.0/Popup.js?sha384-j1OfUJ1d4vxTeRoRAhzlY61zez7XLLSqGMPqaMmUZcnCGX12UjtVzbz+PpWSh+eG",
             "LLMStream": "https://scriptcat.org/lib/4568/1.0.4/LLMStream.js?sha384-NpPVSgG1S5YGbLGce31JVI0OOxjRmVVIooCutM9rP+ylQJBoLBlWrcDPiE7xhHOK",
-            "ChatUi": "https://scriptcat.org/lib/4686/1.0.2/aiDialog.js?sha384-qxeU8epVP2Fgi1Q7Uc2q/+5RpnQBsoLextiZS7H+YX/6Lt46moxkRTorAsBSGTdN",
+            "ChatUi": "https://scriptcat.org/lib/4686/1.0.3/aiDialog.js?sha384-j2t9Eh61QWZGEO62BfkS13c3pX9/SSTkMfZJQw+QMX9VAErrf8psxNZ8XFedNsHz",
         },
     };
     
@@ -64,8 +69,12 @@
             thinking: 'auto', // 是否显示深度思考 'auto'自动判断（默认）、true（强制显示，即使为空也显示容器）、false（完全隐藏） 
         },
     ];
-    // 当前模型(默认模型)
+    // 当前模型(默认第一个模型)
     let model = JSON.parse(JSON.stringify(models[0]));
+    // 生成标题模型（默认最后一个模型）【注意：别用深度思考模型，生成标题太慢】
+    let titleModel = JSON.parse(JSON.stringify(models[models.length-1]));
+    // 生成标题提示词 {{text}} 是聊天内容，默认截取前1000字
+    const titlePrompt = `请根据以下聊天内容生成合适的文档标题，字数在20个字以内（忽略system提示词部分的文本）：\n\n{{text}}`;
 
     // 用户自定义toolbar按钮列表
     const buttons = [
@@ -209,7 +218,7 @@
 
     /////////////////////////// 代码区，非必要勿动 ///////////////////////////
 
-    const debug = false;
+    const debug = false; // true / false
     
     if(isMobile()) return; // 暂不支持手机版
 
@@ -270,7 +279,7 @@
                     chatButton: buttons.find(b=>b.isChat) || {},
                     context: await getContext(button),
                     setModel: (m) => model = m,
-                    tools: {getCurrentDoc, storeGlobalHistory, getGlobalHistory},
+                    tools: {getCurrentDoc, storeGlobalHistory, getGlobalHistory, saveDialogChats},
                     globalHistoryNum,
                     help,
                 });
@@ -333,7 +342,7 @@
             chatButton: button,
             context: await getContext(button),
             setModel: (m) => model = m,
-            tools: {getCurrentDoc, storeGlobalHistory, getGlobalHistory},
+            tools: {getCurrentDoc, storeGlobalHistory, getGlobalHistory, saveDialogChats},
             globalHistoryNum,
             help,
         });
@@ -353,6 +362,69 @@
             setTimeout(()=>input.focus(), 100);
         }
     });
+
+    async function saveDialogChats(text) {
+        if(!saveToPath) {
+            showMessage('保存失败，请先设置保存路径', true);
+            return;
+        }
+        const paths = saveToPath.split('/');
+        const noteName = paths.shift();
+        // 获取笔记id
+        const notes = await requestApi('/api/notebook/lsNotebooks', {"flashcard": false});
+        const noteId = notes?.data?.notebooks?.find(n=>n.name === noteName)?.id;
+        if(!noteId) {
+            showMessage('保存失败，请先设置笔记本名', true);
+            return;
+        }
+        // 用ai生成文档名
+        const newTitle = await generateTitle(text);
+        // 保存文档
+        const path = paths.join('/');
+        const res = await requestApi('/api/filetree/createDocWithMd', {
+          notebook: noteId,
+          path: `/${path}/${newTitle}`,
+          markdown: text,
+          tags: 'AI会话',
+        });
+        if(res && res.code === 0) {
+            showMessage('保存成功');
+        } else {
+            showMessage('保存失败', true);
+        }
+    }
+
+    async function generateTitle(text) {
+        const response = await fetch(getUrl(titleModel.url), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${titleModel.apiKey}`
+            },
+            body: JSON.stringify({
+                model: titleModel.model,
+                messages: [
+                    {
+                        role: 'user',
+                        content: titlePrompt.replace('{{text}}', text.substring(0, 1000))
+                    }
+                ],
+                temperature: titleModel.temperature,
+                stream: false // 先用非流式获取完整结果
+            })
+        });
+        const data = await response.json();
+        return data?.choices[0]?.message?.content || new Date().toLocaleString().replace(/\//g, '-');
+    }
+
+    function getUrl(url) {
+        // 以 /chat/completions 结尾，则返回原URL
+        if (/\/chat\/completions$/i.test(url)) return url;
+        // 以 # 结尾，则使用原始输入且删除末尾的 #
+        if (/#$/i.test(url)) return url.replace(/#$/, '');
+        // 否则添加 /chat/completions
+        return url.replace(/\/$/, '') + '/chat/completions';
+    }
 
     function getSelection(protyle) {
         const selection = window.getSelection().toString().trim();
@@ -567,6 +639,13 @@
 
     async function requestApi(url, data, method = 'POST') {
         return await (await fetch(url, {method: method, body: JSON.stringify(data||{})})).json();
+    }
+
+    function showMessage(message, isError = false, delay = 7000) {
+        return fetch('/api/notification/' + (isError ? 'pushErrMsg' : 'pushMsg'), {
+            "method": "POST",
+            "body": JSON.stringify({"msg": message, "timeout": delay})
+        });
     }
 
     function getProtyleEl() {
