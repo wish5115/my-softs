@@ -15,7 +15,7 @@
     const shortcut = 'ctrl+alt+z';
 
     // 聊天默认保存的路径（点右上角保存按钮时会把当前聊天保存到指定目录）
-    // ‼️注意：第一个必须是笔记名，然后后面是路径（即笔记名+路径），且路径必须已存在
+    // ‼️注意：第一个必须是笔记名，然后后面是路径（即笔记名+路径），如果路径不存在则创建
     const saveToPath = '我的笔记/AI/聊天历史';
 
     // VIP KEY
@@ -364,6 +364,10 @@
     });
 
     async function saveDialogChats(text) {
+        if(!text.trim()) {
+            showMessage('保存失败，暂无聊天内容', true);
+            return;
+        }
         if(!saveToPath) {
             showMessage('保存失败，请先设置保存路径', true);
             return;
