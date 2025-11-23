@@ -74,7 +74,7 @@
     // 生成标题模型（默认最后一个模型）【注意：别用深度思考模型，生成标题太慢】
     let titleModel = JSON.parse(JSON.stringify(models[models.length-1]));
     // 生成标题提示词 {{text}} 是聊天内容，默认截取前1000字
-    const titlePrompt = `请根据以下聊天内容生成合适的文档标题，字数在20个字以内（忽略system提示词部分的文本）：\n\n{{text}}`;
+    const titlePrompt = `请根据以下聊天内容生成合适的文档标题，字数在50个字以内（忽略system提示词部分的文本）：\n\n{{text}}`;
 
     // 用户自定义toolbar按钮列表
     const buttons = [
