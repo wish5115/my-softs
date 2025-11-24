@@ -2,7 +2,8 @@
 // help see https://ld246.com/article/1763821416540
 // name SiYuan Thpilot
 // author Wilsons
-// version 1.0.3
+// version 1.0.4
+// 1.0.4 修复拖动窗口高度无法拖动问题
 // 1.0.3 新增保存聊天到指定目录（可调用大模型生成标题）；改进重新生成后，默认删除选中区域或最后一个，shift+删除则删除该对话
 (async () => {
     /////////////////////////// 用户配置区 ///////////////////////////
@@ -31,7 +32,7 @@
             "ImageViewer": "https://scriptcat.org/lib/4625/1.0.0/ImageViewer.js?sha384-SX26HDt5ICRIw03Z4JwZWNqMyVgZKHTQQ4Q4S6wDhvNir2NBro81yWtdPq7rPMcm",
             "Popup": "https://scriptcat.org/lib/4657/1.0.0/Popup.js?sha384-j1OfUJ1d4vxTeRoRAhzlY61zez7XLLSqGMPqaMmUZcnCGX12UjtVzbz+PpWSh+eG",
             "LLMStream": "https://scriptcat.org/lib/4568/1.0.4/LLMStream.js?sha384-NpPVSgG1S5YGbLGce31JVI0OOxjRmVVIooCutM9rP+ylQJBoLBlWrcDPiE7xhHOK",
-            "ChatUi": "https://scriptcat.org/lib/4686/1.0.3/aiDialog.js?sha384-j2t9Eh61QWZGEO62BfkS13c3pX9/SSTkMfZJQw+QMX9VAErrf8psxNZ8XFedNsHz",
+            "ChatUi": "https://scriptcat.org/lib/4686/1.0.4/aiDialog.js?sha384-l/XpvykPZNHQhDxaz+jqAJPL7UMlIKSlfSte9Z4h4ITyuJUwqdRweVmsa1jDPflf",
         },
     };
     
