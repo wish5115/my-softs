@@ -2,7 +2,8 @@
 // help see https://ld246.com/article/1763821416540
 // name SiYuan Thpilot
 // author Wilsons
-// version 1.0.4
+// version 1.0.5
+// 1.0.5 改进拖动窗口时的体验
 // 1.0.4 修复拖动窗口高度无法拖动问题
 // 1.0.3 新增保存聊天到指定目录（可调用大模型生成标题）；改进重新生成后，默认删除选中区域或最后一个，shift+删除则删除该对话
 (async () => {
@@ -17,7 +18,7 @@
 
     // 聊天默认保存的路径（点右上角保存按钮时会把当前聊天保存到指定目录）
     // ‼️注意：第一个必须是笔记名，然后后面是路径（即笔记名+路径），如果路径不存在则创建
-    const saveToPath = '我的笔记/AI/聊天历史';
+    const saveToPath = '我的笔记/AI/已保存的聊天历史';
 
     // VIP KEY
     // 非vip功能仅能使用划词解释、翻译、纠错、总结等，不能使用聊天功能
@@ -32,7 +33,7 @@
             "ImageViewer": "https://scriptcat.org/lib/4625/1.0.0/ImageViewer.js?sha384-SX26HDt5ICRIw03Z4JwZWNqMyVgZKHTQQ4Q4S6wDhvNir2NBro81yWtdPq7rPMcm",
             "Popup": "https://scriptcat.org/lib/4657/1.0.0/Popup.js?sha384-j1OfUJ1d4vxTeRoRAhzlY61zez7XLLSqGMPqaMmUZcnCGX12UjtVzbz+PpWSh+eG",
             "LLMStream": "https://scriptcat.org/lib/4568/1.0.4/LLMStream.js?sha384-NpPVSgG1S5YGbLGce31JVI0OOxjRmVVIooCutM9rP+ylQJBoLBlWrcDPiE7xhHOK",
-            "ChatUi": "https://scriptcat.org/lib/4686/1.0.4/aiDialog.js?sha384-l/XpvykPZNHQhDxaz+jqAJPL7UMlIKSlfSte9Z4h4ITyuJUwqdRweVmsa1jDPflf",
+            "ChatUi": "https://scriptcat.org/lib/4686/1.0.5/aiDialog.js?sha384-EcDFtWciwHMwScdz4Wrxhi9A5Dq0Ktxd0bzNGTWy2FA2VDDZJGehjUHg3bzaBvII",
         },
     };
     
@@ -274,6 +275,8 @@
                     config: config,
                     top: pos.top,
                     left: pos.left,
+                    width: width,
+                    maxHeight: maxHeight,
                     models: models,
                     model: model,
                     button: button,
@@ -337,6 +340,8 @@
             zIndex: ++window.siyuan.zIndex,
             top: pos.top,
             left: pos.left,
+            width: width,
+            maxHeight: maxHeight,
             models: models,
             model: model,
             button: button,
