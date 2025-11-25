@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web 图片编辑器 Pro v3.5</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --toolbar-bg: #2d2d2d;
+            --btn-bg: #3e3e3e;
+            --text-color: #e0e0e0;
+            --accent-color: #4a90e2;
+            --highlight-color: #00d2ff;
+            --success-color: #28a745;
+            --success-hover: #218838;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #121212;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            height: 100vh;
+            color: var(--text-color);
+            overflow: hidden;
+        }
+
+        body.dragging::after {
+            content: '释放鼠标以插入图片';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 210, 255, 0.3);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 30px; font-weight: bold; color: #fff;
+            z-index: 9999;
+            pointer-events: none;
+            backdrop-filter: blur(2px);
+        }
+
+        #start-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            cursor: pointer;
+            text-align: center;
+        }
+        
+        #source-img-preview {
+            max-width: 400px;
+            max-height: 400px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            transition: transform 0.3s;
+            object-fit: contain;
+        }
+        #source-img-preview:hover { transform: scale(1.02); }
+
+        #editor-container {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-color);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            padding: 10px;
+            background: var(--toolbar-bg);
+            border-bottom: 1px solid #444;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            user-select: none;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 2px;
+            padding: 0 6px;
+            border-right: 1px solid #555;
+            align-items: center;
+        }
+        .btn-group:last-child { border: none; }
+
+        .btn {
+            width: 38px; height: 38px;
+            border: none;
+            background: var(--btn-bg);
+            color: var(--text-color);
+            border-radius: 4px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.1s;
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+        }
+
+        .btn:hover { background: #555; transform: translateY(-1px); }
+        .btn.active { 
+            background: var(--accent-color); 
+            color: white; 
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .btn-confirm { background-color: var(--success-color); color: white; display: none; }
+        .btn-confirm:hover { background-color: #218838; }
+
+        .btn-zoom { color: var(--highlight-color); font-weight: bold; font-size: 20px; }
+        .btn-zoom:hover { background: rgba(0, 210, 255, 0.15); }
+
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background-color: #333;
+            background-image: 
+                linear-gradient(45deg, #2a2a2a 25%, transparent 25%, transparent 75%, #2a2a2a 75%, #2a2a2a),
+                linear-gradient(45deg, #2a2a2a 25%, transparent 25%, transparent 75%, #2a2a2a 75%, #2a2a2a);
+            background-position: 0 0, 10px 10px;
+            background-size: 20px 20px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .color-picker-wrap {
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #fff;
+            position: relative;
+            cursor: pointer;
+        }
+        input[type="color"] {
+            position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            cursor: pointer; padding: 0; border: none;
+        }
+
+        #emoji-picker {
+            position: absolute;
+            top: 60px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--toolbar-bg);
+            border: 1px solid #555;
+            padding: 10px;
+            border-radius: 8px;
+            display: none;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 5px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+        .emoji-item {
+            cursor: pointer;
+            font-size: 24px;
+            padding: 5px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .emoji-item:hover { background: #555; transform: scale(1.2); }
+
+        .save-wrapper {
+            display: flex;
+            position: relative;
+        }
+        .btn-save-main {
+            background: var(--success-color);
+            border-radius: 4px 0 0 4px;
+            width: auto;
+            padding: 0 10px;
+        }
+        .btn-save-main:hover { background: var(--success-hover); }
+        .btn-save-arrow {
+            background: var(--success-hover);
+            border-radius: 0 4px 4px 0;
+            width: 25px;
+            font-size: 12px;
+            border-left: 1px solid rgba(0,0,0,0.1);
+        }
+        .btn-save-arrow:hover { background: #1e7e34; }
+        
+        .save-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 5px;
+            background: var(--toolbar-bg);
+            border: 1px solid #444;
+            border-radius: 4px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            flex-direction: column;
+            min-width: 120px;
+            z-index: 101;
+        }
+        .save-menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 14px;
+            text-align: left;
+            color: #e0e0e0;
+        }
+        .save-menu-item:hover { background: #444; color: #fff; }
+        .save-menu-item span { color: #888; font-size: 12px; margin-left: 5px; }
+
+        .btn[title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: -35px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: #fff;
+            padding: 5px 10px; font-size: 12px; border-radius: 4px;
+            white-space: nowrap; pointer-events: none; z-index: 99;
+        }
+
+        .icon { width: 20px; height: 20px; fill: currentColor; }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen" onclick="document.getElementById('file-upload').click()">
+        <img id="source-img-preview" src="https://tse1.explicit.bing.net/th/id/OIP.fc5mmXptViwN9BQopZz4xQHaHa?rs=1&pid=ImgDetMain&o=7&rm=3" crossorigin="anonymous">
+        <h2 style="margin-top:20px; color:#fff;">点击上传、拖拽图片或使用示例</h2>
+        <input type="file" id="file-upload" accept="image/*" style="display:none" onchange="handleFileUpload(this)">
+        <button class="btn" style="width:auto; padding:0 20px; margin-top:10px;" onclick="startEditorWithDemo(event)">使用示例图</button>
+    </div>
+
+    <div id="editor-container">
+        <div class="toolbar" id="main-toolbar">
+            <div class="btn-group">
+                <button class="btn" onclick="undo()" title="撤销 (Ctrl+Z)">↩️</button>
+                <button class="btn" onclick="redo()" title="恢复 (Ctrl+Y)">↪️</button>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn active" id="btn-select" onclick="setMode('select')" title="选择/多选 (V)">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M7 2l12 11.2-5.8.5 3.3 7.3-2.2.9-3.2-7.4-4.4 4.6z"/></svg>
+                </button>
+                <button class="btn" id="btn-pan" onclick="setMode('pan')" title="抓手拖拽 (Space)">✋</button>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-zoom" onclick="zoomCanvas(1.1)" title="放大">＋</button>
+                <button class="btn btn-zoom" onclick="zoomCanvas(0.9)" title="缩小">－</button>
+                <button class="btn btn-zoom" onclick="resetZoom()" style="font-size:14px" title="100%">1:1</button>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="btn-free" onclick="setMode('free')" title="画笔 (P)">✎</button>
+                <button class="btn" id="btn-line" onclick="setMode('line')" title="直线 (L)">⎯</button>
+                <button class="btn" id="btn-arrow" onclick="setMode('arrow')" title="箭头 (A)">↗</button>
+                <button class="btn" id="btn-rect" onclick="setMode('rect')" title="矩形 (R)">▢</button>
+                <button class="btn" id="btn-circle" onclick="setMode('circle')" title="椭圆/圆 (C)">◯</button>
+                <!-- 纯正马赛克 -->
+                <button class="btn" id="btn-mosaic" onclick="setMode('mosaic')" title="马赛克 (M)">▨</button>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="btn-text" onclick="setMode('text')" title="文字 (T)">T</button>
+                <button class="btn" id="btn-marker" onclick="setMode('marker')" title="序号标记 (K)">❶</button>
+                <button class="btn" onclick="resetMarkerCount()" title="重置计数为1" style="font-size: 12px; width: 30px;">1↺</button>
+                <button class="btn" id="btn-stamp" onclick="toggleEmoji(event)" title="表情印章">😊</button>
+                <button class="btn" onclick="document.getElementById('add-img-input').click()" title="插入图片">🖼️</button>
+                <input type="file" id="add-img-input" style="display:none" accept="image/*" onchange="addExternalImage(this)">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" onclick="flipImage('X')" title="水平翻转">↔️</button>
+                <button class="btn" onclick="flipImage('Y')" title="垂直翻转">↕️</button>
+                <button class="btn" id="btn-crop" onclick="toggleCropMode()" title="裁剪图片">✂️</button>
+                <button class="btn btn-confirm" id="btn-confirm-crop" onclick="confirmCrop()" title="确认裁剪">⎷</button>
+            </div>
+
+            <div class="btn-group">
+                <div class="color-picker-wrap" title="颜色">
+                    <input type="color" id="color-picker" value="#ff0000" onchange="updateColor(this.value)">
+                </div>
+                <button class="btn" onclick="deleteSelected()" title="删除选中 (Del)">🗑️</button>
+            </div>
+
+            <div class="btn-group" style="border:none; margin-left:auto;">
+                 <button class="btn" onclick="copyImage()" title="复制到剪贴板">📋</button>
+                 <div class="save-wrapper">
+                     <button class="btn btn-save-main" onclick="saveImage()" title="保存 (默认原格式)">💾 保存</button>
+                     <button class="btn btn-save-arrow" onclick="toggleSaveMenu(event)" title="选择格式">▼</button>
+                     <div id="save-menu" class="save-menu">
+                         <div class="save-menu-item" onclick="saveImage('png')">PNG <span>透明背景</span></div>
+                         <div class="save-menu-item" onclick="saveImage('jpg')">JPG <span>体积小</span></div>
+                         <div class="save-menu-item" onclick="saveImage('webp')">WebP <span>现代格式</span></div>
+                     </div>
+                 </div>
+            </div>
+        </div>
+        
+        <div id="emoji-picker" onclick="event.stopPropagation()">
+            <div class="emoji-item" onclick="selectEmoji('😊')">😊</div>
+            <div class="emoji-item" onclick="selectEmoji('😂')">😂</div>
+            <div class="emoji-item" onclick="selectEmoji('👍')">👍</div>
+            <div class="emoji-item" onclick="selectEmoji('👌')">👌</div>
+            <div class="emoji-item" onclick="selectEmoji('🔥')">🔥</div>
+            <div class="emoji-item" onclick="selectEmoji('⭐')">⭐</div>
+            <div class="emoji-item" onclick="selectEmoji('❓')">❓</div>
+            <div class="emoji-item" onclick="selectEmoji('❗')">❗</div>
+            <div class="emoji-item" onclick="selectEmoji('❌')">❌</div>
+            <div class="emoji-item" onclick="selectEmoji('✅')">✅</div>
+            <div class="emoji-item" onclick="selectEmoji('🚩')">🚩</div>
+            <div class="emoji-item" onclick="selectEmoji('💡')">💡</div>
+            <div class="emoji-item" onclick="selectEmoji('🎉')">🎉</div>
+            <div class="emoji-item" onclick="selectEmoji('👑')">👑</div>
+            <div class="emoji-item" onclick="selectEmoji('👀')">👀</div>
+            <div class="emoji-item" onclick="selectEmoji('💩')">💩</div>
+        </div>
+
+        <div class="canvas-area" id="canvas-wrapper">
+            <canvas id="c"></canvas>
+        </div>
+    </div>
+
+<script>
+    // --- Fabric.js 设置 ---
+    fabric.Object.prototype.set({
+        borderColor: '#00d2ff',
+        cornerColor: '#00d2ff',
+        cornerStrokeColor: '#ffffff',
+        cornerSize: 10,
+        cornerStyle: 'circle',
+        transparentCorners: false,
+        borderOpacityWhenMoving: 1,
+        padding: 5
+    });
+
+    let canvas;
+    let currentMode = 'select';
+    let currentColor = '#ff0000';
+    let selectedEmoji = '';
+    let isDrawing = false;
+    let isDraggingCanvas = false;
+    let lastPosX, lastPosY;
+    let origX, origY;
+    let activeObject; 
+    let markerCount = 1;
+    let historyStack = [];
+    let redoStack = [];
+    let isHistoryProcessing = false;
+    let cropRect = null;
+    let isCropping = false;
+    let isSpacePressed = false;
+    let isEdited = false; // 添加编辑状态标志
+    let originalFormat = 'png';
+
+    const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform) || (navigator.userAgent.includes("Mac") && !navigator.userAgent.includes("Win"));
+    const multiSelectKey = isMac ? 'metaKey' : 'ctrlKey';
+
+    const startScreen = document.getElementById('start-screen');
+    const editorContainer = document.getElementById('editor-container');
+    const sourceImgPreview = document.getElementById('source-img-preview');
+    const emojiPicker = document.getElementById('emoji-picker');
+    const confirmCropBtn = document.getElementById('btn-confirm-crop');
+    const saveMenu = document.getElementById('save-menu');
+
+    function startEditorWithDemo(e) {
+        e.stopPropagation();
+        originalFormat = 'jpg';
+        initCanvas(sourceImgPreview.src);
+    }
+
+    function handleFileUpload(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            if (file.type) {
+                const subtype = file.type.split('/')[1];
+                originalFormat = subtype === 'jpeg' ? 'jpg' : subtype;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => initCanvas(e.target.result);
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function initCanvas(imgUrl) {
+        startScreen.style.display = 'none';
+        editorContainer.style.display = 'flex';
+        const wrapper = document.getElementById('canvas-wrapper');
+        
+        canvas = new fabric.Canvas('c', {
+            width: wrapper.clientWidth, 
+            height: wrapper.clientHeight,
+            selection: true,
+            selectionKey: multiSelectKey,
+            preserveObjectStacking: true,
+            centeredScaling: true
+        });
+
+        loadBgImage(imgUrl, canvas.width, canvas.height);
+
+        canvas.on('mouse:down', onMouseDown);
+        canvas.on('mouse:move', onMouseMove);
+        canvas.on('mouse:up', onMouseUp);
+        
+        canvas.on('mouse:wheel', function(opt) {
+            const delta = opt.e.deltaY;
+            let zoom = canvas.getZoom();
+            zoom *= 0.999 ** delta;
+            if (zoom > 10) zoom = 10;
+            if (zoom < 0.1) zoom = 0.1;
+            canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+            opt.e.preventDefault();
+            opt.e.stopPropagation();
+        });
+
+        canvas.on('object:added', () => saveHistory());
+        canvas.on('object:modified', () => saveHistory());
+        canvas.on('object:removed', () => saveHistory());
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#btn-stamp') && !e.target.closest('#emoji-picker')) {
+                emojiPicker.style.display = 'none';
+            }
+            if (!e.target.closest('.save-wrapper')) {
+                saveMenu.style.display = 'none';
+            }
+        });
+        
+        isEdited = false; // 重置编辑状态
+    }
+
+    function loadBgImage(url, w, h) {
+        fabric.Image.fromURL(url, function(img) {
+            const scale = Math.min((w - 40) / img.width, (h - 40) / img.height);
+            img.set({
+                originX: 'left', originY: 'top',
+                scaleX: scale, scaleY: scale,
+                selectable: false, evented: false
+            });
+            const left = (w - img.width * scale) / 2;
+            const top = (h - img.height * scale) / 2;
+            img.set({ left, top });
+            canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+            saveHistory();
+        }, { crossOrigin: 'anonymous' });
+    }
+
+    // --- 菜单操作 ---
+    function toggleSaveMenu(e) {
+        e.stopPropagation();
+        const isVisible = saveMenu.style.display === 'flex';
+        saveMenu.style.display = isVisible ? 'none' : 'flex';
+    }
+
+    function setMode(mode) {
+        if (isCropping && mode !== 'select') cancelCrop();
+        currentMode = mode;
+        
+        document.querySelectorAll('.toolbar .btn').forEach(b => b.classList.remove('active'));
+        if (mode === 'stamp') document.getElementById('btn-stamp').classList.add('active');
+        else {
+            const btn = document.getElementById('btn-' + mode);
+            if(btn) btn.classList.add('active');
+        }
+        emojiPicker.style.display = 'none';
+
+        canvas.isDrawingMode = (mode === 'free');
+
+        if (mode === 'free') {
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            canvas.freeDrawingBrush.width = 4; 
+            canvas.freeDrawingBrush.color = currentColor;
+        }
+
+        if (mode === 'pan') {
+            canvas.defaultCursor = 'grab';
+            canvas.selection = false; 
+            canvas.skipTargetFind = true; 
+        } else if (mode === 'select') {
+            canvas.defaultCursor = 'default';
+            canvas.selection = true;
+            canvas.skipTargetFind = false;
+        } else {
+            canvas.defaultCursor = (mode === 'stamp' || mode === 'marker') ? 'copy' : 'crosshair';
+            canvas.selection = false;
+            canvas.skipTargetFind = false;
+        }
+        
+        canvas.requestRenderAll();
+    }
+
+    function onMouseDown(o) {
+        const evt = o.e;
+    
+        // 👈 修改：将这个判断提前，确保 Space 优先级最高
+        if (currentMode === 'pan' || isSpacePressed) {
+            isDraggingCanvas = true;
+            canvas.defaultCursor = 'grabbing';
+            canvas.isDrawingMode = false; // 👈 添加：禁用画笔模式
+            lastPosX = evt.clientX;
+            lastPosY = evt.clientY;
+            return;
+        }
+    
+        if (currentMode === 'select') return;
+    
+        if (o.target) return;
+    
+        isDrawing = true;
+        const pointer = canvas.getPointer(evt);
+        origX = pointer.x;
+        origY = pointer.y;
+    
+        if (currentMode === 'stamp') {
+            const text = new fabric.Text(selectedEmoji, {
+                left: pointer.x, top: pointer.y, fontSize: 40,
+                originX: 'center', originY: 'center', selectable: true
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            isDrawing = false;
+            return;
+        }
+    
+        if (currentMode === 'free') return;
+    
+        if (currentMode === 'rect' || currentMode === 'mosaic') {
+            activeObject = new fabric.Rect({
+                left: origX, top: origY, originX: 'left', originY: 'top',
+                width: 0, height: 0,
+                // 马赛克绘制时显示半透明黑色，暗示遮挡
+                fill: currentMode === 'mosaic' ? 'rgba(0,0,0,0.5)' : 'transparent',
+                stroke: currentMode === 'mosaic' ? '#fff' : currentColor,
+                strokeWidth: currentMode === 'mosaic' ? 1 : 3,
+                strokeDashArray: null
+            });
+            canvas.add(activeObject);
+        }
+        else if (currentMode === 'circle') {
+            activeObject = new fabric.Ellipse({
+                left: origX, top: origY, originX: 'left', originY: 'top',
+                rx: 0, ry: 0, 
+                fill: 'transparent', stroke: currentColor, strokeWidth: 3
+            });
+            canvas.add(activeObject);
+        }
+        else if (currentMode === 'arrow' || currentMode === 'line') {
+            activeObject = new fabric.Line([origX, origY, origX, origY], {
+                strokeWidth: 3, stroke: currentColor, selectable: false,
+                originX: 'center', originY: 'center'
+            });
+            canvas.add(activeObject);
+        }
+        else if (currentMode === 'text') {
+            isDrawing = false;
+            const text = new fabric.IText('双击编辑', {
+                left: origX, top: origY,
+                fontFamily: 'Microsoft YaHei', fill: currentColor, fontSize: 24, fontWeight: 'bold'
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            setMode('select');
+        }
+        else if (currentMode === 'marker') {
+            isDrawing = false;
+            const circle = new fabric.Circle({
+                radius: 12, fill: currentColor, originX: 'center', originY: 'center',
+                stroke: '#fff', strokeWidth: 2
+            });
+            const num = new fabric.Text(markerCount.toString(), {
+                fontSize: 14, fill: '#fff', originX: 'center', originY: 'center', fontWeight: 'bold'
+            });
+            const group = new fabric.Group([circle, num], {
+                left: origX, top: origY, originX: 'center', originY: 'center'
+            });
+            canvas.add(group);
+            markerCount++;
+        }
+    }
+
+    function onMouseMove(o) {
+        if (isDraggingCanvas) {
+            const evt = o.e;
+            const vpt = canvas.viewportTransform;
+            vpt[4] += evt.clientX - lastPosX;
+            vpt[5] += evt.clientY - lastPosY;
+            canvas.requestRenderAll();
+            lastPosX = evt.clientX;
+            lastPosY = evt.clientY;
+            return;
+        }
+
+        if (!isDrawing) return;
+        const pointer = canvas.getPointer(o.e);
+        const shiftKey = o.e.shiftKey;
+
+        if (currentMode === 'rect' || currentMode === 'mosaic') {
+            let w = Math.abs(origX - pointer.x);
+            let h = Math.abs(origY - pointer.y);
+            
+            if (shiftKey && currentMode === 'rect') {
+                const maxVal = Math.max(w, h);
+                w = maxVal; h = maxVal;
+            }
+
+            if (origX > pointer.x) activeObject.set({ left: origX - w });
+            else activeObject.set({ left: origX });
+
+            if (origY > pointer.y) activeObject.set({ top: origY - h });
+            else activeObject.set({ top: origY });
+            
+            activeObject.set({ width: w, height: h });
+        }
+        else if (currentMode === 'circle') {
+            let rx = Math.abs(origX - pointer.x) / 2;
+            let ry = Math.abs(origY - pointer.y) / 2;
+            
+            if (shiftKey) {
+                const r = Math.max(rx, ry);
+                rx = r; ry = r;
+            }
+
+            if (origX > pointer.x) activeObject.set({ left: origX - rx * 2 });
+            else activeObject.set({ left: origX });
+            if (origY > pointer.y) activeObject.set({ top: origY - ry * 2 });
+            else activeObject.set({ top: origY });
+
+            activeObject.set({ rx: rx, ry: ry });
+        }
+        else if (currentMode === 'arrow' || currentMode === 'line') {
+            let targetX = pointer.x;
+            let targetY = pointer.y;
+
+            if (shiftKey) {
+                const dx = Math.abs(targetX - origX);
+                const dy = Math.abs(targetY - origY);
+                if (dx > dy) targetY = origY;
+                else targetX = origX;
+            }
+
+            activeObject.set({ x2: targetX, y2: targetY });
+        }
+        canvas.renderAll();
+    }
+
+    function onMouseUp(o) {
+        if (isDraggingCanvas) {
+            isDraggingCanvas = false;
+            if (isSpacePressed && currentMode !== 'pan') {
+                canvas.defaultCursor = 'grab';
+            } else if (currentMode === 'pan') {
+                canvas.defaultCursor = 'grab';
+            } else if (currentMode === 'select') {
+                canvas.defaultCursor = 'default';
+            } else {
+                canvas.defaultCursor = (currentMode === 'stamp' || currentMode === 'marker') ? 'copy' : 'crosshair';
+            }
+            canvas.setViewportTransform(canvas.viewportTransform);
+            return;
+        }
+    
+        if (!isDrawing) return;
+        isDrawing = false;
+    
+        if (currentMode === 'arrow') {
+            const line = activeObject;
+            const dx = line.x2 - line.x1;
+            const dy = line.y2 - line.y1;
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            const arrowHead = new fabric.Triangle({
+                width: 15, height: 15, fill: currentColor,
+                left: line.x2, top: line.y2,
+                originX: 'center', originY: 'center', angle: angle + 90
+            });
+            const group = new fabric.Group([line, arrowHead]);
+            canvas.remove(line);
+            canvas.add(group);
+            canvas.setActiveObject(group); 
+        } 
+        else if (currentMode === 'line') {
+            activeObject.set({ selectable: true });
+            activeObject.setCoords();
+            canvas.setActiveObject(activeObject);
+        }
+        // ============================================
+        // 核心修改：手动 Canvas 采样实现锐利马赛克
+        // ============================================
+        else if (currentMode === 'mosaic') {
+            const { left, top, width, height } = activeObject;
+            canvas.remove(activeObject); // 移除选框
+            activeObject = null; // 👈 添加这一行：清空 activeObject 变量
+            
+            if(width > 5 && height > 5) {
+                // 1. 获取选区原图
+                const dataUrl = canvas.toDataURL({
+                    left, top, width, height, format:'png', multiplier: 1
+                });
+                
+                isHistoryProcessing = true; // 临时禁用历史记录
+                
+                fabric.Image.fromURL(dataUrl, (img) => {
+                    // 定义马赛克块大小（块越大越像 Minecraft）
+                    const blockSize = 20;
+                    
+                    // 2. 创建一个临时的 HTML5 Canvas 进行像素处理
+                    const tempCanvas = document.createElement('canvas');
+                    const tCtx = tempCanvas.getContext('2d');
+                    
+                    // 关键步骤 A：缩小
+                    // 我们把画布设得很小，比如原宽 200px -> 缩到 10px
+                    const w = Math.ceil(width / blockSize);
+                    const h = Math.ceil(height / blockSize);
+                    tempCanvas.width = w;
+                    tempCanvas.height = h;
+                    
+                    // 把选区图片画到小画布上（浏览器会自动取平均色）
+                    tCtx.drawImage(img.getElement(), 0, 0, w, h);
+                    
+                    // 3. 创建第二个临时画布，用于放大
+                    const finalCanvas = document.createElement('canvas');
+                    const fCtx = finalCanvas.getContext('2d');
+                    finalCanvas.width = width;
+                    finalCanvas.height = height;
+                    
+                    // 关键步骤 B：关闭平滑处理！
+                    // 这会让像素在放大时保持锯齿状，不会模糊
+                    fCtx.imageSmoothingEnabled = false;
+                    fCtx.webkitImageSmoothingEnabled = false;
+                    fCtx.mozImageSmoothingEnabled = false;
+                    
+                    // 把小图放大画回原尺寸
+                    fCtx.drawImage(tempCanvas, 0, 0, width, height);
+                    
+                    // 4. 将处理好的像素图加回 Fabric 画布
+                    const mosaicImg = new fabric.Image(finalCanvas);
+                    mosaicImg.set({
+                        left: left,
+                        top: top,
+                        // 确保 Fabric 渲染时也不平滑
+                        imageSmoothing: false,
+                        objectCaching: false // 关闭缓存防止副作用
+                    });
+                    
+                    canvas.add(mosaicImg);
+                    
+                    // 重新启用历史记录并手动保存
+                    isHistoryProcessing = false;
+                    saveHistory();
+                    canvas.requestRenderAll();
+                });
+            } else { // 处理宽高过小的情况
+                isHistoryProcessing = false; // 重置标志
+            }
+        } else if (activeObject) {
+            canvas.setActiveObject(activeObject); 
+        }
+        
+        if (activeObject) activeObject.setCoords();
+        canvas.renderAll();
+    }
+
+    function toggleEmoji(e) {
+        e.stopPropagation();
+        const isVisible = emojiPicker.style.display === 'grid';
+        emojiPicker.style.display = isVisible ? 'none' : 'grid';
+    }
+
+    function selectEmoji(emoji) {
+        selectedEmoji = emoji;
+        emojiPicker.style.display = 'none';
+        setMode('stamp');
+    }
+
+    function resetMarkerCount() {
+        markerCount = 1;
+        const btn = document.querySelector('button[title="重置计数为1"]');
+        const old = btn.innerHTML;
+        btn.innerHTML = "🆗";
+        setTimeout(() => btn.innerHTML = old, 1000);
+    }
+
+    function updateColor(val) {
+        currentColor = val;
+        if (canvas.freeDrawingBrush) canvas.freeDrawingBrush.color = val;
+        const activeObj = canvas.getActiveObject();
+        if (activeObj) {
+            if (activeObj.type === 'activeSelection') {
+                activeObj.forEachObject(obj => changeObjectColor(obj, val));
+            } else {
+                changeObjectColor(activeObj, val);
+            }
+            canvas.requestRenderAll();
+            saveHistory();
+        }
+    }
+    
+    function changeObjectColor(obj, val) {
+        if(obj.type === 'i-text' || obj.type === 'text') obj.set('fill', val);
+        else obj.set('stroke', val);
+    }
+
+    function addExternalImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                fabric.Image.fromURL(e.target.result, function(img) {
+                    if(img.width > 200) img.scaleToWidth(200);
+                    img.set({
+                        left: canvas.getCenter().left, top: canvas.getCenter().top,
+                        originX: 'center', originY: 'center'
+                    });
+                    canvas.add(img);
+                    canvas.setActiveObject(img);
+                    setMode('select');
+                });
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+        input.value = '';
+    }
+
+    function flipImage(axis) {
+        const img = canvas.backgroundImage;
+        if(img) {
+            if(axis === 'X') img.set('flipX', !img.flipX);
+            if(axis === 'Y') img.set('flipY', !img.flipY);
+            canvas.renderAll();
+            saveHistory();
+        }
+    }
+
+    function toggleCropMode() {
+        if (!isCropping) {
+            isCropping = true;
+            setMode('select');
+            resetZoom();
+            confirmCropBtn.style.display = 'flex';
+            document.getElementById('btn-crop').classList.add('active');
+            
+            cropRect = new fabric.Rect({
+                width: canvas.width * 0.6, height: canvas.height * 0.6,
+                left: canvas.width * 0.2, top: canvas.height * 0.2,
+                fill: 'rgba(0,0,0,0.3)',
+                stroke: '#fff', strokeDashArray: [10, 5], strokeWidth: 2,
+                transparentCorners: false, cornerColor: '#fff', cornerStrokeColor: '#000',
+                borderColor: '#fff', cornerSize: 12, padding: 0
+            });
+            canvas.add(cropRect);
+            canvas.setActiveObject(cropRect);
+        } else {
+            cancelCrop();
+        }
+    }
+
+    function cancelCrop() {
+        isCropping = false;
+        if (cropRect) canvas.remove(cropRect);
+        cropRect = null;
+        confirmCropBtn.style.display = 'none';
+        document.getElementById('btn-crop').classList.remove('active');
+    }
+
+    function confirmCrop() {
+        if (!cropRect) return;
+        const { left, top } = cropRect;
+        const width = cropRect.getScaledWidth();
+        const height = cropRect.getScaledHeight();
+        canvas.remove(cropRect);
+        
+        const croppedData = canvas.toDataURL({ left, top, width, height, format: 'png' });
+        fabric.Image.fromURL(croppedData, function(img) {
+            isHistoryProcessing = true;
+            
+            canvas.clear();
+            img.set({
+                originX: 'left', originY: 'top',
+                left: (canvas.width - width) / 2, top: (canvas.height - height) / 2,
+                selectable: false, evented: false
+            });
+            canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+            cancelCrop();
+            
+            isHistoryProcessing = false;
+            saveHistory();
+        });
+    }
+
+    function saveHistory() {
+        if(isHistoryProcessing) return;
+        if(historyStack.length > 20) historyStack.shift();
+        
+        // 👈 修改：保存完整状态（包括背景图）
+        const state = {
+            canvas: canvas.toJSON(), // 保存画布对象
+            backgroundImage: canvas.backgroundImage ? {
+                src: canvas.backgroundImage.getSrc(),
+                left: canvas.backgroundImage.left,
+                top: canvas.backgroundImage.top,
+                scaleX: canvas.backgroundImage.scaleX,
+                scaleY: canvas.backgroundImage.scaleY,
+                flipX: canvas.backgroundImage.flipX,
+                flipY: canvas.backgroundImage.flipY
+            } : null
+        };
+        
+        historyStack.push(JSON.stringify(state));
+        redoStack = [];
+        
+        // 如果历史记录超过1条（不只是初始状态），标记为已编辑
+        if (historyStack.length > 1) {
+            isEdited = true;
+        }
+    }
+
+    function undo() {
+        if (historyStack.length > 1) {
+            isHistoryProcessing = true;
+            redoStack.push(historyStack.pop());
+            
+            const state = JSON.parse(historyStack[historyStack.length - 1]);
+            
+            // 👈 修改：先恢复画布对象
+            canvas.loadFromJSON(state.canvas, () => {
+                // 👈 修改：再恢复背景图
+                if (state.backgroundImage) {
+                    fabric.Image.fromURL(state.backgroundImage.src, function(img) {
+                        img.set({
+                            left: state.backgroundImage.left,
+                            top: state.backgroundImage.top,
+                            scaleX: state.backgroundImage.scaleX,
+                            scaleY: state.backgroundImage.scaleY,
+                            flipX: state.backgroundImage.flipX,
+                            flipY: state.backgroundImage.flipY,
+                            selectable: false,
+                            evented: false
+                        });
+                        canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+                        isHistoryProcessing = false;
+                    }, { crossOrigin: 'anonymous' });
+                } else {
+                    canvas.setBackgroundImage(null, canvas.renderAll.bind(canvas));
+                    isHistoryProcessing = false;
+                }
+            });
+        }
+    }
+
+    function redo() {
+        if (redoStack.length > 0) {
+            isHistoryProcessing = true;
+            const stateStr = redoStack.pop();
+            historyStack.push(stateStr);
+            
+            const state = JSON.parse(stateStr);
+            
+            // 👈 修改：先恢复画布对象
+            canvas.loadFromJSON(state.canvas, () => {
+                // 👈 修改：再恢复背景图
+                if (state.backgroundImage) {
+                    fabric.Image.fromURL(state.backgroundImage.src, function(img) {
+                        img.set({
+                            left: state.backgroundImage.left,
+                            top: state.backgroundImage.top,
+                            scaleX: state.backgroundImage.scaleX,
+                            scaleY: state.backgroundImage.scaleY,
+                            flipX: state.backgroundImage.flipX,
+                            flipY: state.backgroundImage.flipY,
+                            selectable: false,
+                            evented: false
+                        });
+                        canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+                        isHistoryProcessing = false;
+                    }, { crossOrigin: 'anonymous' });
+                } else {
+                    canvas.setBackgroundImage(null, canvas.renderAll.bind(canvas));
+                    isHistoryProcessing = false;
+                }
+            });
+        }
+    }
+    
+    function deleteSelected() {
+        const active = canvas.getActiveObjects();
+        if (active.length) {
+            canvas.discardActiveObject();
+            active.forEach(o => canvas.remove(o));
+        }
+    }
+
+    function zoomCanvas(factor) {
+        let zoom = canvas.getZoom() * factor;
+        if (zoom > 10) zoom = 10; if (zoom < 0.1) zoom = 0.1;
+        canvas.zoomToPoint(new fabric.Point(canvas.width/2, canvas.height/2), zoom);
+    }
+    function resetZoom() { canvas.setViewportTransform([1,0,0,1,0,0]); canvas.setZoom(1); }
+
+    function getContentRect() {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        let hasContent = false;
+    
+        if (canvas.backgroundImage) {
+            const bg = canvas.backgroundImage;
+            const rect = bg.getBoundingRect(true, true);
+            minX = Math.min(minX, rect.left);
+            minY = Math.min(minY, rect.top);
+            maxX = Math.max(maxX, rect.left + rect.width);
+            maxY = Math.max(maxY, rect.top + rect.height);
+            hasContent = true;
+        }
+    
+        const objects = canvas.getObjects();
+        objects.forEach(obj => {
+            if (!obj.visible) return;
+            const originalPadding = obj.padding;
+            obj.padding = 0;
+            const rect = obj.getBoundingRect(true, true);
+            obj.padding = originalPadding;
+            
+            minX = Math.min(minX, rect.left);
+            minY = Math.min(minY, rect.top);
+            maxX = Math.max(maxX, rect.left + rect.width);
+            maxY = Math.max(maxY, rect.top + rect.height);
+            hasContent = true;
+        });
+    
+        if (!hasContent) {
+            return { left: 0, top: 0, width: canvas.width, height: canvas.height };
+        }
+    
+        return {
+            left: minX,
+            top: minY,
+            width: maxX - minX,
+            height: maxY - minY
+        };
+    }
+
+    function saveImage(selectedFormat) {
+        saveMenu.style.display = 'none';
+
+        let format = selectedFormat || originalFormat || 'png';
+        if (format === 'jpeg') format = 'jpg';
+
+        let fabricFormat = 'png';
+        if (format === 'jpg') fabricFormat = 'jpeg';
+        if (format === 'webp') fabricFormat = 'webp';
+
+        const vpt = canvas.viewportTransform;
+        canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+
+        const rect = getContentRect();
+
+        const dataURL = canvas.toDataURL({
+            format: fabricFormat,
+            quality: 0.9,
+            multiplier: 1,
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height
+        });
+
+        const link = document.createElement('a');
+        link.download = `editor-${Date.now()}.${format}`;
+        link.href = dataURL;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        //isEdited = false; // 保存后重置编辑状态
+
+        canvas.setViewportTransform(vpt);
+    }
+
+    function copyImage() {
+        const vpt = canvas.viewportTransform;
+        canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+
+        const rect = getContentRect();
+
+        const dataURL = canvas.toDataURL({
+            format: 'png',
+            quality: 1,
+            multiplier: 1,
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height
+        });
+
+        fetch(dataURL)
+            .then(res => res.blob())
+            .then(blob => {
+                const item = new ClipboardItem({ "image/png": blob });
+                navigator.clipboard.write([item]).then(() => {
+                    const btn = document.querySelector('button[title="复制到剪贴板"]');
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = "✅";
+                    setTimeout(() => btn.innerHTML = originalText, 1500);
+                });
+            })
+            .catch(err => {
+                console.error("复制失败:", err);
+                alert('复制失败，请确保使用 HTTPS 或本地环境');
+            })
+            .finally(() => {
+                canvas.setViewportTransform(vpt);
+            });
+    }
+    
+    // --- 粘贴支持 ---
+    window.addEventListener('paste', function(e) {
+        if (!canvas) return;
+        if (canvas.getActiveObject() && (canvas.getActiveObject().type === 'i-text' || canvas.getActiveObject().type === 'text') && canvas.getActiveObject().isEditing) {
+            return;
+        }
+
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+
+        for (let index in items) {
+            const item = items[index];
+            if (item.kind === 'file' && item.type.indexOf('image/') !== -1) {
+                const blob = item.getAsFile();
+                
+                const type = item.type.split('/')[1];
+                originalFormat = type === 'jpeg' ? 'jpg' : type;
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const imgObj = new Image();
+                    imgObj.src = event.target.result;
+                    imgObj.onload = function() {
+                        const imgInstance = new fabric.Image(imgObj);
+                        if (imgInstance.width > 500) {
+                            imgInstance.scaleToWidth(500);
+                        }
+                        imgInstance.set({
+                            left: canvas.getCenter().left,
+                            top: canvas.getCenter().top,
+                            originX: 'center',
+                            originY: 'center'
+                        });
+                        canvas.add(imgInstance);
+                        canvas.setActiveObject(imgInstance);
+                        setMode('select');
+                        saveHistory();
+                    }
+                };
+                reader.readAsDataURL(blob);
+                e.preventDefault();
+                break;
+            }
+        }
+    });
+
+    window.addEventListener('keydown', function(e) {
+        if (!canvas) return;
+        const activeObj = canvas && canvas.getActiveObject();
+        const isEditingText = activeObj && 
+                             (activeObj.type === 'i-text' || activeObj.type === 'text') && 
+                             activeObj.isEditing;
+        if (e.code === 'Space') {
+            if (isEditingText) return;
+            if (!isSpacePressed) {
+                isSpacePressed = true;
+                if (currentMode !== 'pan') {
+                    canvas.defaultCursor = 'grab';
+                    // 👈 添加：如果是画笔模式，临时禁用
+                    if (currentMode === 'free') {
+                        canvas.isDrawingMode = false;
+                    }
+                }
+                e.preventDefault();
+            }
+            return;
+        }
+        if (isEditingText) return;
+        if (e.key === 'Escape') {
+            if (isCropping) cancelCrop();
+            else if (currentMode !== 'select') setMode('select');
+            return;
+        }
+        const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
+        if (ctrlOrCmd && e.key === 'z') { e.preventDefault(); undo(); return; }
+        if (ctrlOrCmd && e.key === 'y') { e.preventDefault(); redo(); return; }
+        
+        if (e.key === 'Delete' || e.key === 'Backspace') { 
+            deleteSelected(); 
+            e.preventDefault();
+            return; 
+        }
+        const key = e.key.toLowerCase();
+        switch(key) {
+            case 'v': setMode('select'); break;
+            case 'p': setMode('free'); break;
+            case 'l': setMode('line'); break;
+            case 'a': setMode('arrow'); break;
+            case 'r': setMode('rect'); break;
+            case 'c': setMode('circle'); break;
+            case 'm': setMode('mosaic'); break;
+            case 't': setMode('text'); break;
+            case 'k': setMode('marker'); break;
+        }
+    });
+
+    window.addEventListener('keyup', function(e) {
+        if (e.code === 'Space') {
+            isSpacePressed = false;
+            if (currentMode !== 'pan') {
+                if (currentMode === 'select') {
+                    canvas.defaultCursor = 'default';
+                } else {
+                    canvas.defaultCursor = (currentMode === 'stamp' || currentMode === 'marker') ? 'copy' : 'crosshair';
+                }
+                // 👈 添加：如果是画笔模式，重新启用
+                if (currentMode === 'free') {
+                    canvas.isDrawingMode = true;
+                }
+                canvas.renderAll();
+            }
+        }
+    });
+
+    document.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        document.body.classList.add('dragging');
+    });
+
+    document.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+            document.body.classList.remove('dragging');
+        }
+    });
+
+    document.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        document.body.classList.remove('dragging');
+
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0) {
+            const file = files[0];
+            if (file.type && file.type.startsWith('image/')) {
+                const type = file.type.split('/')[1];
+                originalFormat = type === 'jpeg' ? 'jpg' : type;
+
+                const reader = new FileReader();
+                
+                if (startScreen.style.display !== 'none') {
+                    reader.onload = (e) => initCanvas(e.target.result);
+                    reader.readAsDataURL(file);
+                } else {
+                    reader.onload = function(event) {
+                        const imgObj = new Image();
+                        imgObj.src = event.target.result;
+                        imgObj.onload = function() {
+                            const imgInstance = new fabric.Image(imgObj);
+                            if (imgInstance.width > 500) {
+                                imgInstance.scaleToWidth(500);
+                            }
+                            imgInstance.set({
+                                left: canvas.getCenter().left,
+                                top: canvas.getCenter().top,
+                                originX: 'center',
+                                originY: 'center'
+                            });
+                            canvas.add(imgInstance);
+                            canvas.setActiveObject(imgInstance);
+                            setMode('select');
+                            saveHistory();
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+        }
+    });
+    
+    window.addEventListener('beforeunload', function (event) {
+        // 只有在已编辑且未保存时才提示
+        if(isEdited) {
+            // 设置 returnValue 为非空字符串，会触发浏览器的确认弹窗
+            event.returnValue = '你确定要离开此页面吗？未保存的内容可能会丢失！！';
+            // 注意：现代浏览器通常忽略自定义消息，只显示默认提示
+            return event.returnValue;
+        }
+    });
+</script>
+</body>
+</html>
