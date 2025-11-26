@@ -1,6 +1,7 @@
 /**
  * LLMStream - 大模型流式请求和Markdown实时渲染库
  * 支持SSE流式响应、Markdown渲染、错误处理等
+ * version 1.0.4
  */
 class LLMStream {
   constructor(options) {
