@@ -30,10 +30,10 @@
     const config = {
         libs: {
             "marked": "https://fastly.jsdelivr.net/npm/marked/marked.min.js",
-            "ImageViewer": "https://scriptcat.org/lib/4625/1.0.0/ImageViewer.js?sha384-SX26HDt5ICRIw03Z4JwZWNqMyVgZKHTQQ4Q4S6wDhvNir2NBro81yWtdPq7rPMcm",
-            "Popup": "https://scriptcat.org/lib/4657/1.0.0/Popup.js?sha384-j1OfUJ1d4vxTeRoRAhzlY61zez7XLLSqGMPqaMmUZcnCGX12UjtVzbz+PpWSh+eG",
-            "LLMStream": "https://scriptcat.org/lib/4568/1.0.4/LLMStream.js?sha384-NpPVSgG1S5YGbLGce31JVI0OOxjRmVVIooCutM9rP+ylQJBoLBlWrcDPiE7xhHOK",
-            "ChatUi": "https://scriptcat.org/lib/4686/1.0.5/aiDialog.js?sha384-EcDFtWciwHMwScdz4Wrxhi9A5Dq0Ktxd0bzNGTWy2FA2VDDZJGehjUHg3bzaBvII",
+            "ImageViewer": "https://fastly.jsdelivr.net/gh/wish5115/my-softs@main/libs/aiDialog/ImageViewer.js?v=1.0.0",
+            "Popup": "https://fastly.jsdelivr.net/gh/wish5115/my-softs@main/libs/aiDialog/Popup.js?v=1.0.8",
+            "LLMStream": "https://fastly.jsdelivr.net/gh/wish5115/my-softs@main/libs/aiDialog/LLMStream.js?v=1.0.4",
+            "ChatUi": "https://fastly.jsdelivr.net/gh/wish5115/my-softs@main/libs/aiDialog/aiDialog.js?v=1.0.5",
         },
     };
     
