@@ -1,6 +1,7 @@
 /**
  * 图片查看器库 - ImageViewer
  * 纯JavaScript实现，无依赖
+ *  version 1.0.0
  */
 class ImageViewer {
   constructor(options = {}) {
