@@ -1,5 +1,5 @@
 /* popup.js - 一个可拖拽、可定制、支持亮暗主题、无遮罩层的弹窗库 */
-// version 1.0.8
+// version 1.0.9
 (() => {
 	class Popup {
 		/**
@@ -415,6 +415,9 @@
 				if(!this.opts.canClose()) return;
 			}
 			this.el.style.display = 'none';
+            if(typeof this.opts.onClose === 'function') {
+				this.opts.onClose.call(this);
+			}
 		}
 
 		destroy() {
