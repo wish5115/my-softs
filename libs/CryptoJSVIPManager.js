@@ -1,4 +1,5 @@
 // 使用 CryptoJS 的版本
+// version 1.0.0
 class CryptoJSVIPManager {
   constructor(secretKey = 'your-secret-key-2024') {
     this.secretKey = secretKey;
