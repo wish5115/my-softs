@@ -462,6 +462,7 @@
 
     // 代码块或多选块显示工具栏
     function handleMouseUp(event, toolbar, protyle) {
+        if (!hasSelection(protyle)) return;
         // 代码块
         const hljs = event.target.closest('.hljs') || getCursorElement()?.closest('.hljs');
         if(hljs) {
