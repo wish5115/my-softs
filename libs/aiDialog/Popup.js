@@ -1,5 +1,5 @@
 /* popup.js - 一个可拖拽、可定制、支持亮暗主题、无遮罩层的弹窗库 */
-// version 1.1.0
+// version 1.1.1
 (() => {
 	class Popup {
 		/**
