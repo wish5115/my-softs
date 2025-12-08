@@ -1,5 +1,5 @@
 /* popup.js - 一个可拖拽、可定制、支持亮暗主题、无遮罩层的弹窗库 */
-// version 1.0.9
+// version 1.1.0
 (() => {
 	class Popup {
 		/**
@@ -230,8 +230,8 @@
 		}
 
 		_applyInitialSize() {
-			if (this.opts.width) this.el.style.width = this.opts.width + 'px';
-			if (this.opts.height) this.el.style.height = this.opts.height + 'px';
+			if (this.opts.width) this.el.style.width = /^-?\d+(\.\d+)?$/.test(this.opts.width) ? this.opts.width : this.opts.width + 'px';
+			if (this.opts.height) this.el.style.height = /^-?\d+(\.\d+)?$/.test(this.opts.height) ? this.opts.height : this.opts.height + 'px';
 		}
 
 		_mount() {
