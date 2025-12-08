@@ -1,4 +1,4 @@
-// version 1.0.0
+// version 1.1.1
 // see https://scriptcat.org/zh-CN/script-show-page/4824
 (() => {
     /**
@@ -8,13 +8,15 @@
      * @param {string} [options.title='提示'] - 对话框标题
      * @param {string} [options.okText='确定'] - 确认按钮文字
      * @param {('light'|'dark'|'auto')} [options.theme='auto'] - 主题模式
+     * @param {number} [options.zIndex=9999] - 遮罩层的 z-index 值
      * @returns {Promise<void>}
      */
     async function showAlert(message, options = {}) {
         const {
             title = '提示',
             okText = '确定',
-            theme = 'auto'
+            theme = 'auto',
+            zIndex = 9999
         } = options;
 
         return new Promise((resolve) => {
@@ -34,7 +36,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 9999;
+            z-index: ${zIndex};
             `;
 
             // 创建对话框
@@ -89,6 +91,7 @@
      * @param {string} [options.okText='确定'] - 确认按钮文字
      * @param {string} [options.cancelText='取消'] - 取消按钮文字
      * @param {('light'|'dark'|'auto')} [options.theme='auto'] - 主题模式
+     * @param {number} [options.zIndex=9999] - 遮罩层的 z-index 值
      * @returns {Promise<boolean>} - 返回 true 表示确定，false 表示取消
      */
     async function showConfirm(message, options = {}) {
@@ -96,7 +99,8 @@
             title = '确认',
             okText = '确定',
             cancelText = '取消',
-            theme = 'auto'
+            theme = 'auto',
+            zIndex = 9999
         } = options;
 
         return new Promise((resolve) => {
@@ -116,7 +120,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 9999;
+            z-index: ${zIndex};
             `;
 
             // 创建对话框
@@ -207,6 +211,7 @@
      * @param {string} [options.cancelText='取消'] - 取消按钮文字
      * @param {string} [options.placeholder=''] - 输入框占位符
      * @param {('light'|'dark'|'auto')} [options.theme='auto'] - 主题模式
+     * @param {number} [options.zIndex=9999] - 遮罩层的 z-index 值
      * @returns {Promise<string|false>} - 返回输入的内容（可为空字符串），或 false 表示取消
      */
     async function showPrompt(message, defaultValue = '', options = {}) {
@@ -215,7 +220,8 @@
             okText = '确定',
             cancelText = '取消',
             placeholder = '',
-            theme = 'auto'
+            theme = 'auto',
+            zIndex = 9999
         } = options;
 
         return new Promise((resolve) => {
@@ -235,7 +241,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 9999;
+            z-index: ${zIndex};
             `;
 
             // 创建对话框
