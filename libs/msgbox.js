@@ -1,0 +1,238 @@
+(() => {
+    /**
+     * 显示警告对话框
+     * @param {string} message - 显示的消息内容
+     * @param {Object} [options] - 配置选项
+     * @param {string} [options.title='提示'] - 对话框标题
+     * @param {string} [options.okText='确定'] - 确认按钮文字
+     * @param {('light'|'dark'|'auto')} [options.theme='auto'] - 主题模式
+     * @returns {Promise<void>}
+     */
+    async function showAlert(message, options = {}) {
+        const {
+            title = '提示',
+            okText = '确定',
+            theme = 'auto'
+        } = options;
+
+        return new Promise((resolve) => {
+            // 获取当前主题
+            const isDark = getTheme(theme);
+            const themeColors = getThemeColors(isDark);
+
+            // 创建遮罩层
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, ${isDark ? '0.7' : '0.5'});
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            `;
+
+            // 创建对话框
+            const dialog = document.createElement('div');
+            dialog.style.cssText = `
+            background: ${themeColors.bg};
+            border-radius: 8px;
+            padding: 20px;
+            min-width: 380px;
+            max-width: 500px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, ${isDark ? '0.3' : '0.1'});
+            `;
+
+            dialog.innerHTML = `
+            <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: ${themeColors.title};">${title}</div>
+            <div style="font-size: 14px; margin-bottom: 20px; color: ${themeColors.text};">${message}</div>
+            <div style="text-align: right;">
+                <button id="alertOkBtn" style="
+                padding: 8px 20px;
+                background: ${themeColors.primaryBtn};
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: opacity 0.2s;
+                ">${okText}</button>
+            </div>
+            `;
+
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+
+            // 添加按钮悬停效果
+            const okBtn = dialog.querySelector('#alertOkBtn');
+            okBtn.onmouseover = () => okBtn.style.opacity = '0.9';
+            okBtn.onmouseout = () => okBtn.style.opacity = '1';
+
+            // 绑定确定按钮事件
+            okBtn.onclick = () => {
+                document.body.removeChild(overlay);
+                resolve();
+            };
+        });
+    }
+
+    /**
+     * 显示确认对话框
+     * @param {string} message - 显示的消息内容
+     * @param {Object} [options] - 配置选项
+     * @param {string} [options.title='确认'] - 对话框标题
+     * @param {string} [options.okText='确定'] - 确认按钮文字
+     * @param {string} [options.cancelText='取消'] - 取消按钮文字
+     * @param {('light'|'dark'|'auto')} [options.theme='auto'] - 主题模式
+     * @returns {Promise<boolean>} - 返回 true 表示确定，false 表示取消
+     */
+    async function showConfirm(message, options = {}) {
+        const {
+            title = '确认',
+            okText = '确定',
+            cancelText = '取消',
+            theme = 'auto'
+        } = options;
+
+        return new Promise((resolve) => {
+            // 获取当前主题
+            const isDark = getTheme(theme);
+            const themeColors = getThemeColors(isDark);
+
+            // 创建遮罩层
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, ${isDark ? '0.7' : '0.5'});
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            `;
+
+            // 创建对话框
+            const dialog = document.createElement('div');
+            dialog.style.cssText = `
+            background: ${themeColors.bg};
+            border-radius: 8px;
+            padding: 20px;
+            min-width: 380px;
+            max-width: 500px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, ${isDark ? '0.3' : '0.1'});
+            `;
+
+            dialog.innerHTML = `
+            <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: ${themeColors.title};">${title}</div>
+            <div style="font-size: 14px; margin-bottom: 20px; color: ${themeColors.text};">${message}</div>
+            <div style="text-align: right; display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="confirmCancelBtn" style="
+                padding: 8px 20px;
+                background: ${themeColors.cancelBtn};
+                color: ${themeColors.cancelBtnText};
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: opacity 0.2s;
+                ">${cancelText}</button>
+                <button id="confirmOkBtn" style="
+                padding: 8px 20px;
+                background: ${themeColors.primaryBtn};
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: opacity 0.2s;
+                ">${okText}</button>
+            </div>
+            `;
+
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+
+            // 添加按钮悬停效果
+            const okBtn = dialog.querySelector('#confirmOkBtn');
+            const cancelBtn = dialog.querySelector('#confirmCancelBtn');
+
+            okBtn.onmouseover = () => okBtn.style.opacity = '0.9';
+            okBtn.onmouseout = () => okBtn.style.opacity = '1';
+            cancelBtn.onmouseover = () => cancelBtn.style.opacity = '0.9';
+            cancelBtn.onmouseout = () => cancelBtn.style.opacity = '1';
+
+            // 关闭对话框的函数
+            const closeDialog = (result) => {
+                document.body.removeChild(overlay);
+                resolve(result);
+            };
+
+            // 绑定按钮事件
+            okBtn.onclick = () => closeDialog(true);
+            cancelBtn.onclick = () => closeDialog(false);
+
+            // 点击遮罩层关闭（返回取消）
+            overlay.onclick = (e) => {
+                if (e.target === overlay) {
+                    closeDialog(false);
+                }
+            };
+
+            // ESC 键关闭
+            const handleEsc = (e) => {
+                if (e.key === 'Escape') {
+                    closeDialog(false);
+                    document.removeEventListener('keydown', handleEsc);
+                }
+            };
+            document.addEventListener('keydown', handleEsc);
+        });
+    }
+
+    /**
+     * 获取主题模式
+     * @param {string} theme - 主题设置
+     * @returns {boolean} - true 表示深色主题
+     */
+    function getTheme(theme) {
+        if (theme === 'dark') return true;
+        if (theme === 'light') return false;
+        // auto 模式：检测系统主题
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    /**
+     * 获取主题颜色
+     * @param {boolean} isDark - 是否深色主题
+     * @returns {Object} 主题颜色对象
+     */
+    function getThemeColors(isDark) {
+        if (isDark) {
+            return {
+                bg: '#2d2d2d',
+                title: '#ffffff',
+                text: '#e0e0e0',
+                primaryBtn: '#0d6efd',
+                cancelBtn: '#4a4a4a',
+                cancelBtnText: '#ffffff'
+            };
+        } else {
+            return {
+                bg: '#ffffff',
+                title: '#333333',
+                text: '#666666',
+                primaryBtn: '#007bff',
+                cancelBtn: '#e9ecef',
+                cancelBtnText: '#333333'
+            };
+        }
+    }
+
+    window.msgbox = {showAlert, showConfirm};
+})();
