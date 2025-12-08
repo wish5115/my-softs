@@ -1,5 +1,5 @@
 /* popup.js - 一个可拖拽、可定制、支持亮暗主题、无遮罩层的弹窗库 */
-// version 1.1.1
+// version 1.1.2
 (() => {
 	class Popup {
 		/**
@@ -413,6 +413,10 @@
 		close() {
 			if(typeof this.opts.canClose === 'function') {
 				if(!this.opts.canClose()) return;
+			}
+			// 如果处于最大化状态，先还原
+			if (this.dialogPosition.isMaxed) {
+				this._restoreWindow();
 			}
 			this.el.style.display = 'none';
             if(typeof this.opts.onClose === 'function') {
