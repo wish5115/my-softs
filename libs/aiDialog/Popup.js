@@ -230,8 +230,8 @@
 		}
 
 		_applyInitialSize() {
-			if (this.opts.width) this.el.style.width = /^-?\d+(\.\d+)?$/.test(this.opts.width) ? this.opts.width : this.opts.width + 'px';
-			if (this.opts.height) this.el.style.height = /^-?\d+(\.\d+)?$/.test(this.opts.height) ? this.opts.height : this.opts.height + 'px';
+			if (this.opts.width) this.el.style.width = /^-?\d+(\.\d+)?$/.test(this.opts.width) ? this.opts.width + 'px' : this.opts.width;
+			if (this.opts.height) this.el.style.height = /^-?\d+(\.\d+)?$/.test(this.opts.height) ? this.opts.height + 'px' : this.opts.height;
 		}
 
 		_mount() {
