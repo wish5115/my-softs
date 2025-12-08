@@ -1,3 +1,5 @@
+// version 1.0.0
+// see https://scriptcat.org/zh-CN/script-show-page/4824
 (() => {
     /**
      * 显示警告对话框
