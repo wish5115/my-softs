@@ -405,9 +405,9 @@
 			this._ensureWithinBounds();
 		}
 
-		close() {
+		async close() {
 			if(typeof this.opts.canClose === 'function') {
-				if(!this.opts.canClose()) return;
+				if(!(await this.opts.canClose())) return;
 			}
 			// 如果处于最大化状态，先还原
 			if (this.dialogPosition.isMaxed) {
