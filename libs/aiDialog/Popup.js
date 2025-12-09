@@ -1,5 +1,5 @@
 /* popup.js - 一个可拖拽、可定制、支持亮暗主题、无遮罩层的弹窗库 */
-// version 1.1.2
+// version 1.1.3 (Fixed Electron Mac Fullscreen Compatibility)
 (() => {
 	class Popup {
 		/**
@@ -7,8 +7,8 @@
 		 * @param {string} [options.className='popup'] 主类名，如 'popup'
 		 * @param {'light'|'dark'} [options.theme='light'] 主题
 		 * @param {Object|number} [options.edgePadding=16]
-		 *  - number: 四边统一内边距，限制弹窗离视窗边界的最小距离
-		 *  - object: { top, right, bottom, left }
+		 *  - number: 四边统一内边距，限制弹窗离视窗边界的最小距离
+		 *  - object: { top, right, bottom, left }
 		 * @param {string|Node|Function} [options.content=''] 自定义内容：字符串、DOM 节点、或返回节点的函数
 		 * @param {boolean} [options.center=true] 初始是否居中显示
 		 * @param {number} [options.width] 初始宽度（px）
@@ -45,6 +45,11 @@
 			if (this.opts.center) this.center();
 			this.isMaxed = false;
 			this.dialogPosition = {};
+
+			// 添加全屏状态监听
+			if (this.opts.electronCompatible) {
+				this._listenFullscreen();
+			}
 		}
 
 		_detectPlatform() {
@@ -279,7 +284,6 @@
 		_maximizeWindow() {
 			const dialog = this.el;
 			const cls = this.opts.className;
-
 			// 保存当前位置和尺寸
 			const rect = getComputedStyle(dialog);
 			this.dialogPosition = {
@@ -291,29 +295,23 @@
 				borderRadius: dialog.style.borderRadius || rect.borderRadius,
 				isMaxed: true
 			};
-
 			this._applyMaximize();
 			this._updateMaxRestoreButton(true);
-
-			// 最大化时应用 Electron 兼容样式
+			
+			// 最大化时应用 Electron 兼容样式（如果不是全屏）
 			if (this.opts.electronCompatible) {
-				if (this.isMac) {
-					this.header.classList.add(`${cls}__header--electron-mac`);
-				} else if (this.isWindows) {
-					this.header.classList.add(`${cls}__header--electron-win`);
-				}
+				const isReallyFull = this._isReallyFullscreen();
+				this._updateElectronCompatibleStyles(!isReallyFull);
 			}
 
-			// 添加最大化样式类，改变鼠标样式
+			// 添加最大化样式类
 			this.header.classList.add(`${cls}__header--maximized`);
-
 			this.opts.onMaximize?.();
 		}
 
 		_restoreWindow() {
 			const dialog = this.el;
 			const cls = this.opts.className;
-
 			// 还原
 			dialog.style.top = this.dialogPosition.top;
 			dialog.style.left = this.dialogPosition.left;
@@ -321,19 +319,16 @@
 			dialog.style.height = this.dialogPosition.height;
 			dialog.style.maxHeight = this.dialogPosition.maxHeight;
 			dialog.style.borderRadius = this.dialogPosition.borderRadius;
-			this.dialogPosition = {}; // 清空状态
-
+			this.dialogPosition = {};
 			this._updateMaxRestoreButton(false);
-
+			
 			// 还原时移除 Electron 兼容样式
 			if (this.opts.electronCompatible) {
-				this.header.classList.remove(`${cls}__header--electron-mac`);
-				this.header.classList.remove(`${cls}__header--electron-win`);
+				this._updateElectronCompatibleStyles(false);
 			}
-
-			// 移除最大化样式类，恢复拖动鼠标样式
+			
+			// 移除最大化样式类
 			this.header.classList.remove(`${cls}__header--maximized`);
-
 			this.opts.onMaximizeRestore?.();
 		}
 
@@ -419,7 +414,7 @@
 				this._restoreWindow();
 			}
 			this.el.style.display = 'none';
-            if(typeof this.opts.onClose === 'function') {
+			if(typeof this.opts.onClose === 'function') {
 				this.opts.onClose.call(this);
 			}
 		}
@@ -428,9 +423,16 @@
 			if(typeof this.opts.canDestroy === 'function') {
 				if(!this.opts.canDestroy()) return;
 			}
+			
 			window.removeEventListener('resize', this._onResize);
 			this.closeBtn.removeEventListener('click', this._onCloseClick);
 			this.header.removeEventListener('dblclick', this._onMaximize);
+			
+			// 移除全屏监听
+			if (this.opts.electronCompatible && this._cleanUpFullscreenListener) {
+				this._cleanUpFullscreenListener();
+			}
+			
 			if (this.opts.showMaximizeRestoreButton && this.maxRestoreBtn) {
 				this.maxRestoreBtn.removeEventListener('click', this._onMaxRestoreClick);
 			}
@@ -586,6 +588,104 @@
 				if (maxTop !== Infinity && top > maxTop) top = maxTop;
 			}
 			this._setPos(left, top);
+		}
+
+		// 改进：准确检测全屏状态（包括 macOS 原生全屏）
+		// 改进：准确检测全屏状态（包括 macOS 原生全屏）
+		_isReallyFullscreen() {
+			// 1. API 全屏 (保留标准检测)
+			if (
+				document.fullscreenElement ||
+				document.webkitFullscreenElement ||
+				document.mozFullScreenElement ||
+				document.msFullscreenElement
+			) {
+				return true;
+			}
+			
+			// 2. macOS 原生全屏检测 (修正判断逻辑)
+			// 在 macOS 原生全屏模式下 (点击绿色按钮)，窗口通常占据整个物理屏幕。
+			// 即使 innerHeight 没达到 screen.height，但 innerWidth 应该几乎达到 screen.width。
+			// 
+			// **关键修正：** 如果 innerWidth 达到物理屏幕宽度，并且 innerHeight 达到了物理屏幕高度
+			// 或者 **可用高度 (availHeight) 等于物理高度 (height)**，这表明系统 UI (菜单栏/Dock) 消失了，即进入了全屏。
+			
+			const isWidthFull = Math.abs(window.innerWidth - window.screen.width) < 5;
+			//const isAvailHeightFull = Math.abs(window.screen.availHeight - window.screen.height) < 5;
+			return isWidthFull;
+
+			//if (this.isMac) {
+				// 在 Mac 上，判断是否物理宽度全屏 并且 系统可用高度是否等于物理高度
+				// 这能有效检测绿色按钮触发的原生全屏，因为原生全屏会收起菜单栏
+				//return isWidthFull && isAvailHeightFull;
+			//}
+			
+			// 3. 其他平台/兜底尺寸检测
+			// 如果 Mac 逻辑不满足，但宽高都接近物理屏幕，则视为全屏。
+			// const isHeightFull = Math.abs(window.innerHeight - window.screen.height) < 5;
+			// return isWidthFull && isHeightFull;
+		}
+
+		// 更新：监听全屏/窗口尺寸变化
+		_listenFullscreen() {
+			const updateState = () => {
+				// 只有当弹窗处于最大化状态时，我们才关心是否要显示 Electron 的“红绿灯”留白
+				if (!this.dialogPosition.isMaxed) return;
+
+				const isFullscreen = this._isReallyFullscreen();
+				const shouldApplyElectronStyle = !isFullscreen;
+
+				// 应用样式
+				this._updateElectronCompatibleStyles(shouldApplyElectronStyle);
+			};
+
+			// 1. 监听标准 API 事件
+			const apiEvents = [
+				'fullscreenchange', 
+				'webkitfullscreenchange', 
+				'mozfullscreenchange', 
+				'MSFullscreenChange'
+			];
+			apiEvents.forEach(evt => document.addEventListener(evt, updateState));
+
+			// 2. 监听 Resize (涵盖 macOS 原生全屏动画结束)
+			// 使用 ResizeObserver 监听 html/body 尺寸变化
+			this._windowResizeObserver = new ResizeObserver(() => {
+				if (this._resizeTimeout) cancelAnimationFrame(this._resizeTimeout);
+				this._resizeTimeout = requestAnimationFrame(() => {
+					updateState();
+					this._resizeTimeout = null;
+				});
+			});
+			this._windowResizeObserver.observe(document.documentElement);
+
+			// 保存清理函数供 destroy 调用
+			this._cleanUpFullscreenListener = () => {
+				apiEvents.forEach(evt => document.removeEventListener(evt, updateState));
+				if (this._windowResizeObserver) {
+					this._windowResizeObserver.disconnect();
+					this._windowResizeObserver = null;
+				}
+				if (this._resizeTimeout) cancelAnimationFrame(this._resizeTimeout);
+			};
+		}
+
+		// 更新 Electron 兼容样式
+		_updateElectronCompatibleStyles(apply) {
+			const cls = this.opts.className;
+			
+			if (apply) {
+				// 应用 Electron 兼容样式
+				if (this.isMac) {
+					this.header.classList.add(`${cls}__header--electron-mac`);
+				} else if (this.isWindows) {
+					this.header.classList.add(`${cls}__header--electron-win`);
+				}
+			} else {
+				// 移除 Electron 兼容样式
+				this.header.classList.remove(`${cls}__header--electron-mac`);
+				this.header.classList.remove(`${cls}__header--electron-win`);
+			}
 		}
 	}
 
