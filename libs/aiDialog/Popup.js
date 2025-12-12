@@ -1,5 +1,5 @@
 /* popup.js - 一个可拖拽、可定制、支持亮暗主题、无遮罩层的弹窗库 */
-// version 1.1.4
+// version 1.1.5
 (() => {
 	class Popup {
 		/**
@@ -17,6 +17,9 @@
 		 * @param {boolean} [options.draggable=true] 是否可拖拽
 		 * @param {boolean} [options.showMaximizeRestoreButton=false] 是否显示最大化/还原按钮
 		 * @param {boolean} [options.electronCompatible=false] 是否启用 Electron 兼容模式
+         * @param {Function} [options.onOpenCallback] 打开弹窗时的回调函数
+         * @param {Function} [options.onMaxCallback] 最大化时的回调函数
+         * @param {Function} [options.onRestoreCallback] 还原时的回调函数
 		 */
 		constructor(options = {}) {
 			this.opts = Object.assign(
@@ -32,6 +35,9 @@
 					draggable: true,
 					showMaximizeRestoreButton: false,
 					electronCompatible: false,
+                    onOpenCallback: null,
+                    onMaxCallback: null,
+                    onRestoreCallback: null,
 				},
 				options
 			);
@@ -307,6 +313,10 @@
 			// 添加最大化样式类
 			this.header.classList.add(`${cls}__header--maximized`);
 			this.opts.onMaximize?.();
+
+            if (typeof this.opts.onMaxCallback === 'function') {
+                this.opts.onMaxCallback.call(this);
+            }
 		}
 
 		_restoreWindow() {
@@ -330,6 +340,10 @@
 			// 移除最大化样式类
 			this.header.classList.remove(`${cls}__header--maximized`);
 			this.opts.onMaximizeRestore?.();
+
+            if (typeof this.opts.onRestoreCallback === 'function') {
+                this.opts.onRestoreCallback.call(this);
+            }
 		}
 
 		_updateMaxRestoreButton(isMaxed) {
@@ -403,6 +417,10 @@
 			}
 			this.el.style.display = 'block';
 			this._ensureWithinBounds();
+
+            if (typeof this.opts.onOpenCallback === 'function') {
+                this.opts.onOpenCallback.call(this);
+            }
 		}
 
 		async close() {
