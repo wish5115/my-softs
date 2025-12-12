@@ -1,6 +1,44 @@
-// version 1.1.1
+// version 1.1.2
 // see https://scriptcat.org/zh-CN/script-show-page/4824
 (() => {
+    // 语言包
+    const i18n = {
+        'zh-CN': {
+            alert: { title: '提示', okText: '确定' },
+            confirm: { title: '确认', okText: '确定', cancelText: '取消' },
+            prompt: { title: '输入', okText: '确定', cancelText: '取消' }
+        },
+        'en-US': {
+            alert: { title: 'Alert', okText: 'OK' },
+            confirm: { title: 'Confirm', okText: 'OK', cancelText: 'Cancel' },
+            prompt: { title: 'Input', okText: 'OK', cancelText: 'Cancel' }
+        }
+    };
+    // 当前语言（默认自动检测）
+    let currentLang = navigator.language || 'en-US';
+    
+    /**
+     * 设置语言
+     * @param {string} lang - 语言代码，如 'zh-CN', 'en-US'
+     */
+    function setLang(lang) {
+        lang = lang.replace('_', '-');
+        if (i18n[lang]) {
+            currentLang = lang;
+        } else {
+            console.warn(`Language '${lang}' not supported, using '${currentLang}'`);
+        }
+    }
+    /**
+     * 获取当前语言的文本
+     * @param {string} type - 对话框类型
+     * @param {string} key - 文本键
+     * @returns {string}
+     */
+    function getText(type, key) {
+        return i18n[currentLang]?.[type]?.[key] || i18n['zh-CN'][type][key];
+    }
+
     /**
      * 显示警告对话框
      * @param {string} message - 显示的消息内容
@@ -12,9 +50,10 @@
      * @returns {Promise<void>}
      */
     async function showAlert(message, options = {}) {
+        const lang = options.lang ? options.lang.replace('_', '-') : currentLang;
         const {
-            title = '提示',
-            okText = '确定',
+            title = i18n[lang]?.alert.title || getText('alert', 'title'),
+            okText = i18n[lang]?.alert.okText || getText('alert', 'okText'),
             theme = 'auto',
             zIndex = 9999
         } = options;
@@ -95,10 +134,11 @@
      * @returns {Promise<boolean>} - 返回 true 表示确定，false 表示取消
      */
     async function showConfirm(message, options = {}) {
+        const lang = options.lang ? options.lang.replace('_', '-') : currentLang;
         const {
-            title = '确认',
-            okText = '确定',
-            cancelText = '取消',
+            title = i18n[lang]?.confirm.title || getText('confirm', 'title'),
+            okText = i18n[lang]?.confirm.okText || getText('confirm', 'okText'),
+            cancelText = i18n[lang]?.confirm.cancelText || getText('confirm', 'cancelText'),
             theme = 'auto',
             zIndex = 9999
         } = options;
@@ -215,10 +255,11 @@
      * @returns {Promise<string|false>} - 返回输入的内容（可为空字符串），或 false 表示取消
      */
     async function showPrompt(message, defaultValue = '', options = {}) {
+        const lang = options.lang ? options.lang.replace('_', '-') : currentLang;
         const {
-            title = '输入',
-            okText = '确定',
-            cancelText = '取消',
+            title = i18n[lang]?.prompt.title || getText('prompt', 'title'),
+            okText = i18n[lang]?.prompt.okText || getText('prompt', 'okText'),
+            cancelText = i18n[lang]?.prompt.cancelText || getText('prompt', 'cancelText'),
             placeholder = '',
             theme = 'auto',
             zIndex = 9999
@@ -410,5 +451,12 @@
         return div.innerHTML;
     }
 
-    window.msgbox = { showAlert, showConfirm, showPrompt };
+    // 导出 API
+    window.msgbox = {
+        showAlert,
+        showConfirm,
+        showPrompt,
+        setLang,
+        getLang: () => currentLang
+    };
 })();
