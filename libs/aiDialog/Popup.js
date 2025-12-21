@@ -1,5 +1,5 @@
 /* popup.js - 一个可拖拽、可定制、支持亮暗主题、无遮罩层的弹窗库 */
-// version 1.1.5
+// version 1.1.6
 (() => {
 	class Popup {
 		/**
@@ -199,6 +199,9 @@
 	color: var(--${cls}-fg);
 	flex: 1;
 	/*transition: margin-left 0.2s ease;*/
+	overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 .${cls}__buttons {
 	display: flex;
@@ -236,6 +239,9 @@
 	overflow: auto;
 	${this.opts.bodyStyle || ''};
 }
+.${cls}__body_content {
+	${this.opts.bodyContentStyle || ''};
+}
 .${cls} * { box-sizing: border-box; }
 			`;
 		}
@@ -251,13 +257,21 @@
 		}
 
 		_bind() {
-			this._onCloseClick = () => this.close();
-			this.closeBtn.addEventListener('click', this._onCloseClick);
+			// 使用 pointerup 避免被 pointerdown 阻止
+			this._onCloseClick = (e) => {
+				e.stopPropagation();
+				e.preventDefault();
+				this.close();
+			};
+			this.closeBtn.addEventListener('pointerup', this._onCloseClick);
 
-			// 绑定最大化/还原按钮
 			if (this.opts.showMaximizeRestoreButton && this.maxRestoreBtn) {
-				this._onMaxRestoreClick = () => this._toggleMaximize();
-				this.maxRestoreBtn.addEventListener('click', this._onMaxRestoreClick);
+				this._onMaxRestoreClick = (e) => {
+					e.stopPropagation();
+					e.preventDefault();
+					this._toggleMaximize();
+				};
+				this.maxRestoreBtn.addEventListener('pointerup', this._onMaxRestoreClick);
 			}
 
 			if (this.opts.draggable) {
@@ -267,10 +281,8 @@
 
 			this._onResize = () => {
 				if (this.dialogPosition.isMaxed) {
-					// 最大化状态下，根据 maximizeEdgePadding 重新计算
 					this._applyMaximize();
 				} else {
-					// 普通状态下，使用 edgePadding 进行边界检查
 					this._ensureWithinBounds();
 				}
 			};
@@ -381,14 +393,31 @@
 		}
 
 		_listenMaximize() {
+			let lastTapTime = 0;
+
 			this._onMaximize = (e) => {
-				if (this.dialogPosition.isMaxed) {
-					this._restoreWindow();
+				// 排除按钮区域
+				if (e.target === this.closeBtn || this.closeBtn.contains(e.target)) return;
+				if (this.maxRestoreBtn && (e.target === this.maxRestoreBtn || this.maxRestoreBtn.contains(e.target))) return;
+				if (e.target === this.headerButtons || this.headerButtons.contains(e.target)) return;
+
+				const currentTime = Date.now();
+				const tapLength = currentTime - lastTapTime;
+
+				if (tapLength < 300 && tapLength > 0) {
+					e.preventDefault();
+					if (this.dialogPosition.isMaxed) {
+						this._restoreWindow();
+					} else {
+						this._maximizeWindow();
+					}
+					lastTapTime = 0;
 				} else {
-					this._maximizeWindow();
+					lastTapTime = currentTime;
 				}
 			};
-			this.header.addEventListener('dblclick', this._onMaximize);
+
+			this.header.addEventListener('pointerup', this._onMaximize);
 		}
 
 		setContent(content) {
@@ -401,6 +430,8 @@
 				node = content;
 			} else if (typeof content === 'string') {
 				const div = document.createElement('div');
+				const cls = this.opts.className;
+				div.className = `${cls}__body_content`;
 				div.innerHTML = content;
 				node = div;
 			}
@@ -443,16 +474,15 @@
 			}
 			
 			window.removeEventListener('resize', this._onResize);
-			this.closeBtn.removeEventListener('click', this._onCloseClick);
-			this.header.removeEventListener('dblclick', this._onMaximize);
+			this.closeBtn.removeEventListener('pointerup', this._onCloseClick);
+			this.header.removeEventListener('pointerup', this._onMaximize);
 			
-			// 移除全屏监听
 			if (this.opts.electronCompatible && this._cleanUpFullscreenListener) {
 				this._cleanUpFullscreenListener();
 			}
 			
 			if (this.opts.showMaximizeRestoreButton && this.maxRestoreBtn) {
-				this.maxRestoreBtn.removeEventListener('click', this._onMaxRestoreClick);
+				this.maxRestoreBtn.removeEventListener('pointerup', this._onMaxRestoreClick);
 			}
 			if (this.opts.draggable) {
 				this.header.removeEventListener('pointerdown', this._onPointerDown);
@@ -499,22 +529,15 @@
 
 		/* ========== 拖拽相关 ========== */
 		_startDrag(e) {
-			// 最大化状态下禁止拖动
-			if (this.dialogPosition.isMaxed) {
-				return;
-			}
+			if (this.dialogPosition.isMaxed) return;
 
-			// 如果点击的目标是按钮或其内部元素，则不启动拖拽
-			if (e.target === this.closeBtn || this.closeBtn.contains(e.target)) {
-				return;
-			}
-			if (this.maxRestoreBtn && (e.target === this.maxRestoreBtn || this.maxRestoreBtn.contains(e.target))) {
-				return;
-			}
-			// 只响应主指针
-			if (e.button !== 0) return;
+			// 严格排除按钮和按钮容器
+			if (e.target === this.closeBtn || this.closeBtn.contains(e.target)) return;
+			if (this.maxRestoreBtn && (e.target === this.maxRestoreBtn || this.maxRestoreBtn.contains(e.target))) return;
+			if (e.target === this.headerButtons || this.headerButtons.contains(e.target)) return;
 
-			// 不立即阻止默认行为，记录起始位置
+			if (e.button !== 0 && e.button !== -1) return;
+
 			this.dragStartX = e.clientX;
 			this.dragStartY = e.clientY;
 			this.dragPending = true;
@@ -525,7 +548,7 @@
 
 			this._onPointerMove = this._dragMove.bind(this);
 			this._onPointerUp = this._endDrag.bind(this);
-			document.addEventListener('pointermove', this._onPointerMove);
+			document.addEventListener('pointermove', this._onPointerMove, { passive: false });
 			document.addEventListener('pointerup', this._onPointerUp);
 			document.addEventListener('pointercancel', this._onPointerUp);
 		}
