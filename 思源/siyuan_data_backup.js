@@ -58,7 +58,7 @@ const { URL } = require('url');
 const { Transform } = require('stream');
 
 async function main() {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const timestamp = new Date().toLocaleString('zh-CN').replace(/[\s\/:.]/g, '-');
     const zipFileName = `backup-${timestamp}.zip`;
     const tempZipPath = path.join(require('os').tmpdir(), zipFileName);
 
